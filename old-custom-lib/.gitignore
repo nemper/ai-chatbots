@@ -1,0 +1,13 @@
+*.txt
+!requirements.txt
+*.json
+*.exe
+*.mp3
+*.pdf
+*.docx
+.vsidx
+.wsuo
+*.csv
+*.xlsx
+slnx.sqlite
+*.JSONL
