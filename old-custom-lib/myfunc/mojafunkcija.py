@@ -7,6 +7,10 @@ from langchain.callbacks.base import BaseCallbackHandler
 from io import StringIO
 import re
 
+def show_logo():
+    with st.sidebar:
+        st.image(
+                "https://test.georgemposi.com/wp-content/uploads/2023/05/positive-logo-red.jpg", width=150)
 
 class StreamlitRedirect:
     def __init__(self):
