@@ -1,18 +1,14 @@
 # Positive custom functions
 
-Welcome to the Positive custom function Toolkit! This repository contains a collection of custom classes and functions designed to streamline and simplify the process for OpenAI LangChain and Streamlit. 
+Welcome to the Positive custom function Toolkit! This repository contains a collection of custom classes and functions designed to streamline and simplify the process for OpenAI LangChain and Streamlit.
 
 ## Overview
 
-This toolkit includes several Python scripts, each serving a specific purpose in the fine-tuning workflow. Below is an overview of the key components:
+This toolkit includes several Python scripts, each serving a specific purpose in the fine-tuning workflow. Below is an overview of the key components. Streamlit is a powerful tool for creating interactive web applications with minimal effort. However, as your applications grow in complexity, you may need additional functionality and customization. This script serves as a utility library for enhancing your Streamlit projects.
 
-# Streamlit Utilities and Callbacks - `mojafunkcija.py`
+## Streamlit Utilities and Callbacks - `mojafunkcija.py`
 
 This Python script, `mojafunkcija.py`, is a collection of Streamlit utilities and callback functions designed to enhance your Streamlit applications. These utilities and callbacks simplify common tasks, such as handling user interactions, displaying information, and integrating with other libraries.
-
-## Overview
-
-Streamlit is a powerful tool for creating interactive web applications with minimal effort. However, as your applications grow in complexity, you may need additional functionality and customization. This script serves as a utility library for enhancing your Streamlit projects.
 
 ## Key Features
 
@@ -38,7 +34,7 @@ Here are some key features and functions provided by this script:
 
 To use this script in your Streamlit application, follow these steps:
 
-1. Clone this repository or download the `mojafunkcija.py` file. 
+1. Clone this repository or download the `mojafunkcija.py` file.
     You can also install by putting `git+https://github.com/djordjethai/myfunc.git` in the requirements.txt
 
 2. Import the necessary functions and classes from the script into your Streamlit application.
@@ -59,5 +55,8 @@ Refer to the documentation within the script and the comments provided for each 
 
 For additional information and updates, please refer to the [Streamlit documentation](https://docs.streamlit.io/) and the relevant libraries used in this script.
 
----
+## How to update
 
+1. After updating the `mojafunkcija.py` from this folder run `python setup.py sdist bdist_wheel`
+2. Synchronize with GitHub
+3. Upgrade the library `pip install git+https://github.com/djordjethai/myfunc.git --upgrade`
