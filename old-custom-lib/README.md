@@ -37,6 +37,8 @@ To use this script in your Streamlit application, follow these steps:
 1. Clone this repository or download the `mojafunkcija.py` file.
     You can also install by putting `git+https://github.com/djordjethai/myfunc.git` in the requirements.txt
 
+    to upgrade local version run: pip install myfunc `git+https://github.com/djordjethai/myfunc.git --upgrade`
+
 2. Import the necessary functions and classes from the script into your Streamlit application.
 
 3. Utilize these utilities and callbacks to enhance your app's functionality.
