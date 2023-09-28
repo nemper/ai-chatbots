@@ -193,14 +193,15 @@ def positive_login(main, verzija):
 
 # define model and temperature
 
-
+counter = 0
 def init_cond_llm():
     with st.sidebar:
         st.info("Odaberite Model i temperaturu")
+        global counter
         model = st.selectbox(
             "Odaberite model",
             ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
-            key="model_select",
+            key=f"model_select_{counter}",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
 
