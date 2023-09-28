@@ -193,19 +193,15 @@ def positive_login(main, verzija):
 
 # define model and temperature
 
-counter = 0
 def init_cond_llm():
     with st.sidebar:
         st.info("Odaberite Model i temperaturu")
-        global counter
         model = st.selectbox(
             "Odaberite model",
             ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
-            key=f"model_select_{counter}",
+            key="model_select_1",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
-        counter += 1
-
         temp = st.slider(
             "Set temperature (0=strict, 1=creative)",
             0.0,
@@ -214,6 +210,24 @@ def init_cond_llm():
             help="Temperatura utice na kreativnost modela. Sto je veca temperatura, model je kreativniji, ali i manje pouzdan.",
         )
     return model, temp
+
+def init_cond_llm2():
+    with st.sidebar:
+        st.info("Odaberite Model i temperaturu")
+        model2 = st.selectbox(
+            "Odaberite model",
+            ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
+            key="model_select_2",
+            help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
+        )
+        temp2 = st.slider(
+            "Set temperature (0=strict, 1=creative)",
+            0.0,
+            2.0,
+            step=0.1,
+            help="Temperatura utice na kreativnost modela. Sto je veca temperatura, model je kreativniji, ali i manje pouzdan.",
+        )
+    return model2, temp2
 
 
 # error handling on Serbian
