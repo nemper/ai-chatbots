@@ -204,6 +204,7 @@ def init_cond_llm():
             key=f"model_select_{counter}",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
+        counter += 1
 
         temp = st.slider(
             "Set temperature (0=strict, 1=creative)",
