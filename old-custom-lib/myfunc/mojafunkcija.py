@@ -192,15 +192,16 @@ def positive_login(main, verzija):
 
 
 # define model and temperature
-
+counter = 0
 def init_cond_llm():
-    increment_counter = lambda counter=[0]: [counter.__setitem__(0, counter[0] + 1), counter[0]][1]
+    # increment_counter = lambda counter=[0]: [counter.__setitem__(0, counter[0] + 1), counter[0]][1]
+    counter += 1
     with st.sidebar:
         st.info("Odaberite Model i temperaturu")
         model = st.selectbox(
             "Odaberite model",
             ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
-            key=f"model_{increment_counter()}",
+            key=f"model_{counter}",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
         temp = st.slider(
@@ -208,7 +209,7 @@ def init_cond_llm():
             0.0,
             2.0,
             step=0.1,
-            key=f"temp_{increment_counter()}",
+            key=f"temp_{counter}",
             help="Temperatura utice na kreativnost modela. Sto je veca temperatura, model je kreativniji, ali i manje pouzdan.",
         )
     return model, temp
