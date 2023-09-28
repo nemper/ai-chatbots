@@ -200,6 +200,7 @@ def init_cond_llm():
         model = st.selectbox(
             "Odaberite model",
             ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
+            key="model_select",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
 
