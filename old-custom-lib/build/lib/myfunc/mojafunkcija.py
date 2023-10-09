@@ -28,9 +28,6 @@ class StreamlitRedirect:
         return self.output_buffer.getvalue()
 
 
-# ver 17.08.23
-
-
 def tiktoken_len(text):
     import tiktoken
 
@@ -180,7 +177,7 @@ def positive_login(main, verzija):
 
     if st.session_state["authentication_status"]:
         with st.sidebar:
-            st.caption(f"Ver 1.0.4")
+            st.caption(f"Ver 1.0.5")
             authenticator.logout("Logout", "main", key="unique_key")
         # if login success run the program
         main()
