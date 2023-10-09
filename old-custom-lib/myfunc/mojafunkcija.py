@@ -39,13 +39,14 @@ def tiktoken_len(text):
     return len(tokens)
 
 
-def pinecone_stats(index):
+def pinecone_stats(index, index_name):
     import pandas as pd
 
+    index_name = index_name
     index_stats_response = index.describe_index_stats()
     index_stats_dict = index_stats_response.to_dict()
     st.subheader("Status indexa:")
-    st.write("embedings1")
+    st.write(index_name)
     flat_index_stats_dict = flatten_dict(index_stats_dict)
 
     # Extract header and content from the index
