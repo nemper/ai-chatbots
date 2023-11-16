@@ -89,8 +89,8 @@ def def_chunk():
     with st.sidebar:
         st.info("Odaberite velicinu chunka i overlap")
         chunk_size = st.slider(
-            "Set chunk size in characters (200 - 8000)",
-            200,
+            "Set chunk size in characters (50 - 8000)",
+            50,
             8000,
             1500,
             step=100,
@@ -177,7 +177,7 @@ def positive_login(main, verzija):
 
     if st.session_state["authentication_status"]:
         with st.sidebar:
-            st.caption(f"Ver 1.0.5")
+            st.caption(f"Ver 1.0.6")
             authenticator.logout("Logout", "main", key="unique_key")
         # if login success run the program
         main()
@@ -195,7 +195,7 @@ def init_cond_llm(i=None):
         st.info("Odaberite Model i temperaturu")
         model = st.selectbox(
             "Odaberite model",
-            ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
+            ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-1106-preview"),
             key="model_key" if i is None else f"model_key{i}",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
