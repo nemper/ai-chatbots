@@ -683,11 +683,17 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
         final_summary = ""
         i = 1
         imax = len(topics)
-        for topic in topics:
-            st.info(f"Summarizing topic: {topic} - {i}/{imax}")
-            i += 1
 
-            summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
+        pocetak_summary = "At the begining of the text write the date (dd.mm.yy), topics that vere discussed and participants."
+
+        for topic in topics:
+            if i == 1:
+                summary = get_response("p_system_3", f"{(pocetak_summary + all_prompts['p_user_3']).format(topic=topic)}")
+                i += 1
+            else:
+                summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
+                i += 1
+            st.info(f"Summarizing topic: {topic} - {i}/{imax}")
 
             final_summary += f"{summary}\n\n"
         
