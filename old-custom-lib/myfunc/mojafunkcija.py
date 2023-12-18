@@ -226,3 +226,132 @@ def greska(e):
         st.warning(
             f"Nisam u mogucnosti za zavrsim tekst. Pokusajte ponovo za nekoliko minuta. Opis greske je:\n {e}"
         )
+
+
+# NEOCHATBOT
+from streamlit_javascript import st_javascript
+import streamlit as st
+import pandas as pd
+from io import StringIO
+from ast import literal_eval
+from azure.storage.blob import BlobServiceClient
+from os import environ
+import pinecone
+from openai import OpenAI
+from pinecone_text.sparse import BM25Encoder
+client = OpenAI()
+from langchain.prompts.chat import (
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+    ChatPromptTemplate,
+    )
+
+
+def read_aad_username():
+    js_code = """(await fetch("/.auth/me")
+        .then(function(response) {return response.json();}).then(function(body) {return body;}))
+    """
+
+    return_value = st_javascript(js_code)
+
+    username = None
+    if return_value == 0:
+        pass  # this is the result before the actual value is returned
+    elif isinstance(return_value, list) and len(return_value) > 0:  # this is the actual value
+        username = return_value[0]["user_id"]
+    else:
+        st.warning(
+            f"could not directly read username from azure active directory: {return_value}.")  # this is an error
+    
+    return username
+
+
+def load_data_from_azure(bsc):
+    try:
+        blob_service_client = bsc
+        container_client = blob_service_client.get_container_client("positive-user")
+        blob_client = container_client.get_blob_client("assistant_data.csv")
+
+        streamdownloader = blob_client.download_blob()
+        df = pd.read_csv(StringIO(streamdownloader.readall().decode("utf-8")), usecols=["user", "chat", "ID", "assistant", "fajlovi"])
+        df["fajlovi"] = df["fajlovi"].apply(literal_eval)
+        return df.dropna(how="all")               
+    except FileNotFoundError:
+        return {"Nisam pronasao fajl"}
+    except Exception as e:
+        return {f"An error occurred: {e}"}
+    
+
+def upload_data_to_azure(z):
+    z["fajlovi"] = z["fajlovi"].apply(lambda z: str(z))
+    blob_client = BlobServiceClient.from_connection_string(
+        environ.get("AZ_BLOB_API_KEY")).get_blob_client("positive-user", "assistant_data.csv")
+    blob_client.upload_blob(z.to_csv(index=False), overwrite=True)
+
+
+
+def inner_hybrid(upit):
+    alpha = 0.5
+
+    pinecone.init(
+        api_key=environ["PINECONE_API_KEY_POS"],
+        environment=environ["PINECONE_ENVIRONMENT_POS"],
+    )
+    index = pinecone.Index("positive")
+
+    def hybrid_query():
+        def get_embedding(text, model="text-embedding-ada-002"):
+            text = text.replace("\n", " ")
+            return client.embeddings.create(input = [text], model=model).data[0].embedding
+    
+        hybrid_score_norm = (lambda dense, sparse, alpha: 
+                                ([v * alpha for v in dense], 
+                                {"indices": sparse["indices"], 
+                                "values": [v * (1 - alpha) for v in sparse["values"]]}
+                                ))
+        hdense, hsparse = hybrid_score_norm(
+            sparse = BM25Encoder().fit([upit]).encode_queries(upit),
+            dense=get_embedding(upit),
+            alpha=alpha,
+        )
+        return index.query(
+            top_k=6,
+            vector=hdense,
+            sparse_vector=hsparse,
+            include_metadata=True,
+            namespace=st.session_state.namespace,
+            ).to_dict()
+
+    tematika = hybrid_query()
+
+    uk_teme = ""
+    for _, item in enumerate(tematika["matches"]):
+        if item["score"] > 0.05:    # score
+            uk_teme += item["metadata"]["context"] + "\n\n"
+
+    system_message = SystemMessagePromptTemplate.from_template(
+        template="You are a helpful assistent. You always answer in the Serbian language.").format()
+
+    promptFT = """
+    Use the context provided to anwer the question. 
+
+    Context:
+    ____________________
+
+    {uk_teme}
+    ____________________
+
+    Question: {zahtev} 
+    ____________________
+
+    Be sure to use the writing style of {ft_model} 
+    """
+    human_message = HumanMessagePromptTemplate.from_template(
+        template=promptFT.format(
+            zahtev=upit,
+            uk_teme=uk_teme,
+            ft_model="gpt-4-1106-preview",))
+    
+    return str(ChatPromptTemplate(messages=[system_message, human_message]))
+
+

@@ -2,7 +2,6 @@ README.md
 setup.py
 myfunc/__init__.py
 myfunc/mojafunkcija.py
-myfunc/neofunkcija.py
 myfunc.egg-info/PKG-INFO
 myfunc.egg-info/SOURCES.txt
 myfunc.egg-info/dependency_links.txt
