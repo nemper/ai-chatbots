@@ -657,7 +657,9 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
             "p_system_3": "You are a helpful assistant that summarizes only parts of the provided text that are related to the requested topic.",
             "p_user_3": "Please summarize the above text focusing only on the topic: {topic}. \
                 Add a simple title (don't write hashes or similar) and 2 empty lines before and after the summary. \
-                    Be sure to always write in Serbian." + f"{entered_prompt}"\
+                    Be sure to always write in Serbian." + f"{entered_prompt}",
+            "p_system_4": "You are a helpful assistant that creates a conclusion of the provided text.",
+            "p_user_4": "Please create a conclusion of the above text."
         }
         file_content = uploaded_file.read().decode(encoding="utf-8-sig")
         
@@ -693,10 +695,12 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
             else:
                 summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
                 i += 1
-            st.info(f"Summarizing topic: {topic} - {i}/{imax}")
 
+            st.info(f"Summarizing topic: {topic} - {i}/{imax}")
             final_summary += f"{summary}\n\n"
-        
+
+        final_summary += f"{get_response('p_system_4', all_prompts['p_user_2'])}\n\n"
+
         return final_summary
 
 
