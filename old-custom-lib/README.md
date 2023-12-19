@@ -88,7 +88,10 @@ Here's a description of each function and class in the provided code:
 
 27. **send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password)**:
     - Sends an email using SMTP with the specified parameters.
-
+ 
+28. **sacuvaj_dokument(content, file_name)**:
+    - Saves a document to a specified file format.
+    
 ## Getting Started
 
 To use this script in your Streamlit application, follow these steps:

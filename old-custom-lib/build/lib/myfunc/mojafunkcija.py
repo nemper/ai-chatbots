@@ -247,6 +247,9 @@ from langchain.prompts.chat import (
     HumanMessagePromptTemplate,
     ChatPromptTemplate,
     )
+from html2docx import html2docx
+import markdown
+import pdfkit
 
 
 def read_aad_username():
@@ -753,3 +756,39 @@ def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, use
     text = msg.as_string()
     server.sendmail(from_addr, to_addr, text)
     server.quit()
+
+
+def sacuvaj_dokument(content, file_name):
+    st.info("Čuva dokument")
+    options = {
+        "encoding": "UTF-8",  # Set the encoding to UTF-8
+        "no-outline": None,
+        "quiet": "",
+    }
+    html = markdown.markdown(content)
+    buf = html2docx(html, title="Zapisnik")
+    word_data = buf.getvalue()
+    pdf_data = pdfkit.from_string(html, False, options=options)
+    
+    st.download_button(
+        "Download as .txt",
+        content,
+        file_name=f"{file_name}.txt",
+        help="Čuvanje dokumenta",
+    )
+            
+    st.download_button(
+        label="Download as .docx",
+        data=word_data,
+        file_name=f"{file_name}.docx",
+        mime="docx",
+        help= "Čuvanje dokumenta",
+    )
+            
+    st.download_button(
+        label="Download as .pdf",
+        data=pdf_data,
+        file_name=f"{file_name}.pdf",
+        mime="application/octet-stream",
+        help= "Čuvanje dokumenta",
+    )
