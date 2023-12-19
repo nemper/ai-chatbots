@@ -6,29 +6,88 @@ Welcome to the Positive custom function Toolkit! This repository contains a coll
 
 This toolkit includes several Python scripts, each serving a specific purpose in the fine-tuning workflow. Below is an overview of the key components. Streamlit is a powerful tool for creating interactive web applications with minimal effort. However, as your applications grow in complexity, you may need additional functionality and customization. This script serves as a utility library for enhancing your Streamlit projects.
 
-## Streamlit Utilities and Callbacks - `mojafunkcija.py`
+Here's a description of each function and class in the provided code:
 
-This Python script, `mojafunkcija.py`, is a collection of Streamlit utilities and callback functions designed to enhance your Streamlit applications. These utilities and callbacks simplify common tasks, such as handling user interactions, displaying information, and integrating with other libraries.
+1. **show_logo()** :
+   - Displays an image in the Streamlit sidebar. It fetches the image from a specified URL and sets its width to 150 pixels.
 
-## Key Features
+2. **class StreamlitRedirect**:
+   - A class for redirecting output to a Streamlit interface. It cleans and stores text output, and can return the stored output.
 
-Here are some key features and functions provided by this script:
+3. **tiktoken_len(text)**:
+   - Uses the `tiktoken` library to tokenize the given text and returns the number of tokens.
 
-- **Streamlit Style Customization**: Customize the style of your Streamlit app, including hiding the main menu and footer for a cleaner interface.
+4. **pinecone_stats(index, index_name)**:
+   - Retrieves and displays statistics about a Pinecone index in Streamlit. It formats and shows these statistics as a DataFrame.
 
-- **Positive Authentication**: Implement user authentication using the `streamlit-authenticator` library. Control access levels and user privileges based on predefined credentials.
+5. **flatten_dict(d, parent_key="", sep="_")**:
+   - A utility function to flatten a nested dictionary, combining keys with a separator.
 
-- **Text File Handling**: Read text files from your local file system, which can be useful for loading data or configurations.
+6. **def_chunk()**:
+   - Provides a Streamlit interface to select chunk size and overlap for text processing, returning the selected values.
 
-- **Streamlit Redirect**: Redirect the standard output of your Python code to Streamlit's interface. This can be handy for displaying real-time updates or logs.
+7. **print_nested_dict_st(d)**:
+   - Recursively prints the contents of a nested dictionary in Streamlit.
 
-- **Token Length Calculator**: Calculate the token length of a given text using the `tiktoken` library.
+8. **class StreamHandler(BaseCallbackHandler)**:
+   - A callback handler class for Streamlit that handles new tokens from a language model, formats them, and updates the Streamlit container with the text.
 
-- **Pinecone Statistics**: Display statistics and information about a Pinecone index for embedding retrieval.
+9. **open_file(filepath)**:
+   - Opens a file and returns its content as a string.
 
-- **Data Flattening**: Flatten nested dictionaries into a more accessible format.
+10. **st_style()**:
+   - Applies CSS styles to hide certain Streamlit default interface elements.
 
-- **Streamlit Callbacks**: Implement Streamlit callbacks for handling user interactions and providing dynamic updates.
+11. **positive_login(main, verzija)**:
+    - Handles user authentication using Streamlit Authenticator and YAML configuration, then runs the main program if authentication is successful.
+
+12. **init_cond_llm(i=None)**:
+    - Provides a Streamlit interface for selecting a language model and temperature setting.
+
+13. **greska(e)**:
+    - Handles different error scenarios in Streamlit and displays appropriate warnings.
+
+14. **read_aad_username()**:
+    - Fetches the username from Azure Active Directory using JavaScript.
+
+15. **load_data_from_azure(bsc)**:
+    - Loads data from an Azure blob storage container.
+
+16. **upload_data_to_azure(z)**:
+    - Uploads data to an Azure blob storage container.
+
+17. **inner_hybrid(upit)**:
+    - Performs a hybrid query using Pinecone and a language model, combining dense and sparse vectors for querying.
+
+18. **audio_izlaz(content)**:
+    - Converts text to speech using OpenAI's API and plays it back in Streamlit.
+
+19. **priprema()**:
+    - Provides a Streamlit interface for selecting different preparatory actions, such as transcribing audio files or reading text from images.
+
+20. **transkript()**:
+    - Handles the transcription of audio files and subsequent text correction using OpenAI's Whisper model and Streamlit.
+
+21. **read_local_image()**:
+    - Reads and interprets text from a locally uploaded image in Streamlit.
+
+22. **read_url_image()**:
+    - Reads and interprets text from an image located at a specified URL in Streamlit.
+
+23. **generate_corrected_transcript(client, system_prompt, audio_file, jezik)**:
+    - Generates a corrected transcript from an audio file, chunking the transcript and applying language model corrections.
+
+24. **dugacki_iz_kratkih(uploaded_file, entered_prompt)**:
+    - Processes an uploaded file and an entered prompt to produce a detailed response, using a series of language model interactions.
+
+25. **convert_input_to_date(ulazni_datum)**:
+    - Converts a date string in a specific format to a datetime object.
+
+26. **parse_serbian_date(date_string)**:
+    - Parses Serbian-formatted dates into datetime objects.
+
+27. **send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password)**:
+    - Sends an email using SMTP with the specified parameters.
 
 ## Getting Started
 
@@ -52,7 +111,7 @@ Refer to the documentation within the script and the comments provided for each 
 ## Script Details
 
 - **Author**: Positive
-- **Date**: 07.09.2023
+- **Date**: 19.12.2023
 - **License**: MIT
 
 For additional information and updates, please refer to the [Streamlit documentation](https://docs.streamlit.io/) and the relevant libraries used in this script.
