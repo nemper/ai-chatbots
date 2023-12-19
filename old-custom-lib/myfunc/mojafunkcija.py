@@ -647,10 +647,11 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
     return corrected_transcript
 
 
-def dugacki_iz_kratkih(uploaded_file, entered_prompt):
+def dugacki_iz_kratkih(uploaded_text, entered_prompt):
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    uploaded_text = uploaded_text[0].page_content
 
-    if uploaded_file is not None:
+    if uploaded_text is not None:
         all_prompts = {
             "p_system_1": "You are a helpful assistant that identifies topics in a provided text.",
             "p_user_1": "Please provide a numerated list of topics described in the text - one topic per line. \
@@ -668,7 +669,6 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
             "p_system_4": "You are a helpful assistant that creates a conclusion of the provided text.",
             "p_user_4": "Please create a conclusion of the above text."
         }
-        file_content = uploaded_file.read().decode(encoding="utf-8-sig")
         
 
         def get_response(p_system, p_user_ext):
@@ -676,7 +676,7 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
                 model="gpt-4-1106-preview",
                 messages=[
                     {"role": "system", "content": all_prompts[p_system]},
-                    {"role": "user", "content": file_content},
+                    {"role": "user", "content": uploaded_text},
                     {"role": "user", "content": p_user_ext}
                 ]
             )
@@ -684,19 +684,19 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
 
 
         response = get_response("p_system_1", all_prompts["p_user_1"])
-
+        
         # ovaj double check je veoma moguce bespotreban, no sto reskirati
-        response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
+        # response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
         topics = [item for item in response if item != ""]  # just in case - triple check
 
         final_summary = ""
-        i = 1
+        i = 0
         imax = len(topics)
 
         pocetak_summary = "At the begining of the text write the date (dd.mm.yy), topics that vere discussed and participants."
 
         for topic in topics:
-            if i == 1:
+            if i == 0:
                 summary = get_response("p_system_3", f"{(pocetak_summary + all_prompts['p_user_3']).format(topic=topic)}")
                 i += 1
             else:
@@ -707,8 +707,11 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
             final_summary += f"{summary}\n\n"
 
         final_summary += f"{get_response('p_system_4', all_prompts['p_user_4'])}"
-
+        
         return final_summary
+    
+    else:
+        return "Please upload a text file."
 
 
 # TEST
