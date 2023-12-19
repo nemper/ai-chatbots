@@ -653,9 +653,9 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
 
     if uploaded_text is not None:
         all_prompts = {
-            "p_system_1": "You are a helpful assistant that identifies topics in a provided text.",
+            "p_system_1": "You are a helpful assistant that identifies the main topics in a provided text.",
             "p_user_1": "Please provide a numerated list of topics described in the text - one topic per line. \
-                Be sure not to write anything else.",
+                Be sure not to write anything else. Your list should not contain more than 10 topics.",
             "p_system_2": "You are a helpful assistant that corrects stuctural mistakes in a provided text. \
                 You only check if the rules were followed, and then you correct the mistakes if there are any.",
             "p_user_2": f"Please check if the previous assistant generated a response that is inline with the following request: \
@@ -686,7 +686,7 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
         response = get_response("p_system_1", all_prompts["p_user_1"])
         
         # ovaj double check je veoma moguce bespotreban, no sto reskirati
-        # response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
+        response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
         topics = [item for item in response if item != ""]  # just in case - triple check
 
         final_summary = ""
