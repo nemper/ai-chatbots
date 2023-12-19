@@ -359,10 +359,11 @@ def inner_hybrid(upit):
 
 # ZAPISNIK
 def audio_izlaz(content):
+    api_key = os.getenv("OPENAI_API_KEY")
     response = requests.post(
         "https://api.openai.com/v1/audio/speech",
         headers={
-            "Authorization": f"Bearer {os.getenv['OPENAI_API_KEY']}",
+            "Authorization": f"Bearer {api_key}",
         },
         json={
             "model" : "tts-1-hd",
