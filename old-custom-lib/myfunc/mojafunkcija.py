@@ -1,11 +1,19 @@
 import streamlit as st
 import yaml
 from yaml.loader import SafeLoader
-import streamlit as st
 import streamlit_authenticator as stauth
 from langchain.callbacks.base import BaseCallbackHandler
-from io import StringIO
+from io import StringIO, BytesIO
 import re
+import pandas as pd
+import requests
+import os
+import base64
+from PIL import Image
+from datetime import datetime
+from smtplib import SMTP
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 
 def show_logo():
@@ -216,23 +224,17 @@ def init_cond_llm(i=None):
 def greska(e):
     if "maximum context length" in str(e):
         st.warning(
-            f"Nisam u mogucnosti za zavrsim tekst. Pokusajte sa modelom koji ima veci kontekst."
-        )
+            f"Nisam u mogucnosti za zavrsim tekst. Pokusajte sa modelom koji ima veci kontekst.")
     elif "Rate limit" in str(e):
         st.warning(
-            f"Nisam u mogucnosti za zavrsim tekst. Broj zahteva modelu prevazilazi limite, pokusajte ponovo za nekoliko minuta."
-        )
+            f"Nisam u mogucnosti za zavrsim tekst. Broj zahteva modelu prevazilazi limite, pokusajte ponovo za nekoliko minuta.")
     else:
         st.warning(
-            f"Nisam u mogucnosti za zavrsim tekst. Pokusajte ponovo za nekoliko minuta. Opis greske je:\n {e}"
-        )
+            f"Nisam u mogucnosti za zavrsim tekst. Pokusajte ponovo za nekoliko minuta. Opis greske je:\n {e}")
 
 
 # NEOCHATBOT
 from streamlit_javascript import st_javascript
-import streamlit as st
-import pandas as pd
-from io import StringIO
 from ast import literal_eval
 from azure.storage.blob import BlobServiceClient
 from os import environ
@@ -355,3 +357,398 @@ def inner_hybrid(upit):
     return str(ChatPromptTemplate(messages=[system_message, human_message]))
 
 
+# ZAPISNIK
+def audio_izlaz(content):
+    response = requests.post(
+        "https://api.openai.com/v1/audio/speech",
+        headers={
+            "Authorization": f"Bearer {os.altsepenviron['OPENAI_API_KEY']}",
+        },
+        json={
+            "model" : "tts-1-hd",
+            "voice" : "alloy",
+            "input": content,
+        
+        },
+    )    
+    audio = b""
+    for chunk in response.iter_content(chunk_size=1024 * 1024):
+        audio += chunk
+
+    # Convert the byte array to AudioSegment
+    #audio_segment = AudioSegment.from_file(io.BytesIO(audio))
+
+    # Save AudioSegment as MP3 file
+    mp3_data = BytesIO(audio)
+    #audio_segment.export(mp3_data, format="mp3")
+    mp3_data.seek(0)
+
+    # Display the audio using st.audio
+    st.caption("mp3 fajl možete download-ovati odabirom tri tačke ne desoj strani audio plejera")
+    st.audio(mp3_data.read(), format="audio/mp3")
+
+
+def priprema():
+    
+    izbor_radnji = st.selectbox("Odaberite pripremne radnje", 
+                    ("Transkribovanje Zvučnih Zapisa", "Čitanje sa slike iz fajla", "Čitanje sa slike sa URL-a"),
+                    help = "Odabir pripremnih radnji"
+                    )
+    if izbor_radnji == "Transkribovanje Zvučnih Zapisa":
+        transkript()
+    elif izbor_radnji == "Čitanje sa slike iz fajla":
+        read_local_image()
+    elif izbor_radnji == "Čitanje sa slike sa URL-a":
+        read_url_image()
+
+
+
+# This function does transcription of the audio file and then corrects the transcript. 
+# It calls the function transcribe and generate_corrected_transcript
+def transkript():
+    # Read OpenAI API key from env
+    with st.sidebar:  # App start
+        st.info("Konvertujte MP3 u TXT")
+        audio_file = st.file_uploader(
+            "Max 25Mb",
+            type="mp3",
+            key="audio_",
+            help="Odabir dokumenta",
+        )
+        transcript = ""
+        
+        if audio_file is not None:
+            st.audio(audio_file.getvalue(), format="audio/mp3")
+            placeholder = st.empty()
+            st.session_state["question"] = ""
+
+            with placeholder.form(key="my_jezik", clear_on_submit=False):
+                jezik = st.selectbox(
+                    "Odaberite jezik izvornog teksta 👉",
+                    (
+                        "sr",
+                        "en",
+                    ),
+                    key="jezik",
+                    help="Odabir jezika",
+                )
+
+                submit_button = st.form_submit_button(label="Submit")
+                client = OpenAI()
+                if submit_button:
+                    with st.spinner("Sačekajte trenutak..."):
+
+                        system_prompt="""
+                        You are the Serbian language expert. You must fix grammar and spelling errors but otherwise keep the text as is, in the Serbian language. \
+                        Your task is to correct any spelling discrepancies in the transcribed text. \
+                        Make sure that the names of the participants are spelled correctly: Miljan, Goran, Darko, Nemanja, Đorđe, Šiška, Zlatko, BIS, Urbanizam. \
+                        Only add necessary punctuation such as periods, commas, and capitalization, and use only the context provided. If you could not transcribe the whole text for any reason, \
+                        just say so. If you are not sure about the spelling of a word, just write it as you hear it. \
+                        """
+                        # does transcription of the audio file and then corrects the transcript
+                        transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
+                                                
+                        with st.expander("Transkript"):
+                            st.info(transcript)
+                            
+            if transcript !="":
+                st.download_button(
+                    "Download transcript",
+                    transcript,
+                    file_name="transcript.txt",
+                    help="Odabir dokumenta",
+                )
+
+
+def read_local_image():
+
+    st.info("Čita sa slike")
+    image_f = st.file_uploader(
+        "Odaberite sliku",
+        type="jpg",
+        key="slika_",
+        help="Odabir dokumenta",
+    )
+    content = ""
+  
+    
+    if image_f is not None:
+        base64_image = base64.b64encode(image_f.getvalue()).decode('utf-8')
+        # Decode the base64 image
+        image_bytes = base64.b64decode(base64_image)
+        # Create a PIL Image object
+        image = Image.open(BytesIO(image_bytes))
+        # Display the image using st.image
+        st.image(image, width=150)
+        placeholder = st.empty()
+        # st.session_state["question"] = ""
+
+        with placeholder.form(key="my_image", clear_on_submit=False):
+            default_text = "What is in this image? Please read and reproduce the text. Read the text as is, do not correct any spelling and grammar errors. "
+            upit = st.text_area("Unesite uputstvo ", default_text)  
+            submit_button = st.form_submit_button(label="Submit")
+            
+            if submit_button:
+                with st.spinner("Sačekajte trenutak..."):            
+            
+            # Path to your image
+                    
+                    api_key = os.getenv("OPENAI_API_KEY")
+                    # Getting the base64 string
+                    
+
+                    headers = {
+                      "Content-Type": "application/json",
+                      "Authorization": f"Bearer {api_key}"
+                    }
+
+                    payload = {
+                      "model": "gpt-4-vision-preview",
+                      "messages": [
+                        {
+                          "role": "user",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": upit
+                            },
+                            {
+                              "type": "image_url",
+                              "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                              }
+                            }
+                          ]
+                        }
+                      ],
+                      "max_tokens": 300
+                    }
+
+                    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+
+                    json_data = response.json()
+                    content = json_data['choices'][0]['message']['content']
+                    with st.expander("Opis slike"):
+                            st.info(content)
+                            
+        if content !="":
+            st.download_button(
+                "Download opis slike",
+                content,
+                file_name=f"{image_f.name}.txt",
+                help="Čuvanje dokumenta",
+            )
+
+
+def read_url_image():
+    # version url
+
+    client = OpenAI()
+    st.info("Čita sa slike sa URL")
+    content = ""
+    
+    # st.session_state["question"] = ""
+    #with placeholder.form(key="my_image_url_name", clear_on_submit=False):
+    img_url = st.text_input("Unesite URL slike ")
+    #submit_btt = st.form_submit_button(label="Submit")
+    image_f = os.path.basename(img_url)   
+    if img_url !="":
+        st.image(img_url, width=150)
+        placeholder = st.empty()    
+    #if submit_btt:        
+        with placeholder.form(key="my_image_url", clear_on_submit=False):
+            default_text = "What is in this image? Please read and reproduce the text. Read the text as is, do not correct any spelling and grammar errors. "
+        
+            upit = st.text_area("Unesite uputstvo ", default_text)
+            submit_button = st.form_submit_button(label="Submit")
+            if submit_button:
+                with st.spinner("Sačekajte trenutak..."):         
+                    response = client.chat.completions.create(
+                      model="gpt-4-vision-preview",
+                      messages=[
+                        {
+                          "role": "user",
+                          "content": [
+                            {"type": "text", "text": upit},
+                            {
+                              "type": "image_url",
+                              "image_url": {
+                                "url": img_url,
+                              },
+                            },
+                          ],
+                        }
+                      ],
+                      max_tokens=300,
+                    )
+                    content = response.choices[0].message.content
+                    with st.expander("Opis slike"):
+                                st.info(content)
+                            
+    if content !="":
+        st.download_button(
+            "Download opis slike",
+            content,
+            file_name=f"{image_f}.txt",
+            help="Čuvanje dokumenta",
+        )
+
+
+
+def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
+
+    def chunk_transcript(transkript, token_limit):
+        words = transkript.split()
+        chunks = []
+        current_chunk = ""
+
+        for word in words:
+            if len((current_chunk + " " + word).split()) > token_limit:
+                chunks.append(current_chunk.strip())
+                current_chunk = word
+            else:
+                current_chunk += " " + word
+
+        chunks.append(current_chunk.strip())
+
+        return chunks
+
+
+    def transcribe(client, audio_file, jezik):
+        return client.audio.transcriptions.create(model="whisper-1", file=audio_file, language=jezik, response_format="text")
+    
+
+    transcript = transcribe(client, audio_file, jezik)
+    st.caption("delim u delove po 1000 reci")
+    chunks = chunk_transcript(transcript, 1000)
+    broj_delova = len(chunks)
+    st.caption (f"Broj delova je: {broj_delova}")
+    corrected_transcript = ""
+
+    # Loop through the token chunks
+    for i, chunk in enumerate(chunks):
+        
+        st.caption(f"Obradjujem {i + 1}. deo...")
+    
+        response = client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            temperature=0,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": chunk}])
+    
+        corrected_transcript += " " + response.choices[0].message.content.strip()
+
+    return corrected_transcript
+
+
+def dugacki_iz_kratkih(uploaded_file, entered_prompt):
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    if uploaded_file is not None:
+        all_prompts = {
+            "p_system_1": "You are a helpful assistant that identifies topics in a provided text.",
+            "p_user_1": "Please provide a numerated list of topics described in the text - one topic per line. \
+                Be sure not to write anything else.",
+            "p_system_2": "You are a helpful assistant that corrects stuctural mistakes in a provided text. \
+                You only check if the rules were followed, and then you correct the mistakes if there are any.",
+            "p_user_2": f"Please check if the previous assistant generated a response that is inline with the following request: \
+                'Please provide a numerated list of topics described in the text - one topic per line. Be sure not to write anything else.' \
+                    If there are any mistakes, please correct them; e.g. if there is a short intro before the topic list or similar. \
+                        If there are no mistakes, just send the text back.",
+            "p_system_3": "You are a helpful assistant that summarizes only parts of the provided text that are related to the requested topic.",
+            "p_user_3": "Please summarize the above text focusing only on the topic: {topic}. \
+                Add a simple title (don't write hashes or similar) and 2 empty lines before and after the summary. \
+                    Be sure to always write in Serbian." + f"{entered_prompt}",
+            "p_system_4": "You are a helpful assistant that creates a conclusion of the provided text.",
+            "p_user_4": "Please create a conclusion of the above text."
+        }
+        file_content = uploaded_file.read().decode(encoding="utf-8-sig")
+        
+
+        def get_response(p_system, p_user_ext):
+            response = client.chat.completions.create(
+                model="gpt-4-1106-preview",
+                messages=[
+                    {"role": "system", "content": all_prompts[p_system]},
+                    {"role": "user", "content": file_content},
+                    {"role": "user", "content": p_user_ext}
+                ]
+            )
+            return response.choices[0].message.content.strip()
+
+
+        response = get_response("p_system_1", all_prompts["p_user_1"])
+
+        # ovaj double check je veoma moguce bespotreban, no sto reskirati
+        response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
+        topics = [item for item in response if item != ""]  # just in case - triple check
+
+        final_summary = ""
+        i = 1
+        imax = len(topics)
+
+        pocetak_summary = "At the begining of the text write the date (dd.mm.yy), topics that vere discussed and participants."
+
+        for topic in topics:
+            if i == 1:
+                summary = get_response("p_system_3", f"{(pocetak_summary + all_prompts['p_user_3']).format(topic=topic)}")
+                i += 1
+            else:
+                summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
+                i += 1
+
+            st.info(f"Summarizing topic: {topic} - {i}/{imax}")
+            final_summary += f"{summary}\n\n"
+
+        final_summary += f"{get_response('p_system_4', all_prompts['p_user_2'])}\n\n"
+
+        return final_summary
+
+
+# TEST
+def convert_input_to_date(ulazni_datum):
+    try:
+        date_obj = datetime.strptime(ulazni_datum, "%d.%m.%Y.")
+        return date_obj
+    except ValueError:
+        print("Invalid date format. Please enter a date in the format 'dd.mm.yyyy.'")
+        return None
+    
+
+def parse_serbian_date(date_string):
+    serbian_month_names = {
+        "januar": "January",
+        "februar": "February",
+        "mart": "March",
+        "april": "April",
+        "maj": "May",
+        "jun": "June",
+        "jul": "July",
+        "avgust": "August",
+        "septembar": "September",
+        "oktobar": "October",
+        "novembar": "November",
+        "decembar": "December"
+    }
+
+    date_string = date_string.lower()
+
+    for serbian_month, english_month in serbian_month_names.items():
+        date_string = date_string.replace(serbian_month, english_month)
+
+    return datetime.strptime(date_string.strip(), "%d. %B %Y")
+
+
+def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password):
+    msg = MIMEMultipart()
+    msg['From'] = from_addr
+    msg['To'] = to_addr
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(message, 'plain'))
+
+    server = SMTP(smtp_server, smtp_port)
+    server.starttls()
+    server.login(username, password)
+    text = msg.as_string()
+    server.sendmail(from_addr, to_addr, text)
+    server.quit()

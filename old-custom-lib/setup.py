@@ -2,6 +2,6 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="1.9.9",
+    version="2.0.2",
     packages=find_packages(),
 )
