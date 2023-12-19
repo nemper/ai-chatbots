@@ -706,7 +706,7 @@ def dugacki_iz_kratkih(uploaded_file, entered_prompt):
             st.info(f"Summarizing topic: {topic} - {i}/{imax}")
             final_summary += f"{summary}\n\n"
 
-        final_summary += f"{get_response('p_system_4', all_prompts['p_user_2'])}\n\n"
+        final_summary += f"{get_response('p_system_4', all_prompts['p_user_4'])}"
 
         return final_summary
 
