@@ -14,6 +14,9 @@ from datetime import datetime
 from smtplib import SMTP
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from docx import Document
+import io
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
 def show_logo():
@@ -765,11 +768,21 @@ def sacuvaj_dokument(content, file_name):
         "no-outline": None,
         "quiet": "",
     }
-    html = markdown.markdown(content)
-    buf = html2docx(html, title="Zapisnik")
-    word_data = buf.getvalue()
-    pdf_data = pdfkit.from_string(html, False, options=options)
     
+    html = markdown.markdown(st.session_state.dld)
+    buf = html2docx(html, title="Zapisnik")
+    # Creating a document object
+    doc = Document(io.BytesIO(buf.getvalue()))
+    # Iterate over the paragraphs and set them to justified
+    for paragraph in doc.paragraphs:
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    # Creating a byte buffer object
+    doc_io = io.BytesIO()
+    doc.save(doc_io)
+    doc_io.seek(0)  # Rewind the buffer to the beginning
+
+    pdf_data = pdfkit.from_string(html, False, options=options)
+
     st.download_button(
         "Download as .txt",
         content,
@@ -779,7 +792,7 @@ def sacuvaj_dokument(content, file_name):
             
     st.download_button(
         label="Download as .docx",
-        data=word_data,
+        data=doc_io,
         file_name=f"{file_name}.docx",
         mime="docx",
         help= "Čuvanje dokumenta",
