@@ -362,7 +362,7 @@ def audio_izlaz(content):
     response = requests.post(
         "https://api.openai.com/v1/audio/speech",
         headers={
-            "Authorization": f"Bearer {os.altsepenviron['OPENAI_API_KEY']}",
+            "Authorization": f"Bearer {os.getenv['OPENAI_API_KEY']}",
         },
         json={
             "model" : "tts-1-hd",

@@ -12,3 +12,4 @@
 slnx.sqlite
 *.JSONL
 *./vs
+.vs
