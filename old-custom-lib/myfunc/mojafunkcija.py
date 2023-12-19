@@ -769,8 +769,8 @@ def sacuvaj_dokument(content, file_name):
         "quiet": "",
     }
     
-    html = markdown.markdown(st.session_state.dld)
-    buf = html2docx(html, title="Zapisnik")
+    html = markdown.markdown(content)
+    buf = html2docx(html, title="Content")
     # Creating a document object
     doc = Document(io.BytesIO(buf.getvalue()))
     # Iterate over the paragraphs and set them to justified
