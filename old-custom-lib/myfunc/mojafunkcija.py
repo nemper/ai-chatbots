@@ -785,7 +785,10 @@ def sacuvaj_dokument(content, file_name):
     doc_io.seek(0)  # Rewind the buffer to the beginning
 
     pdf_data = pdfkit.from_string(html, False, options=options)
-
+    
+    # strip extension, add suffix
+    file_name = os.path.splitext(file_name)[0] + "_out"
+    
     st.download_button(
         "Download as .txt",
         content,
