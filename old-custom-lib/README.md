@@ -1,12 +1,12 @@
 # Positive custom functions
 
-Welcome to the Positive custom function Toolkit! This repository contains a collection of custom classes and functions designed to streamline and simplify the process for OpenAI LangChain and Streamlit.
+Welcome to the Positive custom function Toolkit! This repository contains a collection of custom classes and functions designed to streamline and simplify the process for OpenAI, LangChain and Streamlit.
 
 ## Overview
 
 This toolkit includes several Python scripts, each serving a specific purpose in the fine-tuning workflow. Below is an overview of the key components. Streamlit is a powerful tool for creating interactive web applications with minimal effort. However, as your applications grow in complexity, you may need additional functionality and customization. This script serves as a utility library for enhancing your Streamlit projects.
 
-Here's a description of each function and class in the provided code:
+## Here's a description of each function and class in the provided code for myfunc.mojafunkcija:
 
 1. **show_logo()** :
    - Displays an image in the Streamlit sidebar. It fetches the image from a specified URL and sets its width to 150 pixels.
@@ -47,56 +47,71 @@ Here's a description of each function and class in the provided code:
 13. **greska(e)**:
     - Handles different error scenarios in Streamlit and displays appropriate warnings.
 
-14. **read_aad_username()**:
+14. **convert_input_to_date(ulazni_datum)**:
+Converts a given date string in the format 'dd.mm.yyyy.' to a Python `datetime` object. If the input string is not in the correct format, it prints an error message and returns `None`.
+
+15. **parse_serbian_date(date_string)**;
+Converts a date string with Serbian month names to a Python `datetime` object. It first translates Serbian month names to English and then parses the date.
+
+16. **send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password)**:
+Sends an email with the specified subject and message from `from_addr` to `to_addr` using the specified SMTP server. It uses the provided username and password for authentication.
+
+17. **sacuvaj_dokument(content, file_name)**:
+Saves the given `content` in three different formats: `.txt`, `.docx`, and `.pdf`. It provides download buttons for each format using Streamlit's `download_button` function. The function takes care of encoding, formatting, and conversion to ensure compatibility across different formats.
+
+## Here's a description of each function and class in the provided code for myfunc.asistenti:
+
+1. **HybridQueryProcessor Class**
+The HybridQueryProcessor class is a versatile tool for performing advanced queries in text-based applications. It's designed to integrate with Pinecone and supports a range of functionalities from initializing the Pinecone connection, embedding text, to executing and processing hybrid queries            .
+
+    ***Methods***
+    1. init_pinecone(): Initializes the Pinecone connection and index.
+    2. get_embedding(text, model): Retrieves the embedding for the given text using the specified model.
+    3. hybrid_score_norm(dense, sparse): Normalizes the scores from dense and sparse vectors using the alpha value.
+    4. hybrid_query(upit, top_k): Executes a hybrid query on the Pinecone index using the provided query text.
+    5. process_query_results(upit, score): Processes the query results and formats them for a chat or dialogue system.
+
+    ***Features***
+    Easy integration with Pinecone for executing complex text queries.
+    Supports both dense and sparse vector searches.
+    Customizable query processing and result formatting for chat or dialogue systems.
+
+2. **read_aad_username()**:
     - Fetches the username from Azure Active Directory using JavaScript.
 
-15. **load_data_from_azure(bsc)**:
+3. **load_data_from_azure(bsc)**:
     - Loads data from an Azure blob storage container.
 
-16. **upload_data_to_azure(z)**:
+4. **upload_data_to_azure(z)**:
     - Uploads data to an Azure blob storage container.
 
-17. **inner_hybrid(upit)**:
-    - Performs a hybrid query using Pinecone and a language model, combining dense and sparse vectors for querying.
-
-18. **audio_izlaz(content)**:
+5. **audio_izlaz(content)**:
     - Converts text to speech using OpenAI's API and plays it back in Streamlit.
 
-19. **priprema()**:
+6. **priprema()**:
     - Provides a Streamlit interface for selecting different preparatory actions, such as transcribing audio files or reading text from images.
 
-20. **transkript()**:
+7. **transkript()**:
     - Handles the transcription of audio files and subsequent text correction using OpenAI's Whisper model and Streamlit.
 
-21. **read_local_image()**:
+8. **read_local_image()**:
     - Reads and interprets text from a locally uploaded image in Streamlit.
 
-22. **read_url_image()**:
+9. **read_url_image()**:
     - Reads and interprets text from an image located at a specified URL in Streamlit.
 
-23. **generate_corrected_transcript(client, system_prompt, audio_file, jezik)**:
+10. **generate_corrected_transcript(client, system_prompt, audio_file, jezik)**:
     - Generates a corrected transcript from an audio file, chunking the transcript and applying language model corrections.
 
-24. **dugacki_iz_kratkih(uploaded_file, entered_prompt)**:
+11. **dugacki_iz_kratkih(uploaded_file, entered_prompt)**:
     - Processes an uploaded file and an entered prompt to produce a detailed response, using a series of language model interactions.
 
-25. **convert_input_to_date(ulazni_datum)**:
-    - Converts a date string in a specific format to a datetime object.
-
-26. **parse_serbian_date(date_string)**:
-    - Parses Serbian-formatted dates into datetime objects.
-
-27. **send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password)**:
-    - Sends an email using SMTP with the specified parameters.
- 
-28. **sacuvaj_dokument(content, file_name)**:
-    - Saves a document to a specified file format.
     
 ## Getting Started
 
 To use this script in your Streamlit application, follow these steps:
 
-1. Clone this repository or download the `mojafunkcija.py` file.
+1. Clone this repository or download the `mojafunkcija.py` and `asistenti.py` file.
     You can also install by putting `git+https://github.com/djordjethai/myfunc.git` in the requirements.txt
 
     to upgrade local version run: pip install myfunc `git+https://github.com/djordjethai/myfunc.git --upgrade`
@@ -114,13 +129,11 @@ Refer to the documentation within the script and the comments provided for each 
 ## Script Details
 
 - **Author**: Positive
-- **Date**: 19.12.2023
+- **Date**: 27.12.2023
 - **License**: MIT
-
-For additional information and updates, please refer to the [Streamlit documentation](https://docs.streamlit.io/) and the relevant libraries used in this script.
 
 ## How to update
 
-1. After updating the `mojafunkcija.py` from this folder run `python setup.py sdist bdist_wheel`
+1. After updating from this folder run `python setup.py sdist bdist_wheel`
 2. Synchronize with GitHub
 3. Upgrade the library `pip install git+https://github.com/djordjethai/myfunc.git --upgrade`

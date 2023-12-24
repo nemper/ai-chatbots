@@ -1,6 +1,7 @@
 README.md
 setup.py
 myfunc/__init__.py
+myfunc/asistenti.py
 myfunc/mojafunkcija.py
 myfunc.egg-info/PKG-INFO
 myfunc.egg-info/SOURCES.txt
