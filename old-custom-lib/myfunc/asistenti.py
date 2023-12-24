@@ -541,6 +541,7 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
         def get_response(p_system, p_user_ext):
             response = client.chat.completions.create(
                 model="gpt-4-1106-preview",
+                temperature=0,
                 messages=[
                     {"role": "system", "content": all_prompts[p_system]},
                     {"role": "user", "content": uploaded_text},
@@ -560,7 +561,7 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
         i = 0
         imax = len(topics)
 
-        pocetak_summary = "At the begining of the text write the date (dd.mm.yy), topics that vere discussed and participants."
+        pocetak_summary = "At the begining of the text write the Title for the whole text, the date (dd.mm.yy), topics that vere discussed and participants. After that continue with the actual topic with its own Title. "
 
         for topic in topics:
             if i == 0:
