@@ -523,9 +523,8 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
                     "Ask for clarification if the context or topic is unclear."
                 ),
                 "p_user_3": (
-                    f"[In Serbian, using markdown formatting] Please summarize the above text, focusing only on the topic: {topic}. "
-                    "Start with a simple title, followed by 2 empty lines before and after the summary."
-                    f" {entered_prompt}",
+                    "[In Serbian, using markdown formatting] Please summarize the above text, focusing only on the topic {topic}. Start with a simple title, followed by 2 empty lines before and after the summary." 
+                    f"{entered_prompt}"
                 ),
                 "p_system_4": (
                     "You are a helpful assistant that creates a conclusion of the provided text. "
@@ -565,7 +564,7 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
 
         for topic in topics:
             if i == 0:
-                summary = get_response("p_system_3", f"{(pocetak_summary + all_prompts['p_user_3']).format(topic=topic)}")
+                summary = get_response("p_system_3", f"{pocetak_summary}  {all_prompts['p_user_3'].format(topic=topic)}")
                 i += 1
             else:
                 summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
