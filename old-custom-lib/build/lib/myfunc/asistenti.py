@@ -501,6 +501,12 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
 
     if uploaded_text is not None:
         all_prompts = {
+                 "p_system_0" : (
+                    "You are helpful assistant."
+                ),
+                 "p_user_0" : ( 
+                     "[In Serbian, using markdown formatting] At the begining of the text write the Title [formatted as H1] for the whole text, the date (dd.mm.yy), topics that vere discussed in the numbered list. After that list the participants in a numbered list. "
+                ),
                 "p_system_1": (
                     "You are a helpful assistant that identifies the main topics in a provided text. "
                     "Please ensure clarity and focus in your identification."
@@ -531,7 +537,7 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
                     "Ensure the conclusion is concise and reflects the main points of the text."
                 ),
                 "p_user_4": (
-                    "[In Serbian, using markdown formatting] Please create a conclusion of the above text. "
+                    "[In Serbian, using markdown formatting] Please create a conclusion of the above text. [For the Title use H1 format]"
                     "The conclusion should be succinct and capture the essence of the text."
                 )
             }
@@ -557,22 +563,19 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
         response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
         topics = [item for item in response if item != ""]  # just in case - triple check
 
-        final_summary = ""
+        # Prvi deo teksta sa naslovom, datumom, temama i ucesnicima
+        formatted_pocetak_summary = f"{get_response('p_system_0', all_prompts['p_user_0'])}"
+        
+        # Start the final summary with the formatted 'pocetak_summary'
+        final_summary = formatted_pocetak_summary + "\n\n"
         i = 0
         imax = len(topics)
 
-        pocetak_summary = "At the begining of the text write the Title for the whole text, the date (dd.mm.yy), topics that vere discussed and participants. After that continue with the actual topic with its own Title. "
-
         for topic in topics:
-            if i == 0:
-                summary = get_response("p_system_3", f"{pocetak_summary}  {all_prompts['p_user_3'].format(topic=topic)}")
-                i += 1
-            else:
-                summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
-                i += 1
-
+            summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
             st.info(f"Summarizing topic: {topic} - {i}/{imax}")
             final_summary += f"{summary}\n\n"
+            i += 1
 
         final_summary += f"{get_response('p_system_4', all_prompts['p_user_4'])}"
         
