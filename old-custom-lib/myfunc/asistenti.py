@@ -12,11 +12,11 @@ from os import environ
 import pinecone
 from openai import OpenAI
 from pinecone_text.sparse import BM25Encoder
-from langchain.prompts.chat import (
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-    ChatPromptTemplate,
-    )
+# from langchain.prompts.chat import (
+#     SystemMessagePromptTemplate,
+#     HumanMessagePromptTemplate,
+#     ChatPromptTemplate,
+#     )
 
 client = OpenAI()
 
@@ -59,6 +59,8 @@ class HybridQueryProcessor:
                 - alpha (float): Weight for balancing dense and sparse scores (default 0.5).
                 - score (float): Weight for balancing dense and sparse scores (default 0.05).
                 - index (str): Name of the Pinecone index to be used (default 'positive').
+                - namespace (str): The namespace to be used for the Pinecone index (default 'positive').
+                - top_k (int): The number of results to be returned (default 6).
         """
         self.api_key = kwargs.get('api_key', os.getenv('PINECONE_API_KEY_POS'))
         self.environment = kwargs.get('environment', os.getenv('PINECONE_ENVIRONMENT_POS'))
@@ -66,6 +68,8 @@ class HybridQueryProcessor:
         self.score = kwargs.get('score', 0.05)  # Default score is 0.05
         self.index_name = kwargs.get('index', 'positive')  # Default index is 'positive'
         self.index = None
+        self.namespace = kwargs.get('namespace', 'positive')  # Default namespace is 'positive'
+        self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
         self.init_pinecone()
 
     def init_pinecone(self):
@@ -104,7 +108,7 @@ class HybridQueryProcessor:
                 {"indices": sparse["indices"], 
                  "values": [v * (1 - self.alpha) for v in sparse["values"]]})
 
-    def hybrid_query(self, upit, top_k=6):
+    def hybrid_query(self, upit):
         """
         Executes a hybrid query on the Pinecone index using the provided query text.
 
@@ -118,20 +122,19 @@ class HybridQueryProcessor:
             sparse=BM25Encoder().fit([upit]).encode_queries(upit),
             dense=self.get_embedding(upit))
         return self.index.query(
-            top_k=top_k,
+            top_k=self.top_k,
             vector=hdense,
             sparse_vector=hsparse,
             include_metadata=True,
-            namespace=st.session_state.namespace).to_dict()
+            namespace=self.namespace).to_dict()
 
-    def process_query_results(self, upit, score=0.05):
+    def process_query_results(self, upit):
         """
-        Processes the query results and formats them for a chat or dialogue system.
+        Processes the query results based on relevance score and formats them for a chat or dialogue system.
 
         Args:
             upit (str): The original query text.
-            score (float): The treshold for relevance.
-
+            
         Returns:
             str: Formatted string for chat prompt.
         """
@@ -139,35 +142,11 @@ class HybridQueryProcessor:
 
         uk_teme = ""
         for _, item in enumerate(tematika["matches"]):
-            if item["score"] > score:  # Score threshold
+            if item["score"] > self.score:  # Score threshold
                 uk_teme += item["metadata"]["context"] + "\n\n"
 
-        system_message = SystemMessagePromptTemplate.from_template(
-            template="You are a helpful assistant. You always answer in the Serbian language.").format()
-
-        promptFT = """
-        Use the context provided to answer the question.
-
-        Context:
-        ____________________
-
-        {uk_teme}
-        ____________________
-
-        Question: {upit}
-        ____________________
-
-        
-        """
-        human_message = HumanMessagePromptTemplate.from_template(
-            template=promptFT).format()
-
-        return str(ChatPromptTemplate(messages=[system_message, human_message]))
-
-    # ... include any other methods you might have
-
-
-
+        return uk_teme   
+    
 
 
 def read_aad_username():
