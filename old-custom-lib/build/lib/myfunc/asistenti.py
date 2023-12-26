@@ -34,13 +34,17 @@ class HybridQueryProcessor:
         score (float): The score treshold.
         index_name (str): The name of the Pinecone index to be used.
         index: The Pinecone index object.
-    
+        namespace (str): The namespace to be used for the Pinecone index.
+        top_k (int): The number of results to be returned.
+            
     Example usage:
     processor = HybridQueryProcessor(api_key=environ["PINECONE_API_KEY_POS"], 
                                  environment=environ["PINECONE_ENVIRONMENT_POS"],
                                  alpha=0.7, 
                                  score=0.35,
-                                 index_name='custom_index') # all params are optional
+                                 index_name='custom_index'), 
+                                 namespace=environ["NAMESPACE"],
+                                 top_k = 10 # all params are optional
 
     result = processor.hybrid_query("some query text")    
     """
@@ -58,8 +62,8 @@ class HybridQueryProcessor:
                 - environment (str): The Pinecone environment setting (default fetched from environment variable).
                 - alpha (float): Weight for balancing dense and sparse scores (default 0.5).
                 - score (float): Weight for balancing dense and sparse scores (default 0.05).
-                - index (str): Name of the Pinecone index to be used (default 'positive').
-                - namespace (str): The namespace to be used for the Pinecone index (default 'positive').
+                - index_name (str): Name of the Pinecone index to be used (default 'positive').
+                - namespace (str): The namespace to be used for the Pinecone index (default fetched from environment variable).
                 - top_k (int): The number of results to be returned (default 6).
         """
         self.api_key = kwargs.get('api_key', os.getenv('PINECONE_API_KEY_POS'))
@@ -67,9 +71,9 @@ class HybridQueryProcessor:
         self.alpha = kwargs.get('alpha', 0.5)  # Default alpha is 0.5
         self.score = kwargs.get('score', 0.05)  # Default score is 0.05
         self.index_name = kwargs.get('index', 'positive')  # Default index is 'positive'
-        self.index = None
-        self.namespace = kwargs.get('namespace', 'positive')  # Default namespace is 'positive'
+        self.namespace = kwargs.get('namespace', os.getenv("NAMESPACE"))  
         self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
+        self.index = None
         self.init_pinecone()
 
     def init_pinecone(self):
