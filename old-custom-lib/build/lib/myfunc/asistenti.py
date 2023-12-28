@@ -12,13 +12,61 @@ from os import environ
 import pinecone
 from openai import OpenAI
 from pinecone_text.sparse import BM25Encoder
-# from langchain.prompts.chat import (
-#     SystemMessagePromptTemplate,
-#     HumanMessagePromptTemplate,
-#     ChatPromptTemplate,
-#     )
+
+from langchain.agents import create_sql_agent
+from langchain.agents.agent_toolkits import SQLDatabaseToolkit
+from langchain.sql_database import SQLDatabase
+from langchain.llms.openai import OpenAI
+from langchain.agents.agent_types import AgentType
+from langchain.chat_models import ChatOpenAI
+from langchain.utilities import GoogleSerperAPIWrapper
 
 client = OpenAI()
+
+class SQLSearchTool:
+    """
+    A tool to search an SQL database using natural language queries.
+    This class uses the LangChain library to create an SQL agent that
+    interprets natural language and executes corresponding SQL queries.
+    """
+
+    def __init__(self, db_uri=None):
+        """
+        Initialize the SQLSearchTool with a database URI.
+
+        :param db_uri: The database URI. If None, it reads from the DB_URI environment variable.
+        """
+        if db_uri is None:
+            db_uri = os.getenv("DB_URI")
+        self.db = SQLDatabase.from_uri(db_uri)
+
+        llm = ChatOpenAI()
+        toolkit = SQLDatabaseToolkit(
+            db=self.db, llm=OpenAI(model="gpt-4-1106-preview", temperature=0)
+        )
+
+        self.agent_executor = create_sql_agent(
+            llm=llm,
+            toolkit=toolkit,
+            verbose=True,
+            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            handle_parsing_errors=True,
+        )
+
+    def search(self, upit, queries=5):
+        """
+        Execute a search using a natural language query.
+
+        :param upit: The natural language query.
+        :param queries: The number of results to return (default 5).
+        :return: The response from the agent executor.
+        """
+        formatted_query = (
+            f"Show only top {queries} results for the query. If you can not find the answer, say I don't know. When using LIKE always add N in front of '%{upit}"
+        )
+        response = self.agent_executor.run(formatted_query)
+        return response
+
 
 class HybridQueryProcessor:
     """
@@ -567,4 +615,16 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
     else:
         return "Please upload a text file."
 
+def hybrid_search_process(upit: str) -> str:
+        processor = HybridQueryProcessor()
+        stringic = processor.process_query_results(upit)
+        return stringic
+    
+def sql_search_tool(upit: str) -> str:
+    processor = SQLSearchTool()
+    stringic = processor.search(upit)
+    return stringic
+# krecemo polako i sa definisanjem UI-a
 
+def web_serach_process(q: str) -> str:
+    return GoogleSerperAPIWrapper(environment=os.environ["SERPER_API_KEY"]).run(q)
