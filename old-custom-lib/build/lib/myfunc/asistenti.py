@@ -10,9 +10,8 @@ from ast import literal_eval
 from azure.storage.blob import BlobServiceClient
 from os import environ
 import pinecone
-from openai import OpenAI
 from pinecone_text.sparse import BM25Encoder
-
+import openai
 from langchain.agents import create_sql_agent
 from langchain.agents.agent_toolkits import SQLDatabaseToolkit
 from langchain.sql_database import SQLDatabase
@@ -20,8 +19,6 @@ from langchain.llms.openai import OpenAI
 from langchain.agents.agent_types import AgentType
 from langchain.chat_models import ChatOpenAI
 from langchain.utilities import GoogleSerperAPIWrapper
-
-client = OpenAI()
 
 class SQLSearchTool:
     """
@@ -53,17 +50,16 @@ class SQLSearchTool:
             handle_parsing_errors=True,
         )
 
-    def search(self, upit, queries=5):
+    def search(self, upit, queries=20):
         """
         Execute a search using a natural language query.
 
         :param upit: The natural language query.
-        :param queries: The number of results to return (default 5).
+        :param queries: The number of results to return (default 20).
         :return: The response from the agent executor.
         """
-        formatted_query = (
-            f"Show only top {queries} results for the query. If you can not find the answer, say I don't know. When using LIKE always add N in front of '%{upit}"
-        )
+        formatted_query = f"Limit the final output to max {queries} records. If the answer cannot be found, respond with 'I don't know'. For any LIKE clauses, add an 'N' in front of the wildcard character. Here is the query: '{upit}' "
+
         response = self.agent_executor.run(formatted_query)
         return response
 
@@ -142,7 +138,9 @@ class HybridQueryProcessor:
         Returns:
             list: The embedding vector of the given text.
         """
+        client = openai
         text = text.replace("\n", " ")
+        
         return client.embeddings.create(input=[text], model=model).data[0].embedding
 
     def hybrid_score_norm(self, dense, sparse):
@@ -320,7 +318,7 @@ def transkript():
                 )
 
                 submit_button = st.form_submit_button(label="Submit")
-                client = OpenAI()
+                client = openai
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
 
@@ -429,7 +427,8 @@ def read_local_image():
 def read_url_image():
     # version url
 
-    client = OpenAI()
+    client = openai
+    
     st.info("Čita sa slike sa URL")
     content = ""
     
@@ -449,6 +448,7 @@ def read_url_image():
             submit_button = st.form_submit_button(label="Submit")
             if submit_button:
                 with st.spinner("Sačekajte trenutak..."):         
+                    
                     response = client.chat.completions.create(
                       model="gpt-4-vision-preview",
                       messages=[
@@ -482,7 +482,8 @@ def read_url_image():
 
 
 def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
-
+    client= openai
+    
     def chunk_transcript(transkript, token_limit):
         words = transkript.split()
         chunks = []
@@ -501,9 +502,11 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
 
 
     def transcribe(client, audio_file, jezik):
+        client=openai
+        
         return client.audio.transcriptions.create(model="whisper-1", file=audio_file, language=jezik, response_format="text")
     
-
+    
     transcript = transcribe(client, audio_file, jezik)
     st.caption("delim u delove po 1000 reci")
     chunks = chunk_transcript(transcript, 1000)
@@ -515,7 +518,7 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
     for i, chunk in enumerate(chunks):
         
         st.caption(f"Obradjujem {i + 1}. deo...")
-    
+          
         response = client.chat.completions.create(
             model="gpt-4-1106-preview",
             temperature=0,
@@ -527,7 +530,7 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
 
 
 def dugacki_iz_kratkih(uploaded_text, entered_prompt):
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+   
     uploaded_text = uploaded_text[0].page_content
 
     if uploaded_text is not None:
@@ -576,6 +579,8 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
         
 
         def get_response(p_system, p_user_ext):
+            client = openai
+            
             response = client.chat.completions.create(
                 model="gpt-4-1106-preview",
                 temperature=0,
