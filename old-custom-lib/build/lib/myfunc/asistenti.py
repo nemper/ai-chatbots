@@ -542,37 +542,28 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
                      "[In Serbian, using markdown formatting] At the begining of the text write the Title [formatted as H1] for the whole text, the date (dd.mm.yy), topics that vere discussed in the numbered list. After that list the participants in a numbered list. "
                 ),
                 "p_system_1": (
-                    "You are a helpful assistant that identifies the main topics in a provided text. "
-                    "Please ensure clarity and focus in your identification."
+                    "You are a helpful assistant that identifies the main topics in a provided text. Please ensure clarity and focus in your identification."
                 ),
                 "p_user_1": (
-                    "Please provide a numerated list of up to 10 main topics described in the text - one topic per line. "
-                    "Avoid including any additional text or commentary."
+                    "Please provide a numerated list of up to 10 main topics described in the text - one topic per line. Avoid including any additional text or commentary."
                 ),
                 "p_system_2": (
-                    "You are a helpful assistant that corrects structural mistakes in a provided text, "
-                    "ensuring the response follows the specified format. Address any deviations from the request."
+                    "You are a helpful assistant that corrects structural mistakes in a provided text, ensuring the response follows the specified format. Address any deviations from the request."
                 ),
                 "p_user_2": (
-                    "[In Serbian, using markdown formatting] Please check if the previous assistant's response adheres to this request: "
-                    "'Provide a numerated list of topics - one topic per line, without additional text.' "
-                    "Correct any deviations or structural mistakes. If the response is correct, re-send it as is."
+                    "Please check if the previous assistant's response adheres to this request: 'Provide a numerated list of topics - one topic per line, without additional text.' Correct any deviations or structural mistakes. If the response is correct, re-send it as is."
                 ),
                 "p_system_3": (
-                    "You are a helpful assistant that summarizes parts of the provided text related to a specific topic. "
-                    "Ask for clarification if the context or topic is unclear."
+                    "You are a helpful assistant that summarizes parts of the provided text related to a specific topic. Ask for clarification if the context or topic is unclear."
                 ),
                 "p_user_3": (
-                    "[In Serbian, using markdown formatting] Please summarize the above text, focusing only on the topic {topic}. Start with a simple title, followed by 2 empty lines before and after the summary." 
-                    f"{entered_prompt}"
+                    "[In Serbian, using markdown formatting, use H2 as a top level] Please summarize the above text, focusing only on the topic {topic}. Start with a simple title, followed by 2 empty lines before and after the summary. "
                 ),
                 "p_system_4": (
-                    "You are a helpful assistant that creates a conclusion of the provided text. "
-                    "Ensure the conclusion is concise and reflects the main points of the text."
+                    "You are a helpful assistant that creates a conclusion of the provided text. Ensure the conclusion is concise and reflects the main points of the text."
                 ),
                 "p_user_4": (
-                    "[In Serbian, using markdown formatting] Please create a conclusion of the above text. [For the Title use H1 format]"
-                    "The conclusion should be succinct and capture the essence of the text."
+                    "[In Serbian, using markdown formatting, use H2 as a top level ] Please create a conclusion of the above text. The conclusion should be succinct and capture the essence of the text."
                 )
             }
 
