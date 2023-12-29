@@ -37,9 +37,9 @@ class SQLSearchTool:
             db_uri = os.getenv("DB_URI")
         self.db = SQLDatabase.from_uri(db_uri)
 
-        llm = ChatOpenAI()
+        llm = ChatOpenAI(model="gpt-4-1106-preview", temperature=0)
         toolkit = SQLDatabaseToolkit(
-            db=self.db, llm=OpenAI(model="gpt-4-1106-preview", temperature=0)
+            db=self.db, llm=llm
         )
 
         self.agent_executor = create_sql_agent(
@@ -50,17 +50,24 @@ class SQLSearchTool:
             handle_parsing_errors=True,
         )
 
-    def search(self, upit, queries=20):
+    def search(self, query, queries = 10):
         """
         Execute a search using a natural language query.
 
-        :param upit: The natural language query.
-        :param queries: The number of results to return (default 20).
+        :param query: The natural language query.
+        :param queries: The number of results to return (default 10).
         :return: The response from the agent executor.
         """
-        formatted_query = f"Limit the final output to max {queries} records. If the answer cannot be found, respond with 'I don't know'. For any LIKE clauses, add an 'N' in front of the wildcard character. Here is the query: '{upit}' "
+        formatted_query = f"[Use Serbian language to answer questions] Limit the final output to max {queries} records. If the answer cannot be found, respond with 'I don't know'. For any LIKE clauses, add an 'N' in front of the wildcard character. Here is the query: '{query}' "
 
-        response = self.agent_executor.run(formatted_query)
+        try:
+            
+            response = self.agent_executor.run(formatted_query)
+        except :
+            
+            response = "Ne mogu da odgovorim na pitanje, molim vas korigujte zahtev."
+        
+        
         return response
 
 
