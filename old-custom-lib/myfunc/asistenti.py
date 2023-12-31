@@ -15,10 +15,88 @@ import openai
 from langchain.agents import create_sql_agent
 from langchain.agents.agent_toolkits import SQLDatabaseToolkit
 from langchain.sql_database import SQLDatabase
-from langchain.llms.openai import OpenAI
 from langchain.agents.agent_types import AgentType
 from langchain.chat_models import ChatOpenAI
-from langchain.utilities import GoogleSerperAPIWrapper
+from langchain.chains.query_constructor.base import AttributeInfo
+from langchain.retrievers.self_query.base import SelfQueryRetriever
+from langchain.vectorstores import Pinecone
+from langchain.embeddings.openai import OpenAIEmbeddings
+
+def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive', namespace=None, openai_api_key=None):
+    """
+    Executes a query against a Pinecone vector database using specified parameters or environment variables. 
+    The function initializes the Pinecone and OpenAI services, sets up the vector store and metadata, 
+    and performs a query using a custom retriever based on the provided input 'upit'.
+    
+    It is used for self-query on metadata.
+
+    Parameters:
+    upit (str): The query input for retrieving relevant documents.
+    api_key (str, optional): API key for Pinecone. Defaults to PINECONE_API_KEY_POS from environment variables.
+    environment (str, optional): Pinecone environment. Defaults to PINECONE_ENVIRONMENT_POS from environment variables.
+    index_name (str, optional): Name of the Pinecone index to use. Defaults to 'positive'.
+    namespace (str, optional): Namespace for Pinecone index. Defaults to NAMESPACE from environment variables.
+    openai_api_key (str, optional): OpenAI API key. Defaults to OPENAI_API_KEY from environment variables.
+
+    Returns:
+    str: A string containing the concatenated results from the query, with each document's metadata and content.
+         In case of an exception, it returns the exception message.
+
+    Note:
+    The function is tailored to a specific use case involving Pinecone and OpenAI services. 
+    It requires proper setup of these services and relevant environment variables.
+    """
+    
+    # Use the passed values if available, otherwise default to environment variables
+    api_key = api_key if api_key is not None else os.getenv('PINECONE_API_KEY_POS')
+    environment = environment if environment is not None else os.getenv('PINECONE_ENVIRONMENT_POS')
+    # index_name is already defaulted to 'positive'
+    namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
+    openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
+
+    pinecone.init(api_key=api_key, environment=environment)
+    index = pinecone.Index(index_name)
+    embeddings = OpenAIEmbeddings()
+
+    # prilagoditi stvanim potrebama metadata
+    metadata_field_info = [
+        AttributeInfo(name="person_name",
+                      description="The name of the person", type="string"),
+        AttributeInfo(
+            name="topic", description="The topic of the document", type="string"),
+        AttributeInfo(
+            name="context", description="The Content of the document", type="string"),
+        AttributeInfo(
+            name="source", description="The source of the document", type="string"),
+    ]
+
+    # Define document content description
+    document_content_description = "Content of the document"
+
+    # Prilagoditi stvanom nazivu namespace-a
+    vectorstore = Pinecone.from_existing_index(
+        index_name, embeddings, "context", namespace=namespace)
+
+    # Initialize OpenAI embeddings and LLM
+    llm = ChatOpenAI(temperature=0)
+    retriever = SelfQueryRetriever.from_llm(
+        llm,
+        vectorstore,
+        document_content_description,
+        metadata_field_info,
+        enable_limit=True,
+        verbose=True,
+    )
+    try:
+        result = ""
+        doc_result = retriever.get_relevant_documents(upit)
+        for document in doc_result:
+            result += document.metadata['person_name'] + " kaze: \n"
+            result += document.page_content + "\n\n"
+    except Exception as e:
+        result = e
+        
+    return result
 
 class SQLSearchTool:
     """
@@ -207,6 +285,8 @@ class HybridQueryProcessor:
 
 
 def read_aad_username():
+    """ Read username from Azure Active Directory. """
+    
     js_code = """(await fetch("/.auth/me")
         .then(function(response) {return response.json();}).then(function(body) {return body;}))
     """
@@ -226,6 +306,7 @@ def read_aad_username():
 
 
 def load_data_from_azure(bsc):
+    """ Load data from Azure Blob Storage. """    
     try:
         blob_service_client = bsc
         container_client = blob_service_client.get_container_client("positive-user")
@@ -242,6 +323,7 @@ def load_data_from_azure(bsc):
     
 
 def upload_data_to_azure(z):
+    """ Upload data to Azure Blob Storage. """    
     z["fajlovi"] = z["fajlovi"].apply(lambda z: str(z))
     blob_client = BlobServiceClient.from_connection_string(
         environ.get("AZ_BLOB_API_KEY")).get_blob_client("positive-user", "assistant_data.csv")
@@ -249,6 +331,9 @@ def upload_data_to_azure(z):
 
 # ZAPISNIK
 def audio_izlaz(content):
+    """ Convert text to speech and save the audio file. 
+        Parameters: content (str): The text to be converted to speech.
+    """
     api_key = os.getenv("OPENAI_API_KEY")
     response = requests.post(
         "https://api.openai.com/v1/audio/speech",
@@ -266,9 +351,6 @@ def audio_izlaz(content):
     for chunk in response.iter_content(chunk_size=1024 * 1024):
         audio += chunk
 
-    # Convert the byte array to AudioSegment
-    #audio_segment = AudioSegment.from_file(io.BytesIO(audio))
-
     # Save AudioSegment as MP3 file
     mp3_data = BytesIO(audio)
     #audio_segment.export(mp3_data, format="mp3")
@@ -280,6 +362,7 @@ def audio_izlaz(content):
 
 
 def priprema():
+    """ Prepare the data for the assistant. """    
     
     izbor_radnji = st.selectbox("Odaberite pripremne radnje", 
                     ("Transkribovanje Zvučnih Zapisa", "Čitanje sa slike iz fajla", "Čitanje sa slike sa URL-a"),
@@ -297,6 +380,8 @@ def priprema():
 # This function does transcription of the audio file and then corrects the transcript. 
 # It calls the function transcribe and generate_corrected_transcript
 def transkript():
+    """ Convert mp3 to text. """
+    
     # Read OpenAI API key from env
     with st.sidebar:  # App start
         st.info("Konvertujte MP3 u TXT")
@@ -352,6 +437,7 @@ def transkript():
 
 
 def read_local_image():
+    """ Describe the image from a local file. """
 
     st.info("Čita sa slike")
     image_f = st.file_uploader(
@@ -432,6 +518,7 @@ def read_local_image():
 
 
 def read_url_image():
+    """ Describe the image from a URL. """    
     # version url
 
     client = openai
@@ -489,6 +576,13 @@ def read_url_image():
 
 
 def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
+    """ Generate corrected transcript. 
+        Parameters: 
+            client (openai): The OpenAI client.
+            system_prompt (str): The system prompt.
+            audio_file (str): The audio file.
+            jezik (str): The language of the audio file.
+        """    
     client= openai
     
     def chunk_transcript(transkript, token_limit):
@@ -537,6 +631,11 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
 
 
 def dugacki_iz_kratkih(uploaded_text, entered_prompt):
+    """ Generate a summary of a long text. 
+        Parameters: 
+            uploaded_text (str): The long text.
+            entered_prompt (str): The prompt.
+        """    
    
     uploaded_text = uploaded_text[0].page_content
 
@@ -618,16 +717,3 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
     else:
         return "Please upload a text file."
 
-def hybrid_search_process(upit: str) -> str:
-        processor = HybridQueryProcessor()
-        stringic = processor.process_query_results(upit)
-        return stringic
-    
-def sql_search_tool(upit: str) -> str:
-    processor = SQLSearchTool()
-    stringic = processor.search(upit)
-    return stringic
-# krecemo polako i sa definisanjem UI-a
-
-def web_serach_process(q: str) -> str:
-    return GoogleSerperAPIWrapper(environment=os.environ["SERPER_API_KEY"]).run(q)
