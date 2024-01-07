@@ -243,25 +243,52 @@ class HybridQueryProcessor:
                 {"indices": sparse["indices"], 
                  "values": [v * (1 - self.alpha) for v in sparse["values"]]})
 
-    def hybrid_query(self, upit):
+    def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
         """
         Executes a hybrid query on the Pinecone index using the provided query text.
 
         Args:
             upit (str): The query text.
+            top_k (int, optional): The number of results to be returned. If not provided, use the class's top_k value.
+            filter (dict, optional): Additional filter criteria for the query.
+            namespace (str, optional): The namespace to be used for the query. If not provided, use the class's namespace.
 
         Returns:
-            dict: The query results returned from the Pinecone index.
+            list: A list of query results, each being a dictionary containing page content, chunk, and source.
         """
         hdense, hsparse = self.hybrid_score_norm(
             sparse=BM25Encoder().fit([upit]).encode_queries(upit),
             dense=self.get_embedding(upit))
-        return self.index.query(
-            top_k=self.top_k,
-            vector=hdense,
-            sparse_vector=hsparse,
-            include_metadata=True,
-            namespace=self.namespace).to_dict()
+    
+        query_params = {
+            'top_k': top_k or self.top_k,
+            'vector': hdense,
+            'sparse_vector': hsparse,
+            'include_metadata': True,
+            'namespace': namespace or self.namespace
+        }
+
+        if filter:
+            query_params['filter'] = filter
+
+        response = self.index.query(**query_params)
+
+        matches = response.to_dict().get('matches', [])
+
+        # Construct the results list
+        results = []
+        for match in matches:
+            metadata = match.get('metadata', {})
+            context = metadata.get('context', '')
+            chunk = metadata.get('chunk')
+            source = metadata.get('source')
+
+            # Append a dictionary with page content, chunk, and source
+            if context:  # Ensure that 'context' is not empty
+                results.append({"page_content": context, "chunk": chunk, "source": source})
+
+        return results
+
 
     def process_query_results(self, upit):
         """
@@ -279,8 +306,88 @@ class HybridQueryProcessor:
         for _, item in enumerate(tematika["matches"]):
             if item["score"] > self.score:  # Score threshold
                 uk_teme += item["metadata"]["context"] + "\n\n"
-
+            print(item["score"])
         return uk_teme   
+    
+    def process_query_parent_results(self, upit):
+        """
+        Processes the query results and returns top result with source name, chunk number, and page content.
+        It is used for parent-child queries.
+
+        Args:
+            upit (str): The original query text.
+    
+        Returns:
+            tuple: Formatted string for chat prompt, source name, and chunk number.
+        """
+        tematika = self.hybrid_query(upit)
+
+        # Check if there are any matches
+        if not tematika:
+            return "No results found", None, None
+
+        # Extract information from the top result
+        top_result = tematika[0]
+        top_context = top_result.get('page_content', '')
+        top_chunk = top_result.get('chunk')
+        top_source = top_result.get('source')
+
+        return top_context, top_source, top_chunk
+
+     
+    def search_by_source(self, upit, source_result, top_k=5, filter=None):
+        """
+        Perform a similarity search for documents related to `upit`, filtered by a specific `source_result`.
+        
+        :param upit: Query string.
+        :param source_result: source to filter the search results.
+        :param top_k: Number of top results to return.
+        :param filter: Additional filter criteria for the query.
+        :return: Concatenated page content of the search results.
+        """
+        filter_criteria = filter or {}
+        filter_criteria['source'] = source_result
+        top_k = top_k or self.top_k
+        
+        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+        result = "\n\n".join(document['page_content'] for document in doc_result)
+    
+        return result
+        
+       
+    def search_by_chunk(self, upit, source_result, chunk, razmak=3, top_k=20, filter=None):
+        """
+        Perform a similarity search for documents related to `upit`, filtered by source and a specific chunk range.
+        Namespace for store can be different than for the original search.
+    
+        :param upit: Query string.
+        :param source_result: source to filter the search results.
+        :param chunk: Target chunk number.
+        :param razmak: Range to consider around the target chunk.
+        :param top_k: Number of top results to return.
+        :param filter: Additional filter criteria for the query.
+        :return: Concatenated page content of the search results.
+        """
+        
+        manji = chunk - razmak
+        veci = chunk + razmak
+    
+        filter_criteria = filter or {}
+        filter_criteria = {
+            'source': source_result,
+            '$and': [{'chunk': {'$gte': manji}}, {'chunk': {'$lte': veci}}]
+        }
+        
+        
+        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+
+        # Sort the doc_result based on the 'chunk' value
+        sorted_doc_result = sorted(doc_result, key=lambda document: document.get('chunk', float('inf')))
+
+        # Generate the result string
+        result = " ".join(document.get('page_content', '') for document in sorted_doc_result)
+    
+        return result
     
 
 
@@ -717,3 +824,90 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
     else:
         return "Please upload a text file."
 
+class ParentPositiveManager:
+    """
+    This class manages the functionality for performing similarity searches using Pinecone and OpenAI Embeddings.
+    It provides methods for retrieving documents based on similarity to a given query (`upit`), optionally filtered by source and chunk range.
+    Works both with the original and the hybrid search. 
+    Search by chunk is in the same namespace. Search by source can be in a different namespace.
+    
+    """
+    
+    # popraviti: 
+    # 1. standardni set metadata source, chunk, datum. Za cosine index sadrzaj je text, za hybrid search je context (ne korsiti se ovde)
+   
+    
+    def __init__(self, api_key=None, environment=None, index_name=None, namespace=None, openai_api_key=None):
+        """
+        Initializes the Pinecone and OpenAI Embeddings with the provided or environment-based configuration.
+        
+        :param api_key: Pinecone API key.
+        :param environment: Pinecone environment.
+        :param index_name: Name of the Pinecone index.
+        :param namespace: Namespace for document retrieval.
+        :param openai_api_key: OpenAI API key.
+        :param index_name: Pinecone index name.
+        
+        """
+        self.api_key = api_key if api_key is not None else os.getenv('PINECONE_API_KEY')
+        self.environment = environment if environment is not None else os.getenv('PINECONE_ENV')
+        self.namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
+        self.openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
+        self.index_name = index_name if index_name is not None else os.getenv("INDEX_NAME")
+
+        pinecone.init(api_key=self.api_key, environment=self.environment)
+        self.index = pinecone.Index(self.index_name)
+        self.embeddings = OpenAIEmbeddings()
+        self.docsearch = Pinecone.from_existing_index(self.index_name, self.embeddings)
+
+    def search_by_source(self, upit, source_result, top_k=5):
+        """
+        Perform a similarity search for documents related to `upit`, filtered by a specific `source_result`.
+        
+        :param upit: Query string.
+        :param source_result: source to filter the search results.
+        :return: Concatenated page content of the search results.
+        """
+        doc_result = self.docsearch.similarity_search(upit, k=top_k, filter={'source': source_result}, namespace=self.namespace)
+        result = "\n\n".join(document.page_content for document in doc_result)
+        
+        return result
+
+    def search_by_chunk(self, upit, source_result, chunk, razmak=3, top_k=20):
+        """
+        Perform a similarity search for documents related to `upit`, filtered by source and a specific chunk range.
+        Namsepace for store can be different than for th eoriginal search.
+        
+        :param upit: Query string.
+        :param source_result: source to filter the search results.
+        :param chunk: Target chunk number.
+        :param razmak: Range to consider around the target chunk.
+        :return: Concatenated page content of the search results.
+        """
+        
+        manji = chunk - razmak
+        veci = chunk + razmak
+        
+        filter_criteria = {
+            'source': source_result,
+            '$and': [{'chunk': {'$gte': manji}}, {'chunk': {'$lte': veci}}]
+        }
+        doc_result = self.docsearch.similarity_search(upit, k=top_k, filter=filter_criteria, namespace=self.namespace)
+        # Sort the doc_result based on the 'chunk' metadata
+        sorted_doc_result = sorted(doc_result, key=lambda document: document.metadata['chunk'])
+        # Generate the result string
+        result = " ".join(document.page_content for document in sorted_doc_result)
+        
+        return result
+
+    def basic_search(self, upit):
+        """
+        Perform a basic similarity search for the document most related to `upit`.
+        
+        :param upit: Query string.
+        :return: Tuple containing the page content, source, and chunk number of the top search result.
+        """
+        doc_result = self.docsearch.similarity_search(upit, k=1, namespace=self.namespace)
+        top_result = doc_result[0]
+        
+        return top_result.page_content, top_result.metadata['source'], top_result.metadata['chunk']
