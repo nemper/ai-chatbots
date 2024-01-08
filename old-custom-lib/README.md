@@ -61,55 +61,79 @@ Saves the given `content` in three different formats: `.txt`, `.docx`, and `.pdf
 
 ## Here's a description of each function and class in the provided code for myfunc.asistenti:
 
-1. **HybridQueryProcessor Class**
-The HybridQueryProcessor class is a versatile tool for performing advanced queries in text-based applications. It's designed to integrate with Pinecone and supports a range of functionalities from initializing the Pinecone connection, embedding text, to executing and processing hybrid queries            .
-
-    ***Methods***
-    1. init_pinecone(): Initializes the Pinecone connection and index.
-    2. get_embedding(text, model): Retrieves the embedding for the given text using the specified model.
-    3. hybrid_score_norm(dense, sparse): Normalizes the scores from dense and sparse vectors using the alpha value.
-    4. hybrid_query(upit, top_k): Executes a hybrid query on the Pinecone index using the provided query text.
-    5. process_query_results(upit, score): Processes the query results and formats them for a chat or dialogue system.
-
-    ***Features***
-    Easy integration with Pinecone for executing complex text queries.
-    Supports both dense and sparse vector searches.
-    Customizable query processing and result formatting for chat or dialogue systems.
-
-2. **read_aad_username()**:
+1. **read_aad_username()**:
     - Fetches the username from Azure Active Directory using JavaScript.
 
-3. **load_data_from_azure(bsc)**:
+2. **load_data_from_azure(bsc)**:
     - Loads data from an Azure blob storage container.
 
-4. **upload_data_to_azure(z)**:
+3. **upload_data_to_azure(z)**:
     - Uploads data to an Azure blob storage container.
 
-5. **audio_izlaz(content)**:
+4. **audio_izlaz(content)**:
     - Converts text to speech using OpenAI's API and plays it back in Streamlit.
 
-6. **priprema()**:
+5. **priprema()**:
     - Provides a Streamlit interface for selecting different preparatory actions, such as transcribing audio files or reading text from images.
 
-7. **transkript()**:
+6. **transkript()**:
     - Handles the transcription of audio files and subsequent text correction using OpenAI's Whisper model and Streamlit.
 
-8. **read_local_image()**:
+7. **read_local_image()**:
     - Reads and interprets text from a locally uploaded image in Streamlit.
 
-9. **read_url_image()**:
+8. **read_url_image()**:
     - Reads and interprets text from an image located at a specified URL in Streamlit.
 
-10. **generate_corrected_transcript(client, system_prompt, audio_file, jezik)**:
+9. **generate_corrected_transcript(client, system_prompt, audio_file, jezik)**:
     - Generates a corrected transcript from an audio file, chunking the transcript and applying language model corrections.
 
-11. **dugacki_iz_kratkih(uploaded_file, entered_prompt)**:
+10. **dugacki_iz_kratkih(uploaded_file, entered_prompt)**:
     - Processes an uploaded file and an entered prompt to produce a detailed response, using a series of language model interactions.
 
-    
+## Here's a description of each function and class in the provided code for myfunc.asistenti:
+
+## Key Features
+
+- **SelfQueryPositive Function**: Executes queries against a Pinecone vector database using various parameters or environment variables. This function is crucial for self-querying on metadata.
+- **SQLSearchTool Class**: Enables searching an SQL database using natural language queries. It leverages the LangChain library to create an SQL agent that interprets natural language and executes corresponding SQL queries.
+- **HybridQueryProcessor Class**: Supports the execution of queries combining dense and sparse vector searches. This is typically used for retrieving and ranking information based on text data.
+- **ParentPositiveManager Class**: Manages functionality for performing similarity searches using Pinecone and OpenAI Embeddings. It supports retrieving documents based on similarity to a given query, with optional filtering by source and chunk range.
+
+## Installation
+
+To use these scripts, you need to install the required packages:
+
+```bash
+pip install pinecone-client openai langchain
+```
+
+Ensure you have the necessary API keys and environment variables set up for Pinecone and OpenAI services.
+
+## Usage
+
+Here's a brief overview of how to use the provided classes and functions:
+
+### SelfQueryPositive Function
+
+This function initializes the Pinecone and OpenAI services, sets up the vector store and metadata, and performs a query based on the provided input.
+
+### SQLSearchTool Class
+
+Initialize this tool with a database URI, and you can start searching your SQL database using natural language queries.
+
+### HybridQueryProcessor Class
+
+Instantiate this class with your Pinecone API key, environment, and other optional parameters. Use the `hybrid_query` method to execute queries combining dense and sparse vector searches.
+
+### ParentPositiveManager Class
+
+This class is designed for similarity searches using Pinecone and OpenAI Embeddings. Initialize it with the required API keys and index names to start performing similarity searches.
+
+  
 ## Getting Started
 
-To use this script in your Streamlit application, follow these steps:
+To use this script, follow these steps:
 
 1. Clone this repository or download the `mojafunkcija.py` and `asistenti.py` file.
     You can also install by putting `git+https://github.com/djordjethai/myfunc.git` in the requirements.txt
@@ -129,7 +153,7 @@ Refer to the documentation within the script and the comments provided for each 
 ## Script Details
 
 - **Author**: Positive
-- **Date**: 27.12.2023
+- **Date**: 08.01.2024
 - **License**: MIT
 
 ## How to update
