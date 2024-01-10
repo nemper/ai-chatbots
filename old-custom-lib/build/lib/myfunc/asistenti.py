@@ -143,7 +143,7 @@ def transkript():
                     with st.spinner("Sačekajte trenutak..."):
 
                         system_prompt="""
-                        You are the Serbian language expert. You must fix grammar and spelling errors but otherwise keep the text as is, in the Serbian language. \
+                        You are the Serbian language expert. You must fix grammar and spelling errors and create paragraphs based on context but otherwise keep the text as is, in the Serbian language. \
                         Your task is to correct any spelling discrepancies in the transcribed text. \
                         Make sure that the names of the participants are spelled correctly: Miljan, Goran, Darko, Nemanja, Đorđe, Šiška, Zlatko, BIS, Urbanizam. \
                         Only add necessary punctuation such as periods, commas, and capitalization, and use only the context provided. If you could not transcribe the whole text for any reason, \
