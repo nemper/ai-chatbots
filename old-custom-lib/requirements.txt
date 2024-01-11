@@ -73,8 +73,12 @@ jsonschema-specifications==2023.7.1
 jupyter_client==7.4.8
 jupyter_core==5.1.3
 kiwisolver==1.4.4
-langchain==0.0.337
+langchain==0.1.0
 langchain-cli==0.0.18
+langchain-community==0.0.11
+langchain-core==0.1.9
+langchain-experimental==0.0.49
+langchain-openai==0.0.2
 langserve==0.0.29
 langsmith==0.0.65
 loguru==0.7.2

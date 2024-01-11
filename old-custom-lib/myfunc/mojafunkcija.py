@@ -16,6 +16,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from html2docx import html2docx
 import markdown
 import pdfkit
+import tiktoken
+import pandas as pd
 
 def show_logo():
     """
@@ -79,8 +81,7 @@ def tiktoken_len(text):
         int: The number of tokens in the given text.
     """
 
-    import tiktoken
-
+  
     tokenizer = tiktoken.get_encoding("p50k_base")
     tokens = tokenizer.encode(text, disallowed_special=())
     return len(tokens)
@@ -96,8 +97,6 @@ def pinecone_stats(index, index_name):
         index (Pinecone Index): The Pinecone index object.
         index_name (str): The name of the Pinecone index.
     """
-
-    import pandas as pd
 
     index_name = index_name
     index_stats_response = index.describe_index_stats()
