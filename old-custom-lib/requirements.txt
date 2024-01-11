@@ -79,8 +79,6 @@ langchain-community==0.0.11
 langchain-core==0.1.9
 langchain-experimental==0.0.49
 langchain-openai==0.0.2
-langserve==0.0.29
-langsmith==0.0.65
 loguru==0.7.2
 lxml==4.9.3
 Markdown==3.5.1
