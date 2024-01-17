@@ -68,7 +68,7 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive
         index_name, embeddings, "context", namespace=namespace)
 
     # Initialize OpenAI embeddings and LLM
-    llm = ChatOpenAI(temperature=0)
+    llm = ChatOpenAI(model="gpt-4-1106-preview", temperature=0)
     retriever = SelfQueryRetriever.from_llm(
         llm,
         vectorstore,
