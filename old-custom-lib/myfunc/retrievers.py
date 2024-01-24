@@ -1,5 +1,5 @@
 import os
-import pinecone
+from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 import openai
 from langchain_community.agent_toolkits import create_sql_agent
@@ -44,8 +44,8 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive
     namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
     openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
 
-    pinecone.init(api_key=api_key, environment=environment)
-    index = pinecone.Index(index_name)
+    pinecone=Pinecone(api_key=api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+    index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
     embeddings = OpenAIEmbeddings()
 
     # prilagoditi stvanim potrebama metadata
@@ -199,8 +199,8 @@ class HybridQueryProcessor:
         """
         Initializes the Pinecone connection and index.
         """
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = pinecone.Index(self.index_name)
+        pinecone=Pinecone(api_key=self.api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+        self.index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
 
     def get_embedding(self, text, model="text-embedding-ada-002"):
         """
@@ -411,8 +411,8 @@ class ParentPositiveManager:
         self.openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
         self.index_name = index_name if index_name is not None else os.getenv("INDEX_NAME")
 
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = pinecone.Index(self.index_name)
+        pinecone=Pinecone(api_key=api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+        self.index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
         self.embeddings = OpenAIEmbeddings()
         self.docsearch = Pinecone.from_existing_index(self.index_name, self.embeddings)
 
