@@ -9,7 +9,7 @@ from langchain.agents.agent_types import AgentType
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
-from langchain.vectorstores import Pinecone
+# from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive', namespace=None, openai_api_key=None):
