@@ -1,5 +1,5 @@
 import os
-import pinecone
+from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 import openai
 from langchain_community.agent_toolkits import create_sql_agent
@@ -9,7 +9,7 @@ from langchain.agents.agent_types import AgentType
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
-from langchain.vectorstores import Pinecone
+#from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive', namespace=None, openai_api_key=None):
@@ -44,8 +44,8 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive
     namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
     openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
 
-    pinecone.init(api_key=api_key, environment=environment)
-    index = pinecone.Index(index_name)
+    #pinecone.init(api_key=api_key, environment=environment)
+    index = Pinecone.Index(index_name)
     embeddings = OpenAIEmbeddings()
 
     # prilagoditi stvanim potrebama metadata
@@ -199,8 +199,10 @@ class HybridQueryProcessor:
         """
         Initializes the Pinecone connection and index.
         """
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = pinecone.Index(self.index_name)
+        self.api_key=os.getenv('PINECONE_API_KEY_POS')
+        pinecone=Pinecone(api_key=self.api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+        self.index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+               
 
     def get_embedding(self, text, model="text-embedding-ada-002"):
         """
@@ -411,8 +413,9 @@ class ParentPositiveManager:
         self.openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
         self.index_name = index_name if index_name is not None else os.getenv("INDEX_NAME")
 
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = pinecone.Index(self.index_name)
+        #pinecone.init(api_key=self.api_key, environment=self.environment)
+        self.index = Pinecone.Index(api_key=api_key, host="https://embedings1-b1b39e1.svc.us-west1-gcp.pinecone.io")
+        #self.index = pinecone.Index(self.index_name)
         self.embeddings = OpenAIEmbeddings()
         self.docsearch = Pinecone.from_existing_index(self.index_name, self.embeddings)
 
