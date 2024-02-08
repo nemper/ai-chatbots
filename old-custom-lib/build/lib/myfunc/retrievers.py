@@ -1,5 +1,5 @@
 import os
-import pinecone
+from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 import openai
 from langchain_community.agent_toolkits import create_sql_agent
@@ -9,7 +9,7 @@ from langchain.agents.agent_types import AgentType
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
-from langchain.vectorstores import Pinecone
+# from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive', namespace=None, openai_api_key=None):
@@ -44,8 +44,8 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive
     namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
     openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
 
-    pinecone.init(api_key=api_key, environment=environment)
-    index = pinecone.Index(index_name)
+    pinecone=Pinecone(api_key=api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+    index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
     embeddings = OpenAIEmbeddings()
 
     # prilagoditi stvanim potrebama metadata
@@ -199,8 +199,8 @@ class HybridQueryProcessor:
         """
         Initializes the Pinecone connection and index.
         """
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = pinecone.Index(self.index_name)
+        pinecone=Pinecone(api_key=self.api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+        self.index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
 
     def get_embedding(self, text, model="text-embedding-ada-002"):
         """
@@ -272,10 +272,14 @@ class HybridQueryProcessor:
             context = metadata.get('context', '')
             chunk = metadata.get('chunk')
             source = metadata.get('source')
+            try:
+                score = match.get('score', 0)
+            except:
+                score = metadata.get('score', 0)
 
             # Append a dictionary with page content, chunk, and source
             if context:  # Ensure that 'context' is not empty
-                results.append({"page_content": context, "chunk": chunk, "source": source})
+                results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
 
         return results
 
@@ -293,12 +297,12 @@ class HybridQueryProcessor:
         tematika = self.hybrid_query(upit)
 
         uk_teme = ""
-        for _, item in enumerate(tematika["matches"]):
+        for item in tematika:
             if item["score"] > self.score:  # Score threshold
-                uk_teme += item["metadata"]["context"] + "\n\n"
+                uk_teme += item["page_content"] + "\n\n"
             print(item["score"])
-        return uk_teme   
-    
+
+
     def process_query_parent_results(self, upit):
         """
         Processes the query results and returns top result with source name, chunk number, and page content.
@@ -411,8 +415,8 @@ class ParentPositiveManager:
         self.openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
         self.index_name = index_name if index_name is not None else os.getenv("INDEX_NAME")
 
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = pinecone.Index(self.index_name)
+        pinecone=Pinecone(api_key=api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
+        self.index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
         self.embeddings = OpenAIEmbeddings()
         self.docsearch = Pinecone.from_existing_index(self.index_name, self.embeddings)
 

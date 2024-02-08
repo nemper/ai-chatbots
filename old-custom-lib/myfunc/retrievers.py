@@ -9,7 +9,6 @@ from langchain.agents.agent_types import AgentType
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
-#from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
 
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive', namespace=None, openai_api_key=None):
@@ -43,10 +42,10 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive
     # index_name is already defaulted to 'positive'
     namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
     openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
-
-    #pinecone.init(api_key=api_key, environment=environment)
-    index = Pinecone.Index(index_name)
-    embeddings = OpenAIEmbeddings()
+    host = os.getenv("PINECONE_HOST")
+    pinecone=Pinecone(api_key=api_key, host=host)
+    index = pinecone.Index(host=host)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
     # prilagoditi stvanim potrebama metadata
     metadata_field_info = [
@@ -189,22 +188,21 @@ class HybridQueryProcessor:
         self.environment = kwargs.get('environment', os.getenv('PINECONE_ENVIRONMENT_POS'))
         self.alpha = kwargs.get('alpha', 0.5)  # Default alpha is 0.5
         self.score = kwargs.get('score', 0.05)  # Default score is 0.05
-        self.index_name = kwargs.get('index', 'positive')  # Default index is 'positive'
+        self.index_name = kwargs.get('index', 'neo-positive')  # Default index is 'positive'
         self.namespace = kwargs.get('namespace', os.getenv("NAMESPACE"))  
         self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
         self.index = None
+        self.host = os.getenv("PINECONE_HOST")
         self.init_pinecone()
 
     def init_pinecone(self):
         """
         Initializes the Pinecone connection and index.
         """
-        self.api_key=os.getenv('PINECONE_API_KEY_POS')
-        pinecone=Pinecone(api_key=self.api_key, host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
-        self.index = pinecone.Index(host="https://positive-882bcef.svc.us-west1-gcp-free.pinecone.io")
-               
+        pinecone=Pinecone(api_key=self.api_key, host=self.host)
+        self.index = pinecone.Index(host=self.host)
 
-    def get_embedding(self, text, model="text-embedding-ada-002"):
+    def get_embedding(self, text, model="text-embedding-3-large"):
         """
         Retrieves the embedding for the given text using the specified model.
 
@@ -274,10 +272,14 @@ class HybridQueryProcessor:
             context = metadata.get('context', '')
             chunk = metadata.get('chunk')
             source = metadata.get('source')
+            try:
+                score = match.get('score', 0)
+            except:
+                score = metadata.get('score', 0)
 
             # Append a dictionary with page content, chunk, and source
             if context:  # Ensure that 'context' is not empty
-                results.append({"page_content": context, "chunk": chunk, "source": source})
+                results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
 
         return results
 
@@ -295,12 +297,12 @@ class HybridQueryProcessor:
         tematika = self.hybrid_query(upit)
 
         uk_teme = ""
-        for _, item in enumerate(tematika["matches"]):
+        for item in tematika:
             if item["score"] > self.score:  # Score threshold
-                uk_teme += item["metadata"]["context"] + "\n\n"
+                uk_teme += item["page_content"] + "\n\n"
             print(item["score"])
-        return uk_teme   
-    
+
+
     def process_query_parent_results(self, upit):
         """
         Processes the query results and returns top result with source name, chunk number, and page content.
@@ -411,12 +413,11 @@ class ParentPositiveManager:
         self.environment = environment if environment is not None else os.getenv('PINECONE_ENV')
         self.namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
         self.openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
-        self.index_name = index_name if index_name is not None else os.getenv("INDEX_NAME")
-
-        #pinecone.init(api_key=self.api_key, environment=self.environment)
-        self.index = Pinecone.Index(api_key=api_key, host="https://embedings1-b1b39e1.svc.us-west1-gcp.pinecone.io")
-        #self.index = pinecone.Index(self.index_name)
-        self.embeddings = OpenAIEmbeddings()
+        self.index_name = index_name if index_name is not None else os.getenv("PINECONE_INDEX")
+        self.host = os.getenv("PINECONE_HOST")
+        pinecone=Pinecone(api_key=api_key, host=self.host)
+        self.index = pinecone.Index(host=self.host)
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
         self.docsearch = Pinecone.from_existing_index(self.index_name, self.embeddings)
 
     def search_by_source(self, upit, source_result, top_k=5):
