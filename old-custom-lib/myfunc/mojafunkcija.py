@@ -357,7 +357,7 @@ def init_cond_llm(i=None):
         st.info("Odaberite Model i temperaturu")
         model = st.selectbox(
             "Odaberite model",
-            ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-1106-preview"),
+            ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4-turbo-preview"),
             key="model_key" if i is None else f"model_key{i}",
             help="Modeli se razlikuju po kvalitetu, brzini i ceni upotrebe.",
         )
