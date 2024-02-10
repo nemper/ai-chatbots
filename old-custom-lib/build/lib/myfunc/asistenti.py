@@ -349,7 +349,7 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
         st.caption(f"Obradjujem {i + 1}. deo...")
           
         response = client.chat.completions.create(
-            model="gpt-4-1106-preview",
+            model="gpt-4-turbo-preview",
             temperature=0,
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": chunk}])
     
@@ -407,7 +407,7 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
             client = openai
             
             response = client.chat.completions.create(
-                model="gpt-4-1106-preview",
+                model="gpt-4-turbo-preview",
                 temperature=0,
                 messages=[
                     {"role": "system", "content": all_prompts[p_system]},
