@@ -12,7 +12,7 @@ from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_openai import OpenAIEmbeddings
 
-def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive', namespace=None, openai_api_key=None):
+def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-positive', namespace=None, openai_api_key=None, host=None):
     """
     Executes a query against a Pinecone vector database using specified parameters or environment variables. 
     The function initializes the Pinecone and OpenAI services, sets up the vector store and metadata, 
@@ -43,11 +43,9 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='positive
     # index_name is already defaulted to 'positive'
     namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
     openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
-    # host = os.getenv("PINECONE_HOST")
-    # pinecone=Pinecone(api_key=api_key, host=host)
-    # index = pinecone.Index(host=host)
-
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large", deployment="text-embedding-3-large")
+    host = host if host is not None else os.getenv("PINECONE_HOST")
+   
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
     # prilagoditi stvanim potrebama metadata
     metadata_field_info = [
