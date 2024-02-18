@@ -280,7 +280,7 @@ class HybridQueryProcessor:
             # Append a dictionary with page content, chunk, and source
             if context:  # Ensure that 'context' is not empty
                 results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
-
+        
         return results
 
 
@@ -300,8 +300,8 @@ class HybridQueryProcessor:
         for item in tematika:
             if item["score"] > self.score:  # Score threshold
                 uk_teme += item["page_content"] + "\n\n"
-            print(item["score"])
-
+            
+        return uk_teme
 
     def process_query_parent_results(self, upit):
         """
