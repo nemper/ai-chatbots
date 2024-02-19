@@ -287,21 +287,25 @@ class HybridQueryProcessor:
     def process_query_results(self, upit):
         """
         Processes the query results based on relevance score and formats them for a chat or dialogue system.
+        Additionally, returns a list of scores for items that meet the score threshold.
 
         Args:
             upit (str): The original query text.
-            
+        
         Returns:
-            str: Formatted string for chat prompt.
+            tuple: A tuple containing the formatted string for chat prompt and a list of scores.
         """
         tematika = self.hybrid_query(upit)
 
-        uk_teme = ""
+        uk_teme = ""  # Formatted string for chat prompt
+        score_list = []  # List to hold scores that meet the threshold
+
         for item in tematika:
             if item["score"] > self.score:  # Score threshold
                 uk_teme += item["page_content"] + "\n\n"
-            
-        return uk_teme
+                score_list.append(item["score"])  # Append the score to the list
+
+        return uk_teme, score_list
 
     def process_query_parent_results(self, upit):
         """
