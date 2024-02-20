@@ -50,7 +50,7 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-posi
     # prilagoditi stvanim potrebama metadata
     metadata_field_info = [
         AttributeInfo(name="person_name",
-                      description="The name of the person", type="string"),
+                      description="The name of the person can be in the Serbian language like Miljan, Darko, Goran or similar", type="string"),
         AttributeInfo(
             name="topic", description="The topic of the document", type="string"),
         AttributeInfo(
