@@ -57,8 +57,9 @@ def load_data_from_azure(bsc, filename, username=None, is_from_altass=False):
     
 
 def upload_data_to_azure(z, filename):
-    """ Upload data to Azure Blob Storage. """    
-    z["fajlovi"] = z["fajlovi"].apply(lambda z: str(z))
+    """ Upload data to Azure Blob Storage. """
+    if "fajlovi" in z.columns:
+        z["fajlovi"] = z["fajlovi"].apply(lambda z: str(z))
     blob_client = BlobServiceClient.from_connection_string(
         environ.get("AZ_BLOB_API_KEY")).get_blob_client("positive-user", filename)
     blob_client.upload_blob(z.to_csv(index=False), overwrite=True)
