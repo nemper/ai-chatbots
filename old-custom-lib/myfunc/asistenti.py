@@ -33,28 +33,34 @@ def read_aad_username():
     return username
 
 
-def load_data_from_azure(bsc):
-    """ Load data from Azure Blob Storage. """    
+def load_data_from_azure(bsc, filename, username=None, is_from_altass=False):
+    """ Load data from Azure Blob Storage. """
     try:
         blob_service_client = bsc
         container_client = blob_service_client.get_container_client("positive-user")
-        blob_client = container_client.get_blob_client("assistant_data.csv")
+        blob_client = container_client.get_blob_client(filename)
 
         streamdownloader = blob_client.download_blob()
-        df = pd.read_csv(StringIO(streamdownloader.readall().decode("utf-8")), usecols=["user", "chat", "ID", "assistant", "fajlovi"])
-        df["fajlovi"] = df["fajlovi"].apply(literal_eval)
-        return df.dropna(how="all")               
+        if is_from_altass:
+            df = pd.read_csv(StringIO(streamdownloader.readall().decode("utf-8")))
+            if username:
+                df = df[df['Username'] == username]
+        else:
+            df = pd.read_csv(StringIO(streamdownloader.readall().decode("utf-8")), usecols=["user", "chat", "ID", "assistant", "fajlovi"])
+            df["fajlovi"] = df["fajlovi"].apply(literal_eval)
+        return df.dropna(how="all")
+    
     except FileNotFoundError:
-        return {"Nisam pronasao fajl"}
+        return pd.DataFrame(columns=['Username', 'Thread ID', 'Thread Name', 'Conversation']) if is_from_altass else {"Nisam pronasao fajl"}
     except Exception as e:
-        return {f"An error occurred: {e}"}
+        return pd.DataFrame(columns=['Username', 'Thread ID', 'Thread Name', 'Conversation']) if is_from_altass else {f"An error occurred: {e}"}
     
 
-def upload_data_to_azure(z):
+def upload_data_to_azure(z, filename):
     """ Upload data to Azure Blob Storage. """    
     z["fajlovi"] = z["fajlovi"].apply(lambda z: str(z))
     blob_client = BlobServiceClient.from_connection_string(
-        environ.get("AZ_BLOB_API_KEY")).get_blob_client("positive-user", "assistant_data.csv")
+        environ.get("AZ_BLOB_API_KEY")).get_blob_client("positive-user", filename)
     blob_client.upload_blob(z.to_csv(index=False), overwrite=True)
 
 # ZAPISNIK
