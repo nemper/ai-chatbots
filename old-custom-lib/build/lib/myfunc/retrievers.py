@@ -130,7 +130,7 @@ class SQLSearchTool:
 
         try:
             
-            response = self.agent_executor.run(formatted_query)
+            response = self.agent_executor.invoke({formatted_query})["output"]
         except Exception as e:
             
             response = f"Ne mogu da odgovorim na pitanje, molim vas korigujte zahtev. Opis greske je \n {e}"
