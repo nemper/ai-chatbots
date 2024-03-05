@@ -128,10 +128,12 @@ class SQLSearchTool:
         :param queries: The number of results to return (default 10).
         :return: The response from the agent executor.
         """
-        formatted_query = f"[Use Serbian language to answer questions] Limit the final output to max {queries} records. If the answer cannot be found, respond with 'I don't know'. Use MySQL syntax. For any LIKE clauses, add an 'N' in front of the wildcard character. Here is the query: '{query}' "
+
+        with PromptDatabase() as db:
+            result1 = db.query_sql_record("SQL_SEARCH_METHOD").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+        formatted_query = result1.format(query=query, queries=queries)
 
         try:
-            
             response = self.agent_executor.invoke({formatted_query})["output"]
         except Exception as e:
             

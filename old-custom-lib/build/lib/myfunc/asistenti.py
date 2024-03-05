@@ -10,6 +10,20 @@ from ast import literal_eval
 from azure.storage.blob import BlobServiceClient
 from os import environ
 import openai
+from myfunc.retrievers import PromptDatabase
+with PromptDatabase() as db:
+    result_ps0 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS0").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_pu0 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU0").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_ps1 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS1").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_pu1 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU1").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_ps2 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS2").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_pu2 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU2").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_ps3 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS3").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_pu3 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU3").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_ps4 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS4").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_pu4 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU4").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_vision = db.query_sql_record("VISION").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+    result_transkript = db.query_sql_record("MEET_TRANS").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
 
 
 def read_aad_username():
@@ -149,13 +163,7 @@ def transkript():
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
 
-                        system_prompt="""
-                        You are the Serbian language expert. You must fix grammar and spelling errors and create paragraphs based on context but otherwise keep the text as is, in the Serbian language. \
-                        Your task is to correct any spelling discrepancies in the transcribed text. \
-                        Make sure that the names of the participants are spelled correctly: Miljan, Goran, Darko, Nemanja, Đorđe, Šiška, Zlatko, BIS, Urbanizam. \
-                        Only add necessary punctuation such as periods, commas, and capitalization, and use only the context provided. If you could not transcribe the whole text for any reason, \
-                        just say so. If you are not sure about the spelling of a word, just write it as you hear it. \
-                        """
+                        system_prompt=result_transkript
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
                                                 
@@ -196,7 +204,7 @@ def read_local_image():
         # st.session_state["question"] = ""
 
         with placeholder.form(key="my_image", clear_on_submit=False):
-            default_text = "What is in this image? Please read and reproduce the text. Read the text as is, do not correct any spelling and grammar errors. "
+            default_text = result_vision
             upit = st.text_area("Unesite uputstvo ", default_text)  
             submit_button = st.form_submit_button(label="Submit")
             
@@ -271,7 +279,7 @@ def read_url_image():
         placeholder = st.empty()    
     #if submit_btt:        
         with placeholder.form(key="my_image_url", clear_on_submit=False):
-            default_text = "What is in this image? Please read and reproduce the text. Read the text as is, do not correct any spelling and grammar errors. "
+            default_text = result_vision
         
             upit = st.text_area("Unesite uputstvo ", default_text)
             submit_button = st.form_submit_button(label="Submit")
@@ -376,36 +384,16 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
 
     if uploaded_text is not None:
         all_prompts = {
-                 "p_system_0" : (
-                    "You are helpful assistant."
-                ),
-                 "p_user_0" : ( 
-                     "[In Serbian, using markdown formatting] At the begining of the text write the Title [formatted as H1] for the whole text, the date (dd.mm.yy), topics that vere discussed in the numbered list. After that list the participants in a numbered list. "
-                ),
-                "p_system_1": (
-                    "You are a helpful assistant that identifies the main topics in a provided text. Please ensure clarity and focus in your identification."
-                ),
-                "p_user_1": (
-                    "Please provide a numerated list of up to 10 main topics described in the text - one topic per line. Avoid including any additional text or commentary."
-                ),
-                "p_system_2": (
-                    "You are a helpful assistant that corrects structural mistakes in a provided text, ensuring the response follows the specified format. Address any deviations from the request."
-                ),
-                "p_user_2": (
-                    "Please check if the previous assistant's response adheres to this request: 'Provide a numerated list of topics - one topic per line, without additional text.' Correct any deviations or structural mistakes. If the response is correct, re-send it as is."
-                ),
-                "p_system_3": (
-                    "You are a helpful assistant that summarizes parts of the provided text related to a specific topic. Ask for clarification if the context or topic is unclear."
-                ),
-                "p_user_3": (
-                    "[In Serbian, using markdown formatting, use H2 as a top level] Please summarize the above text, focusing only on the topic {topic}. Start with a simple title, followed by 2 empty lines before and after the summary. "
-                ),
-                "p_system_4": (
-                    "You are a helpful assistant that creates a conclusion of the provided text. Ensure the conclusion is concise and reflects the main points of the text."
-                ),
-                "p_user_4": (
-                    "[In Serbian, using markdown formatting, use H2 as a top level ] Please create a conclusion of the above text. The conclusion should be succinct and capture the essence of the text."
-                )
+                 "p_system_0" : result_ps0,
+                 "p_user_0" : result_pu0,
+                "p_system_1": result_ps1,
+                "p_user_1": result_pu1,
+                "p_system_2": result_ps2,
+                "p_user_2": result_pu2,
+                "p_system_3": result_ps3,
+                "p_user_3": result_pu3,
+                "p_system_4": result_ps4,
+                "p_user_4": result_pu4
             }
 
         
