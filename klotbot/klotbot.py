@@ -4,7 +4,7 @@ from myfunc.retrievers import HybridQueryProcessor
 from sql_prompt import PromptDatabase
 
 client=OpenAI()
-processor = HybridQueryProcessor(alpha=0.5, score=0.0, namespace="positive") # namespace moze i iz env
+processor = HybridQueryProcessor() # namespace moze i iz env
 
 with PromptDatabase() as db:
     result2 = db.query_sql_record("CHAT_TOOLS_PROMPT")
