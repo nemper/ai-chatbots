@@ -74,3 +74,4 @@ pipreqs==0.4.13
 protobuf==4.25.3
 pyarrow==15.0.0
 pycparser==2.21
+streamlit==1.31.1
