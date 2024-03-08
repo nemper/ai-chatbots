@@ -23,37 +23,45 @@ def main():
         st.session_state.messages["skroznovi"].append({'role': 'system', 'content': st.session_state.system_prompt})
     
     for message in st.session_state.messages["skroznovi"]:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+         if message["role"] != "system": 
+            with st.chat_message(message["role"]):
+                 st.markdown(message["content"])
     
     # Main conversation UI
     if prompt := st.chat_input("Kako vam mogu pomoci?"):
-            
-            context, scores = processor.process_query_results(prompt)
-            complete_prompt = result2.get('prompt_text', 'You are helpful assistant that always writes in Sebian.').format(prompt=prompt, context=context)
-            
-            # Append user prompt to the conversation
-            st.session_state.messages["skroznovi"].append({"role": "user", "content": complete_prompt})
+    
+        # Original processing to generate complete_prompt
+        context, scores = processor.process_query_results(prompt)
+        complete_prompt = result2.get('prompt_text', 'You are a helpful assistant that always writes in Serbian.').format(prompt=prompt, context=context)
+    
+        # Append only the user's original prompt to the actual conversation log
+        st.session_state.messages["skroznovi"].append({"role": "user", "content": prompt})
+    
+        # Display user prompt in the chat
+        with st.chat_message("user"):
+            st.markdown(prompt)
         
-            # Display user prompt in the chat
-            with st.chat_message("user"):
-                st.markdown(prompt)
-                
-            # Generate and display the assistant's response
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                full_response = ""
-                for response in client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
-                    temperature=0,
-                    messages=st.session_state.messages["skroznovi"],
-                    stream=True,
+        # Prepare a temporary messages list for generating the assistant's response
+        temp_messages = st.session_state.messages["skroznovi"].copy()
+        temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
+    
+        # Generate and display the assistant's response using the temporary messages list
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+            full_response = ""
+            for response in client.chat.completions.create(
+                model="gpt-4-turbo-preview",
+                temperature=0,
+                messages=temp_messages,  # Use the temporary list with enriched context
+                stream=True,
             ):
-                    full_response += (response.choices[0].delta.content or "")
-                    message_placeholder.markdown(full_response + "▌")
+                full_response += (response.choices[0].delta.content or "")
+                message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
-            # Append assistant's response to the conversation
-            st.session_state.messages["skroznovi"].append({"role": "assistant", "content": full_response})
+        
+        # Append assistant's response to the conversation
+        st.session_state.messages["skroznovi"].append({"role": "assistant", "content": full_response})
+
         
 
     
