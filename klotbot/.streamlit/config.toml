@@ -24,4 +24,4 @@ gatherUsageStats = false
 # Default: "auto"
 
 [client]
-toolbarMode = "minimal"
+toolbarMode = "viewer"
