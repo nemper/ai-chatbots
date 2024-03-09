@@ -38,7 +38,7 @@ def main():
         st.session_state.messages["skroznovi"].append({"role": "user", "content": prompt})
     
         # Display user prompt in the chat
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="user.webp"):
             st.markdown(prompt)
         
         # Prepare a temporary messages list for generating the assistant's response
@@ -46,7 +46,7 @@ def main():
         temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
     
         # Generate and display the assistant's response using the temporary messages list
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="bot.png"):
             message_placeholder = st.empty()
             full_response = ""
             for response in client.chat.completions.create(
