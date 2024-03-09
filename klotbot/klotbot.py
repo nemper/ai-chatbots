@@ -22,11 +22,17 @@ def main():
         st.session_state.system_prompt = result3.get('prompt_text', 'You are helpful assistant that always writes in Sebian.')
         st.session_state.messages["skroznovi"].append({'role': 'system', 'content': st.session_state.system_prompt})
     
+    avatar_ai="bot.png" 
+    avatar_user = "user.webp"
+   
     for message in st.session_state.messages["skroznovi"]:
-         if message["role"] != "system": 
-            with st.chat_message(message["role"]):
+         
+         if message["role"] == "assistant": 
+            with st.chat_message(message["role"], avatar=avatar_ai):
                  st.markdown(message["content"])
-    
+         elif message["role"] == "user":         
+            with st.chat_message(message["role"], avatar=avatar_user):
+                 st.markdown(message["content"])
     # Main conversation UI
     if prompt := st.chat_input("Kako vam mogu pomoci?"):
     
@@ -38,7 +44,7 @@ def main():
         st.session_state.messages["skroznovi"].append({"role": "user", "content": prompt})
     
         # Display user prompt in the chat
-        with st.chat_message("user", avatar="user.webp"):
+        with st.chat_message("user", avatar=avatar_user):
             st.markdown(prompt)
         
         # Prepare a temporary messages list for generating the assistant's response
@@ -46,7 +52,7 @@ def main():
         temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
     
         # Generate and display the assistant's response using the temporary messages list
-        with st.chat_message("assistant", avatar="bot.png"):
+        with st.chat_message("assistant", avatar=avatar_ai):
             message_placeholder = st.empty()
             full_response = ""
             for response in client.chat.completions.create(
@@ -61,10 +67,6 @@ def main():
         
         # Append assistant's response to the conversation
         st.session_state.messages["skroznovi"].append({"role": "assistant", "content": full_response})
-
-        
-
-    
 
 if __name__ == "__main__":
         main()
