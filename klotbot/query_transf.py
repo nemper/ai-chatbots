@@ -19,10 +19,12 @@ from io import StringIO
 from sql_prompt import PromptDatabase
 
 with PromptDatabase() as db:
-    result1 = db.query_sql_record("HYDE_RAG")
-    result2 = db.query_sql_record("QT_MAIN_PROMPT")
-    result3 = db.query_sql_record("CONTEXT_RETRIEVER")
-
+  
+    prompt_map = db.get_prompts_by_names(["result1", "result2", "result3"],["HYDE_RAG", "QT_MAIN_PROMPT", "CONTEXT_RETRIEVER"])
+    result1 = prompt_map.get("result1", "You are helpful assistant")
+    result2 = prompt_map.get("result2", "You are helpful assistant")
+    result3 = prompt_map.get("result3", "You are helpful assistant")
+    
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
 
@@ -233,7 +235,7 @@ class ContextRetriever:
         format_instructions = output_parser.get_format_instructions()
         
         self.prompt = PromptTemplate(
-            template=result3.get('prompt_text', 'You are helpful assistant that always writes in Sebian').format(),
+            template=result3.format(),
             input_variables=["documents"],
             partial_variables={"format_instructions": format_instructions},
         )
@@ -296,7 +298,7 @@ def hyde_rag(prompt):
         model= "gpt-4-turbo-preview",
         temperature=0.5,
         messages=[
-            {"role": "system", "content": result1.get('prompt_text', 'You are helpful assistant that always writes in Sebian.')},
+            {"role": "system", "content": result1},
             {"role": "user", "content": prompt}
             ]
         )
@@ -322,7 +324,7 @@ def create_structured_prompt(user_query):
       the role (system or user) and the content (instructions for the AI or the user query).
     """
     return [
-        {"role": "system", "content": result2.get('prompt_text', 'You are helpful assistant that always writes in Sebian.')},
+        {"role": "system", "content": result2},
         {"role": "user", "content": user_query}
     ]
 
