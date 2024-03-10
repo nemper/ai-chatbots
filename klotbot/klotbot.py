@@ -7,8 +7,9 @@ client=OpenAI()
 processor = HybridQueryProcessor() # namespace moze i iz env
 
 with PromptDatabase() as db:
-    result2 = db.query_sql_record("CHAT_TOOLS_PROMPT")
-    result3 = db.query_sql_record("ALT_ASISTENT")
+    prompt_map = db.get_prompts_by_names(["result2", "result3"],["CHAT_TOOLS_PROMPT", "ALT_ASISTENT"])
+    result2 = prompt_map.get("result2", "You are helpful assistant")
+    result3 = prompt_map.get("result3", "You are helpful assistant")
     
 def main():
     
@@ -19,7 +20,7 @@ def main():
         st.session_state.messages["skroznovi"] = []
         
     if "system_prompt" not in st.session_state:
-        st.session_state.system_prompt = result3.get('prompt_text', 'You are helpful assistant that always writes in Sebian.')
+        st.session_state.system_prompt = result3
         st.session_state.messages["skroznovi"].append({'role': 'system', 'content': st.session_state.system_prompt})
     
     avatar_ai="bot.png" 
@@ -38,7 +39,7 @@ def main():
     
         # Original processing to generate complete_prompt
         context, scores = processor.process_query_results(prompt)
-        complete_prompt = result2.get('prompt_text', 'You are a helpful assistant that always writes in Serbian.').format(prompt=prompt, context=context)
+        complete_prompt = result2.format(prompt=prompt, context=context)
     
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages["skroznovi"].append({"role": "user", "content": prompt})
