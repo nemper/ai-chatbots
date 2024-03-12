@@ -497,7 +497,6 @@ class PromptDatabase:
         self.conn = None
         self.cursor = None
         
-
     def __enter__(self):
         """
         Establishes the database connection and returns the instance itself when entering the context.
@@ -519,38 +518,39 @@ class PromptDatabase:
         if exc_type or exc_val or exc_tb:
             # Optionally log or handle exception
             pass
-    
-    def create_sql_table(self):
-        """
-        Creates a table for storing conversations if it doesn't already exist.
-        """
-        self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS prompts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            prompt_name VARCHAR(255) NOT NULL,
-            comment VARCHAR(255) NOT NULL,
-            prompt_text LONGTEXT NOT NULL
-        )
-        ''')
-        # print("Table created if new.")
-    
-    def add_sql_record(self, prompt_name, comment, prompt_text):
-        """
-        Adds a new record to the conversations table.
+ 
         
-        Parameters:
-        - prompt_name: The name of the prompt.
-        - commen: Comment.
-        - prompt_text: The prompt text.
+####################### BEGIN za ostale app ####################################################   
+ 
+    # !!!! osnovni metod za pretragu u ostalim .py    
+    def get_prompts_by_names(self, variable_names, prompt_names):
+        prompt_strings = self.query_sql_prompt_strings(prompt_names)
+        prompt_variables = dict(zip(variable_names, prompt_strings))
+        return prompt_variables
+
+
+    # !!!! poziva ga osnovni metod za pretragu u ostalim .py - get_prompts_by_names 
+    def query_sql_prompt_strings(self, prompt_names):
         """
-        
-        self.cursor.execute('''
-        INSERT INTO prompts (prompt_name, comment, prompt_text) 
-        VALUES (%s, %s, %s)
-        ''', (prompt_name, comment, prompt_text))
-        self.conn.commit()
-        # print("New record added.")
+        Fetches the existing prompt strings for a given list of prompt names, maintaining the order of prompt_names.
+        """
+        order_clause = "ORDER BY CASE PromptName "
+        for idx, name in enumerate(prompt_names):
+            order_clause += f"WHEN %s THEN {idx} "
+        order_clause += "END"
+
+        query = f"""
+        SELECT PromptString FROM PromptStrings
+        WHERE PromptName IN ({','.join(['%s'] * len(prompt_names))})
+        """ + order_clause
+
+        params = tuple(prompt_names) + tuple(prompt_names)  # prompt_names repeated for both IN and ORDER BY
+        self.cursor.execute(query, params)
+        results = self.cursor.fetchall()
+        return [result[0] for result in results] if results else []
+
     
+    # !!!! legacy stari poziv za ostale .py
     def query_sql_record(self, prompt_name):
         """
         Fetches the existing prompt text and comment for a given prompt name.
@@ -571,91 +571,275 @@ class PromptDatabase:
         else:
             return None
 
-        
-    def delete_sql_record(self, prompt_name):
-        """
-        Deletes a conversation record based on app name, user name, and thread id.
-        
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        """
-        delete_sql = '''
-        DELETE FROM prompts
-        WHERE prompt_name = %s
-        '''
-        self.cursor.execute(delete_sql, (prompt_name))
-        self.conn.commit()
-        # print("Conversation thread deleted.")
-    
-    def list_threads(self):
-        """
-        Lists all thread IDs for a given app name and user name.
-    
-        Parameters:
-        - prompt_name: The name of the prompt.
-        - comment: Comment.
-        - prompt_text : Prompt text
+####################### END za ostale app ####################################################
 
-        Returns:
-        - Prompt record data.
-        """
-        self.cursor.execute('''
-        SELECT DISTINCT prompt_name FROM prompts
-        
-        ''', )  # Correct tuple notation for a single element
-        threads = self.cursor.fetchall()
-        return [thread[0] for thread in threads]  # Adjust based on your schema if needed
-  
-    def update_sql_record(self, prompt_name, prompt_text, comment):
-        """
-        Updates the existing record with new prompt text and comment.
 
-        Parameters:
-        - prompt_name: The name of the prompt.
-        - prompt_text: New text of the prompt.
-        - comment: New comment.
+    def get_relationships_by_user_id(self, user_id):
         """
-        self.cursor.execute('''
-        UPDATE prompts
-        SET prompt_text = %s, comment = %s
-        WHERE prompt_name = %s 
-        ''', (prompt_text, comment, prompt_name))
-        self.conn.commit()
+        Fetches relationship records for a given user ID.
         
-    def fetch_filter_records(self, comment=None):
-        """
-        Fetches records from the database, optionally filtered by comment.
-    
         Parameters:
-        - comment: Optional. The content of the comment field to filter records by.
-    
+        - user_id: The ID of the user for whom to fetch relationship records.
+        
         Returns:
-        - A list of dictionaries, where each dictionary represents a record.
+        - A list of dictionaries containing relationship details.
         """
-        query = "SELECT * FROM prompts"
-        params = ()
-        if comment:
-            query += " WHERE comment = %s"
-            params = (comment,)
-        self.cursor.execute(query, params)
-        columns = [col[0] for col in self.cursor.description]
-        records = [dict(zip(columns, row)) for row in self.cursor.fetchall()]
+        relationships = []
+        query = """
+        SELECT crt.ID, ps.PromptName, u.Username, pv.VariableName, pf.Filename
+        FROM CentralRelationshipTable crt
+        JOIN PromptStrings ps ON crt.PromptID = ps.PromptID
+        JOIN Users u ON crt.UserID = u.UserID
+        JOIN PromptVariables pv ON crt.VariableID = pv.VariableID
+        JOIN PythonFiles pf ON crt.FileID = pf.FileID
+        WHERE crt.UserID = %s
+        """
+        try:
+            # Execute the query with user_id as the parameter
+            self.cursor.execute(query, (user_id,))
+            records = self.cursor.fetchall()
+            
+            if records:
+                for record in records:
+                    relationship = {
+                        'ID': record[0],
+                        'PromptName': record[1],
+                        'Username': record[2],
+                        'VariableName': record[3],
+                        'Filename': record[4]
+                    }
+                    relationships.append(relationship)
+        except Exception as e:
+            # Handle the error appropriately within your application context
+            # For example, log the error message
+            return False
+        
+        return relationships
+
+    def fetch_relationship_data(self, prompt_id=None):
+        # Use self.cursor to execute your query, assuming your class manages a cursor attribute
+        query = """
+        SELECT crt.ID, ps.PromptName, u.Username, pv.VariableName, pf.Filename
+        FROM CentralRelationshipTable crt
+        JOIN PromptStrings ps ON crt.PromptID = ps.PromptID
+        JOIN Users u ON crt.UserID = u.UserID
+        JOIN PromptVariables pv ON crt.VariableID = pv.VariableID
+        JOIN PythonFiles pf ON crt.FileID = pf.FileID
+        """
+        
+        # If a prompt_id is provided, append a WHERE clause to filter by that ID
+        if prompt_id is not None:
+            query += " WHERE crt.PromptID = %s"
+            self.cursor.execute(query, (prompt_id,))
+        else:
+            self.cursor.execute(query)
+        
+        # Fetch all records
+        records = self.cursor.fetchall()
         return records
 
-    def get_distinct_comments(self):
+    # opsta funkcija za prikaz polja za selectbox - koristi get_records za pripremu
+    def get_records_from_column(self, table, column):
         """
-        Fetches all distinct comments from the database.
+        Fetch records from a specified column in a specified table.
+        """
+        query = f"SELECT DISTINCT {column} FROM {table}"
+        records = self.get_records(query)
+        return [record[0] for record in records] if records else []
     
+    # za odabir za selectbox i za funkcije unosa i editovanja - osnovna funkcija
+    def get_records(self, query, params=None):
+        try:
+            if self.conn is None or not self.conn.is_connected():
+                self.__enter__()
+            self.cursor.execute(query, params)
+            records = self.cursor.fetchall()
+            return records
+        except Error as e:
+            
+            return []
+     
+    def get_record_by_name(self, table, name_column, value):
+        """
+        Fetches the entire record from a specified table based on a column name and value.
+
+        :param table: The table to search in.
+        :param name_column: The column name to match the value against.
+        :param value: The value to search for.
+        :return: A dictionary with the record data or None if no record is found.
+        """
+        query = f"SELECT * FROM {table} WHERE {name_column} = %s"
+        try:
+            if self.conn is None or not self.conn.is_connected():
+                self.__enter__()
+            self.cursor.execute(query, (value,))
+            result = self.cursor.fetchone()
+            if result:
+                # Constructing a dictionary from the column names and values
+                columns = [desc[0] for desc in self.cursor.description]
+                return dict(zip(columns, result))
+            else:
+                return None
+        except Error as e:
+            print(f"Error occurred: {e}")
+            return None
+
+
+    # za prikaz cele tabele kao info prilikom unosa i editovanja koristi kasnije df
+    def get_all_records_from_table(self, table_name):
+        """
+        Fetch all records and all columns for a given table.
+        :param table_name: The name of the table from which to fetch records.
+        :return: A pandas DataFrame with all records and columns from the specified table.
+        """
+        query = f"SELECT * FROM {table_name}"
+        try:
+            self.cursor.execute(query)
+            records = self.cursor.fetchall()
+            columns = [desc[0] for desc in self.cursor.description]
+            return records, columns
+        except Exception as e:
+            print(f"Failed to fetch records: {e}")
+            return [],[]  # Return an empty DataFrame in case of an error
+
+    def add_record(self, table, **fields):
+        """
+        Inserts a new record into the specified table.
+    
+        :param table: The name of the table to insert the record into.
+        :param fields: Keyword arguments representing column names and their values to insert.
+        """
+        columns = ', '.join(fields.keys())
+        placeholders = ', '.join(['%s'] * len(fields))
+        values = tuple(fields.values())
+    
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+    
+        try:
+            self.cursor.execute(query, values)
+            self.conn.commit()
+            return self.cursor.lastrowid  # Returns the ID of the last inserted row
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Error in add_record: {e}")
+            return None
+    
+    def update_record(self, table, fields, condition):
+        """
+        Updates records in the specified table based on a condition.
+    
+        :param table: The name of the table to update.
+        :param fields: A dictionary of column names and their new values.
+        :param condition: A tuple containing the condition string and its values (e.g., ("UserID = %s", [user_id])).
+        """
+        set_clause = ', '.join([f"{key} = %s" for key in fields.keys()])
+        values = list(fields.values()) + condition[1]
+    
+        query = f"UPDATE {table} SET {set_clause} WHERE {condition[0]}"
+    
+        try:
+            self.cursor.execute(query, values)
+            self.conn.commit()
+            return self.cursor.rowcount  # Returns the number of rows affected
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Error in update_record: {e}")
+            return None
+
+    def add_relationship_record(self, prompt_id, user_id, variable_id, file_id):
+        query = """
+        INSERT INTO CentralRelationshipTable (PromptID, UserID, VariableID, FileID)
+        VALUES (%s, %s, %s, %s);
+        """
+        try:
+            self.cursor.execute(query, (prompt_id, user_id, variable_id, file_id))
+            self.conn.commit()
+            return self.cursor.lastrowid  # Return the ID of the newly inserted record
+        except mysql.connector.Error as e:
+            self.conn.rollback()  # Roll back the transaction on error
+            print(f"Error in add_relationship_record: {e}")
+            return None
+
+    def update_relationship_record(self, record_id, prompt_id=None, user_id=None, variable_id=None, file_id=None):
+        updates = []
+        params = []
+
+        if prompt_id:
+            updates.append("PromptID = %s")
+            params.append(prompt_id)
+        if user_id:
+            updates.append("UserID = %s")
+            params.append(user_id)
+        if variable_id:
+            updates.append("VariableID = %s")
+            params.append(variable_id)
+        if file_id:
+            updates.append("FileID = %s")
+            params.append(file_id)
+
+        if not updates:
+            print("No updates provided.")
+            return False
+
+        query = f"UPDATE CentralRelationshipTable SET {', '.join(updates)} WHERE ID = %s;"
+        params.append(record_id)
+
+        try:
+            self.cursor.execute(query, tuple(params))
+            self.conn.commit()
+            return True
+        except mysql.connector.Error as e:
+            self.conn.rollback()
+            print(f"Error in update_relationship_record: {e}")
+            return False
+
+    def delete_record(self, table, condition):
+        query = f"DELETE FROM {table} WHERE {condition[0]}"
+        try:
+            # Directly using condition[1] which is expected to be a list or tuple of values
+            self.cursor.execute(query, condition[1])
+            self.conn.commit()
+            return f"Record deleted"
+        except Exception as e:
+            self.conn.rollback()
+            return f"Error in delete_record: {e}"
+            
+
+  
+    # za pretragu tabel epromptova po stringu u textu
+    def search_for_string_in_prompt_text(self, search_string):
+        """
+        Lists all prompt_name and prompt_text where a specific string is part of the prompt_text.
+
+        Parameters:
+        - search_string: The string to search for within prompt_text.
+
         Returns:
-            A list of distinct comments.
+        - A list of dictionaries, each containing 'prompt_name' and 'prompt_text' for records matching the search criteria.
         """
-        self.cursor.execute('SELECT DISTINCT comment FROM prompts')
-        return [comment[0] for comment in self.cursor.fetchall()]
+        self.cursor.execute('''
+        SELECT PromptName, PromptString
+        FROM PromptStrings
+        WHERE PromptString LIKE %s
+        ''', ('%' + search_string + '%',))
+        results = self.cursor.fetchall()
     
+        # Convert the results into a list of dictionaries for easier use
+        records = [{'PromptName': row[0], 'PromptString': row[1]} for row in results]
+        return records
+
+###### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ############
+################# treba za razne manipulacije sa CentralrelationshipTable #######################
+    
+    # pomocna funkcija za zatvaranje konekcije
     def close(self):
         """
-        Closes the database connection.
+        Closes the database connection and cursor, if they exist.
         """
-        self.conn.close()
+        if self.cursor is not None:
+            self.cursor.close()
+            self.cursor = None  # Reset cursor to None to avoid re-closing a closed cursor
+        if self.conn is not None and self.conn.is_connected():
+            self.conn.close()
+            self.conn = None  # Reset connection to None for safety
+   

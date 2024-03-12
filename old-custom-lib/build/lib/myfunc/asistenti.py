@@ -11,19 +11,34 @@ from azure.storage.blob import BlobServiceClient
 from os import environ
 import openai
 from myfunc.retrievers import PromptDatabase
-with PromptDatabase() as db:
-    result_ps0 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS0").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_pu0 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU0").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_ps1 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS1").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_pu1 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU1").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_ps2 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS2").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_pu2 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU2").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_ps3 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS3").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_pu3 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU3").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_ps4 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PS4").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_pu4 = db.query_sql_record("DUGACKI_IZ_KRATKIH_PU4").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_vision = db.query_sql_record("VISION").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
-    result_transkript = db.query_sql_record("MEET_TRANS").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+
+if "init_promots" not in st.session_state:
+    st.session_state["init_promots"] = True
+
+
+    with PromptDatabase() as db:
+        prompt_map = db.get_prompts_by_names(
+            ["result_ps0", "result_pu0", "result_ps1", "result_pu1",
+            "result_ps2", "result_pu2", "result_ps3", "result_pu3",
+            "result_ps4", "result_pu4", "result_vision", "result_transkript"],
+            ["DUGACKI_IZ_KRATKIH_PS0", "DUGACKI_IZ_KRATKIH_PU0", "DUGACKI_IZ_KRATKIH_PS1", "DUGACKI_IZ_KRATKIH_PU1",
+            "DUGACKI_IZ_KRATKIH_PS2", "DUGACKI_IZ_KRATKIH_PU2", "DUGACKI_IZ_KRATKIH_PS3", "DUGACKI_IZ_KRATKIH_PU3",
+            "DUGACKI_IZ_KRATKIH_PS4", "DUGACKI_IZ_KRATKIH_PU4", "VISION", "MEET_TRANS"]
+        )
+
+        result_ps0 = prompt_map.get("result_ps0", "You are a helpful assistant that always responds in Serbian.")
+        result_pu0 = prompt_map.get("result_pu0", "You are a helpful assistant that always responds in Serbian.")
+        result_ps1 = prompt_map.get("result_ps1", "You are a helpful assistant that always responds in Serbian.")
+        result_pu1 = prompt_map.get("result_pu1", "You are a helpful assistant that always responds in Serbian.")
+        result_ps2 = prompt_map.get("result_ps2", "You are a helpful assistant that always responds in Serbian.")
+        result_pu2 = prompt_map.get("result_pu2", "You are a helpful assistant that always responds in Serbian.")
+        result_ps3 = prompt_map.get("result_ps3", "You are a helpful assistant that always responds in Serbian.")
+        result_pu3 = prompt_map.get("result_pu3", "You are a helpful assistant that always responds in Serbian.")
+        result_ps4 = prompt_map.get("result_ps4", "You are a helpful assistant that always responds in Serbian.")
+        result_pu4 = prompt_map.get("result_pu4", "You are a helpful assistant that always responds in Serbian.")
+        result_vision = prompt_map.get("result_vision", "You are a helpful assistant that always responds in Serbian.")
+        result_transkript = prompt_map.get("result_transkript", "You are a helpful assistant that always responds in Serbian.")
+
 
 
 def read_aad_username():
