@@ -12,6 +12,7 @@ from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_openai import OpenAIEmbeddings
 import mysql.connector
+import json
 
 
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-positive', namespace=None, openai_api_key=None, host=None):
@@ -843,3 +844,154 @@ class PromptDatabase:
             self.conn.close()
             self.conn = None  # Reset connection to None for safety
    
+
+
+class ConversationDatabase:
+    """
+    A class to interact with a MySQL database for storing and retrieving conversation data.
+    """
+    
+    def __init__(self, host=None, user=None, password=None, database=None):
+        """
+        Initializes the connection details for the database, with the option to use environment variables as defaults.
+        """
+        self.host = host if host is not None else os.getenv('DB_HOST')
+        self.user = user if user is not None else os.getenv('DB_USER')
+        self.password = password if password is not None else os.getenv('DB_PASSWORD')
+        self.database = database if database is not None else os.getenv('DB_NAME')
+        self.conn = None
+        self.cursor = None
+
+    def __enter__(self):
+        """
+        Establishes the database connection and returns the instance itself when entering the context.
+        """
+        self.conn = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database=self.database)
+        self.cursor = self.conn.cursor()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Closes the database connection and cursor when exiting the context.
+        Handles any exceptions that occurred within the context.
+        """
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.conn is not None:
+            self.conn.close()
+        # Handle exception if needed, can log or re-raise exceptions based on requirements
+        if exc_type or exc_val or exc_tb:
+            # Optionally log or handle exception
+            pass
+    
+    
+    def create_sql_table(self):
+        """
+        Creates a table for storing conversations if it doesn't already exist.
+        """
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            app_name VARCHAR(255) NOT NULL,
+            user_name VARCHAR(255) NOT NULL,
+            thread_id VARCHAR(255) NOT NULL,
+            conversation LONGTEXT NOT NULL
+        )
+        ''')
+        # print("Table created if new.")
+    
+    def add_sql_record(self, app_name, user_name, thread_id, conversation):
+        """
+        Adds a new record to the conversations table.
+        
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier.
+        - conversation: The conversation data as a list of dictionaries.
+        """
+        conversation_json = json.dumps(conversation)
+        self.cursor.execute('''
+        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
+        VALUES (%s, %s, %s, %s)
+        ''', (app_name, user_name, thread_id, conversation_json))
+        self.conn.commit()
+        # print("New record added.")
+    
+    def query_sql_record(self, app_name, user_name, thread_id):
+        """
+        Modified to return the conversation record.
+        """
+        self.cursor.execute('''
+        SELECT conversation FROM conversations 
+        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        ''', (app_name, user_name, thread_id))
+        result = self.cursor.fetchone()
+        if result:
+            return json.loads(result[0])
+        else:
+            return None
+    
+    def delete_sql_record(self, app_name, user_name, thread_id):
+        """
+        Deletes a conversation record based on app name, user name, and thread id.
+        
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier.
+        """
+        delete_sql = '''
+        DELETE FROM conversations
+        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        '''
+        self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
+        self.conn.commit()
+        # print("Conversation thread deleted.")
+    
+    def list_threads(self, app_name, user_name):
+        """
+        Lists all thread IDs for a given app name and user name.
+    
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+
+        Returns:
+        - A list of thread IDs associated with the given app name and user name.
+        """
+        self.cursor.execute('''
+        SELECT DISTINCT thread_id FROM conversations
+        WHERE app_name = %s AND user_name = %s
+        ''', (app_name, user_name))
+        threads = self.cursor.fetchall()
+        return [thread[0] for thread in threads]  # Adjust based on your schema if needed
+  
+    def update_sql_record(self, app_name, user_name, thread_id, new_conversation):
+        """
+        Replaces the existing conversation data with new conversation data for a specific record in the conversations table.
+
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier.
+        - new_conversation: The new conversation data to replace as a list of dictionaries.
+        """
+
+        # Convert the new conversation to JSON format
+        new_conversation_json = json.dumps(new_conversation)
+
+        # Update the record with the new conversation
+        self.cursor.execute('''
+        UPDATE conversations
+        SET conversation = %s
+        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        ''', (new_conversation_json, app_name, user_name, thread_id))
+        self.conn.commit()
+        # print("Record updated with new conversation.")
+
+    def close(self):
+        """
+        Closes the database connection.
+        """
+        self.conn.close()
