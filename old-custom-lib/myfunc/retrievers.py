@@ -130,8 +130,10 @@ class SQLSearchTool:
         :return: The response from the agent executor.
         """
 
+
         with PromptDatabase() as db:
-            result1 = db.query_sql_record("SQL_SEARCH_METHOD").get('prompt_text', 'You are a helpful assistant that always responds in Serbian.')
+            prompt_map = db.get_prompts_by_names(["result1"],["SQL_SEARCH_METHOD"])
+            result1 = prompt_map.get('result1', 'You are helpful assistant that always writes in Serbian.')
         formatted_query = result1.format(query=query, queries=queries)
 
         try:
@@ -995,3 +997,4 @@ class ConversationDatabase:
         Closes the database connection.
         """
         self.conn.close()
+        
