@@ -997,3 +997,58 @@ class ConversationDatabase:
         Closes the database connection.
         """
         self.conn.close()
+
+
+import json
+import datetime
+
+class TextProcessing:
+    def __init__(self, gpt_client):
+        self.client = gpt_client
+
+    def add_self_data(self, line):
+        """
+        Extracts the person's name and topic from a given line of text using a GPT-4 model.
+        """
+        response = self.client.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": "result1"},
+                {"role": "user", "content": line}
+            ]
+        )
+        json_content = response.choices[0].message.content.strip()
+        content_dict = json.loads(json_content)
+        person_name = content_dict.get("person_name", "John Doe")
+        topic = content_dict["topic"]
+        
+        return person_name, topic
+
+    def format_output_text(self, prefix, question, content):
+        """
+        Formats the output text.
+        """
+        return prefix + question + content
+
+    def get_current_date_formatted(self):
+        """
+        Returns the current date formatted as a string.
+        """
+        return datetime.datetime.now().strftime("%d.%m.%Y")
+
+    def add_question(self, chunk_text):
+        """
+        Adds a question to a chunk of text to match the given statement.
+        """
+        result = self.client.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": "result2"},
+                {"role": "user", "content": chunk_text}
+            ]
+        )
+
+        return result.choices[0].message.content
