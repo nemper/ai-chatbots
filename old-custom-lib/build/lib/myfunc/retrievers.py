@@ -658,8 +658,8 @@ class PromptDatabase:
             self.cursor.execute(query, params)
             records = self.cursor.fetchall()
             return records
-        except Error as e:
-            
+        except Exception as e:
+            print(f"Error occurred: {e}")
             return []
      
     def get_record_by_name(self, table, name_column, value):
@@ -683,7 +683,7 @@ class PromptDatabase:
                 return dict(zip(columns, result))
             else:
                 return None
-        except Error as e:
+        except Exception as e:
             print(f"Error occurred: {e}")
             return None
 
@@ -997,4 +997,3 @@ class ConversationDatabase:
         Closes the database connection.
         """
         self.conn.close()
-        
