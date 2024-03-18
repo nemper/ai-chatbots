@@ -1279,7 +1279,6 @@ class PineconeUtility:
             else:
                 # Creating a file loader object
                 loader = UnstructuredFileLoader(dokum.name, encoding="utf-8")
-
             data = loader.load()
         return data
     
