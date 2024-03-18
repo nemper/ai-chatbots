@@ -1,7 +1,16 @@
 import streamlit as st
+import os
 from openai import OpenAI
 from myfunc.retrievers import HybridQueryProcessor
 from sql_prompt import PromptDatabase
+from myfunc.retrievers import ConversationDatabase
+from myfunc.asistenti import read_aad_username
+from myfunc.mojafunkcija import (
+    positive_login,
+    show_logo
+)
+import uuid
+import mysql
 
 client=OpenAI()
 processor = HybridQueryProcessor() # namespace moze i iz env
@@ -12,28 +21,131 @@ with PromptDatabase() as db:
     result3 = prompt_map.get("result3", "You are helpful assistant")
     
 def main():
-    
+    if "username" not in st.session_state:
+        st.session_state.username = "positive"
+    if deployment_environment == "Azure":    
+        st.session_state.username = read_aad_username()
+    elif deployment_environment == "Windows":
+        st.session_state.username = "lokal"
+    elif deployment_environment == "Streamlit":
+        st.session_state.username = username
+
+    if "client" not in st.session_state:
+        st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    if "openai_model" not in st.session_state:
+        st.session_state["openai_model"] = "gpt-4-turbo-preview"
+    if "system_prompt" not in st.session_state:
+        st.session_state.system_prompt = result3
+    if "azure_filename" not in st.session_state:
+        st.session_state.azure_filename = "altass.csv"
+    if "messages" not in st.session_state:
+        st.session_state.messages = {}
+    if "thread_id" not in st.session_state:
+        st.session_state.thread_id = None
     if "messages" not in st.session_state:
         st.session_state.messages = {}
     if "thread_id" not in st.session_state:
         st.session_state["thread_id"] = "skroznovi"
         st.session_state.messages["skroznovi"] = []
-        
     if "system_prompt" not in st.session_state:
         st.session_state.system_prompt = result3
         st.session_state.messages["skroznovi"].append({'role': 'system', 'content': st.session_state.system_prompt})
     
     avatar_ai="bot.png" 
     avatar_user = "user.webp"
+    avatar_sys = "positivelogo.jpg"
    
-    for message in st.session_state.messages["skroznovi"]:
-         
-         if message["role"] == "assistant": 
-            with st.chat_message(message["role"], avatar=avatar_ai):
-                 st.markdown(message["content"])
-         elif message["role"] == "user":         
-            with st.chat_message(message["role"], avatar=avatar_user):
-                 st.markdown(message["content"])
+    with st.sidebar:
+        st.info(f"Prijavljeni ste kao: {st.session_state.username}")
+
+    app_name = "KlotBot"
+    def get_thread_ids():
+        with ConversationDatabase() as db:
+            return db.list_threads(app_name, "positive")
+    
+    with st.sidebar:
+        global phglob
+        phglob=st.empty()
+        show_logo()
+        st.caption("29.02.24")
+
+        tabs = st.sidebar.tabs(["Conversation"])
+        tab1 = tabs[0]  # This assumes you want the first tab
+
+        # Now you can use `tab1` to add elements to this tab
+        operation = tab1.selectbox("Choose operation", ["New Conversation", "Load Conversation", "Delete Conversation"])
+
+        if operation == "New Conversation":
+            st.caption("Create a New Conversation")
+            thread_name_input = st.text_input("Thread Name (optional)")
+
+            if st.button("Create"):
+                new_thread_id = str(uuid.uuid4())
+                thread_name = thread_name_input if thread_name_input else f"Thread_{new_thread_id}"
+
+                conversation_data = [{'role': 'system', 'content': st.session_state.system_prompt}]
+                # Check if the thread ID already exists
+                if thread_name not in get_thread_ids():
+                    with ConversationDatabase() as db:
+                        try:
+                            db.add_sql_record(app_name, st.session_state.username, thread_name, conversation_data)
+                        except mysql.connector.IntegrityError as e:
+                            if e.errno == 1062:  # Duplicate entry for key
+                                st.error("Thread ID already exists. Please try again with a different ID.")
+                            else:
+                                raise  # Re-raise the exception if it's not related to a duplicate entry
+                    st.success(f"Record {thread_name} added successfully.")
+                    st.session_state.thread_id = thread_name
+                else:
+                    st.error("Thread ID already exists.")
+                        
+        elif operation == "Load Conversation":
+                st.caption("Load an Existing Conversation")
+                thread_ids = get_thread_ids()
+                selected_thread_id = st.selectbox("Select Thread ID", thread_ids)
+
+                if st.button("Select"):
+                    with ConversationDatabase() as db:
+                        db.query_sql_record(app_name, st.session_state.username, selected_thread_id)
+                    st.success(f"Record loaded successfully {selected_thread_id}.")
+                    st.session_state.thread_id =  selected_thread_id
+
+        elif operation == "Delete Conversation":
+            st.caption("Delete an Existing Conversation")
+            thread_ids = get_thread_ids()
+            selected_thread_id = st.selectbox("Select Thread ID", thread_ids)
+
+            if st.button("Delete"):
+                try:
+                    with ConversationDatabase() as db:
+                        db.delete_sql_record(app_name, st.session_state.username, selected_thread_id)
+                    st.success(f"Record {selected_thread_id} deleted successfully.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to delete record: {e}")
+
+
+    if st.session_state.thread_id is None:
+        st.info("Start a conversation by selecting a new or existing conversation.")
+    else:
+        current_thread_id = st.session_state.thread_id
+        # Check if there's an existing conversation in the session state
+        if current_thread_id not in st.session_state.messages:
+            # If not, initialize it with the conversation from the database or as an empty list
+            with ConversationDatabase() as db:
+                st.session_state.messages[current_thread_id] = db.query_sql_record(app_name, st.session_state.username, current_thread_id) or []
+        if current_thread_id in st.session_state.messages:
+                # avatari primena
+                for message in st.session_state.messages[current_thread_id]:
+                    if message["role"] == "assistant": 
+                        with st.chat_message(message["role"], avatar=avatar_ai):
+                             st.markdown(message["content"])
+                    elif message["role"] == "user":         
+                        with st.chat_message(message["role"], avatar=avatar_user):
+                             st.markdown(message["content"])
+                    else:         
+                        with st.chat_message(message["role"], avatar=avatar_sys):
+                             st.markdown(message["content"])
     # Main conversation UI
     if prompt := st.chat_input("Kako vam mogu pomoci?"):
     
@@ -69,5 +181,13 @@ def main():
         # Append assistant's response to the conversation
         st.session_state.messages["skroznovi"].append({"role": "assistant", "content": full_response})
 
-if __name__ == "__main__":
+        with ConversationDatabase() as db:
+            db.update_sql_record(app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+
+deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
+
+if deployment_environment == "Streamlit":
+    name, authentication_status, username = positive_login(main, " ")
+else:
+    if __name__ == "__main__":
         main()
