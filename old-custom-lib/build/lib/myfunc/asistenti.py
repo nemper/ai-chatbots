@@ -26,18 +26,18 @@ if "init_promots" not in st.session_state:
             "DUGACKI_IZ_KRATKIH_PS4", "DUGACKI_IZ_KRATKIH_PU4", "VISION", "MEET_TRANS"]
         )
 
-        result_ps0 = prompt_map.get("result_ps0", "You are a helpful assistant that always responds in Serbian.")
-        result_pu0 = prompt_map.get("result_pu0", "You are a helpful assistant that always responds in Serbian.")
-        result_ps1 = prompt_map.get("result_ps1", "You are a helpful assistant that always responds in Serbian.")
-        result_pu1 = prompt_map.get("result_pu1", "You are a helpful assistant that always responds in Serbian.")
-        result_ps2 = prompt_map.get("result_ps2", "You are a helpful assistant that always responds in Serbian.")
-        result_pu2 = prompt_map.get("result_pu2", "You are a helpful assistant that always responds in Serbian.")
-        result_ps3 = prompt_map.get("result_ps3", "You are a helpful assistant that always responds in Serbian.")
-        result_pu3 = prompt_map.get("result_pu3", "You are a helpful assistant that always responds in Serbian.")
-        result_ps4 = prompt_map.get("result_ps4", "You are a helpful assistant that always responds in Serbian.")
-        result_pu4 = prompt_map.get("result_pu4", "You are a helpful assistant that always responds in Serbian.")
-        result_vision = prompt_map.get("result_vision", "You are a helpful assistant that always responds in Serbian.")
-        result_transkript = prompt_map.get("result_transkript", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_ps0 = prompt_map.get("result_ps0", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_pu0 = prompt_map.get("result_pu0", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_ps1 = prompt_map.get("result_ps1", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_pu1 = prompt_map.get("result_pu1", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_ps2 = prompt_map.get("result_ps2", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_pu2 = prompt_map.get("result_pu2", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_ps3 = prompt_map.get("result_ps3", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_pu3 = prompt_map.get("result_pu3", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_ps4 = prompt_map.get("result_ps4", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_pu4 = prompt_map.get("result_pu4", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_vision = prompt_map.get("result_vision", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.result_transkript = prompt_map.get("result_transkript", "You are a helpful assistant that always responds in Serbian.")
 
 
 
@@ -178,7 +178,7 @@ def transkript():
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
 
-                        system_prompt=result_transkript
+                        system_prompt=st.session_state.result_transkript
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
                                                 
@@ -219,7 +219,7 @@ def read_local_image():
         # st.session_state["question"] = ""
 
         with placeholder.form(key="my_image", clear_on_submit=False):
-            default_text = result_vision
+            default_text = st.session_state.result_vision
             upit = st.text_area("Unesite uputstvo ", default_text)  
             submit_button = st.form_submit_button(label="Submit")
             
@@ -294,7 +294,7 @@ def read_url_image():
         placeholder = st.empty()    
     #if submit_btt:        
         with placeholder.form(key="my_image_url", clear_on_submit=False):
-            default_text = result_vision
+            default_text = st.session_state.result_vision
         
             upit = st.text_area("Unesite uputstvo ", default_text)
             submit_button = st.form_submit_button(label="Submit")
@@ -399,16 +399,16 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
 
     if uploaded_text is not None:
         all_prompts = {
-                 "p_system_0" : result_ps0,
-                 "p_user_0" : result_pu0,
-                "p_system_1": result_ps1,
-                "p_user_1": result_pu1,
-                "p_system_2": result_ps2,
-                "p_user_2": result_pu2,
-                "p_system_3": result_ps3,
-                "p_user_3": result_pu3,
-                "p_system_4": result_ps4,
-                "p_user_4": result_pu4
+                 "p_system_0" : st.session_state.result_ps0,
+                 "p_user_0" : st.session_state.result_pu0,
+                "p_system_1": st.session_state.result_ps1,
+                "p_user_1": st.session_state.result_pu1,
+                "p_system_2": st.session_state.result_ps2,
+                "p_user_2": st.session_state.result_pu2,
+                "p_system_3": st.session_state.result_ps3,
+                "p_user_3": st.session_state.result_pu3,
+                "p_system_4": st.session_state.result_ps4,
+                "p_user_4": st.session_state.result_pu4
             }
 
         
