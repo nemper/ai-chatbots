@@ -161,3 +161,4 @@ Refer to the documentation within the script and the comments provided for each 
 1. After updating from this folder run `python setup.py sdist bdist_wheel`
 2. Synchronize with GitHub
 3. Upgrade the library `pip install git+https://github.com/djordjethai/myfunc.git --upgrade`
+

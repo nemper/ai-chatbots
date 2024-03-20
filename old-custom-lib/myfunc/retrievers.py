@@ -721,11 +721,10 @@ class PromptDatabase:
         try:
             self.cursor.execute(query, values)
             self.conn.commit()
-            return self.cursor.lastrowid  # Returns the ID of the last inserted row
+            return "Uspesno dodat slog" 
         except Exception as e:
             self.conn.rollback()
-            print(f"Error in add_record: {e}")
-            return None
+            return f"Error in add_record: {e}"
     
     def update_record(self, table, fields, condition):
         """
@@ -743,11 +742,10 @@ class PromptDatabase:
         try:
             self.cursor.execute(query, values)
             self.conn.commit()
-            return self.cursor.rowcount  # Returns the number of rows affected
+            return "Uspesno dodat slog"  # Returns the number of rows affected
         except Exception as e:
             self.conn.rollback()
-            print(f"Error in update_record: {e}")
-            return None
+            return f"Error in update_record: {e}"
 
     def add_relationship_record(self, prompt_id, user_id, variable_id, file_id):
         query = """
@@ -757,11 +755,10 @@ class PromptDatabase:
         try:
             self.cursor.execute(query, (prompt_id, user_id, variable_id, file_id))
             self.conn.commit()
-            return self.cursor.lastrowid  # Return the ID of the newly inserted record
+            return  f"Uspesno dodat {self.cursor.rowcount} slog" # Return the ID of the newly inserted record
         except mysql.connector.Error as e:
             self.conn.rollback()  # Roll back the transaction on error
-            print(f"Error in add_relationship_record: {e}")
-            return None
+            return f"Error in add_relationship_record: {e}"
 
     def update_relationship_record(self, record_id, prompt_id=None, user_id=None, variable_id=None, file_id=None):
         updates = []
@@ -781,8 +778,7 @@ class PromptDatabase:
             params.append(file_id)
 
         if not updates:
-            print("No updates provided.")
-            return False
+            return "No updates provided."
 
         query = f"UPDATE CentralRelationshipTable SET {', '.join(updates)} WHERE ID = %s;"
         params.append(record_id)
@@ -790,11 +786,10 @@ class PromptDatabase:
         try:
             self.cursor.execute(query, tuple(params))
             self.conn.commit()
-            return True
+            return "Succesful update relationship record"
         except mysql.connector.Error as e:
             self.conn.rollback()
-            print(f"Error in update_relationship_record: {e}")
-            return False
+            return f"Error in update_relationship_record: {e}"
 
     def delete_record(self, table, condition):
         query = f"DELETE FROM {table} WHERE {condition[0]}"
