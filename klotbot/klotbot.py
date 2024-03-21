@@ -12,7 +12,7 @@ import uuid
 import mysql
 
 client=OpenAI()
-processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY")) # namespace moze i iz env
+processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY"), namespace='positive') # namespace moze i iz env
 
 if "init_prompt" not in st.session_state:
     st.session_state.init_prompt = 42
