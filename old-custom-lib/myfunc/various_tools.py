@@ -17,7 +17,9 @@ import os
 from myfunc.mojafunkcija import (
     pinecone_stats,
 )
-from myfunc.retrievers import PineconeUtility, TextProcessing
+from myfunc.retrievers import (
+    PineconeUtility, TextProcessing, HybridQueryProcessor, 
+    SQLSearchTool, SelfQueryPositive)
 from langchain_community.retrievers import PineconeHybridSearchRetriever
 from pinecone_text.sparse import BM25Encoder
 from time import sleep
@@ -26,6 +28,23 @@ from uuid import uuid4
 from io import StringIO
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain_experimental.text_splitter import SemanticChunker
+
+from langchain_openai import ChatOpenAI
+from langchain.indexes.graph import NetworkxEntityGraph
+from langchain.chains import GraphQAChain
+from myfunc.query_transf import (
+        MultiQueryDocumentRetriever, 
+        CohereReranker, 
+        PineconeRetriever, 
+        ContextRetriever, 
+        LongContextHandler,
+        hyde_rag,
+        get_structured_decision_from_model,
+        web_search_process,
+
+)
+import re
+import ast
 
 st_style()
 client=OpenAI()
@@ -625,3 +644,183 @@ def main_scraper(chunk_size, chunk_overlap):
         )
     if skinuto:
         st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
+
+
+
+
+def rag_tool_answer(prompt, phglob):
+    context = " "
+    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
+
+    if  st.session_state.rag_tool == "Hybrid":
+        processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="zapisnici")
+        context, scores = processor.process_query_results(prompt)
+        st.info("Score po chunku:")
+        st.write(scores)
+        
+    # SelfQuery Tool Configuration
+    elif  st.session_state.rag_tool == "SelfQuery":
+        # Example configuration for SelfQuery
+        uvod = st.session_state.self_query
+        prompt = uvod + prompt
+        context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
+        
+    # SQL Tool Configuration
+    elif st.session_state.rag_tool == "SQL":
+            processor = SQLSearchTool()
+            try:
+                context = processor.search(prompt)
+            except Exception as e :
+                st.error(f"Ne mogu da ispunim zahtev {e}")
+    elif st.session_state.rag_tool == "WebSearchProcess":
+         context = web_search_process(prompt)
+         
+    # Parent Doc Tool Configuration
+    elif  st.session_state.rag_tool == "ParentDoc":
+        # Define stores
+        h_retriever = HybridQueryProcessor(namespace="pos-50", top_k=1)
+        h_docstore = HybridQueryProcessor(namespace="pos-2650")
+
+        # Perform a basic search hybrid
+        basic_search_result, source_result, chunk = h_retriever.process_query_parent_results(prompt)
+        # Perform a search filtered by source (from basic search)
+        search_by_source_result = h_docstore.search_by_source(prompt, source_result)
+        st.write(f"Osnovni rezultat koji sluzi da nadje prvi: {basic_search_result}")
+        st.write(f"Krajnji rezultat koji se vraca: {search_by_source_result}")
+        return search_by_source_result
+
+    # Parent Chunks Tool Configuration
+    elif  st.session_state.rag_tool == "ParentChunks":
+        # Define stores
+        h_retriever = HybridQueryProcessor(namespace="zapisnici", top_k=1)
+        # Perform a basic search hybrid
+        basic_search_result, source_result, chunk = h_retriever.process_query_parent_results(prompt)
+        # Perform a search filtered by source and a specific chunk range (both from basic search)
+        search_by_chunk_result = h_retriever.search_by_chunk(prompt, source_result, chunk)
+        st.write(f"Osnovni rezultat koji sluzi da nadje prvi: {basic_search_result}")
+        st.write(f"Krajnji rezultat koji se vraca: {search_by_chunk_result}")
+        return search_by_chunk_result
+
+    # Graph Tool Configuration
+    elif  st.session_state.rag_tool == "Graph": 
+        # Read the graph from the file-like object
+        graph = NetworkxEntityGraph.from_gml(st.session_state.graph_file)
+        chain = GraphQAChain.from_llm(ChatOpenAI(model="gpt-4-turbo-preview", temperature=0), graph=graph, verbose=True)
+        rezultat= chain.invoke(prompt)
+        context = rezultat['result']
+
+    # Hyde Tool Configuration
+    elif  st.session_state.rag_tool == "Hyde":
+        # Assuming a processor for Hyde exists
+        context = hyde_rag(prompt)
+
+    # MultiQuery Tool Configuration
+    elif  st.session_state.rag_tool == "MultiQuery":
+        # Initialize the MQDR instance
+        retriever_instance = MultiQueryDocumentRetriever(prompt)
+        # To get documents relevant to the original question
+        context = retriever_instance.get_relevant_documents(prompt)
+        output=retriever_instance.log_messages
+        generated_queries = output[0].split(": ")[1]
+        queries = ast.literal_eval(generated_queries)
+        st.info(f"Dodatna pitanja - MultiQuery Alat:")
+        for query in queries:
+            st.caption(query)
+
+
+    # RAG Fusion Tool Configuration
+    elif  st.session_state.rag_tool == "CohereReranking":
+        # Retrieve documents using Pinecone
+        pinecone_retriever = PineconeRetriever(prompt)
+        docs = pinecone_retriever.get_relevant_documents()
+        documents = [doc.page_content for doc in docs]
+        
+        # Rerank documents using Cohere
+        cohere_reranker = CohereReranker(prompt)
+        context = cohere_reranker.rerank(documents)
+        
+    elif  st.session_state.rag_tool == "ContextualCompression":
+        # Retrieve documents using Pinecone
+        pinecone_retriever = PineconeRetriever(prompt)
+        docs = pinecone_retriever.get_relevant_documents()
+        documents = [doc.page_content for doc in docs]
+       
+        # Retrieve and compressed context
+        context_retriever = ContextRetriever(documents)
+        context = context_retriever.get_compressed_context()
+        
+    elif  st.session_state.rag_tool == "LongContext":
+         # Retrieve documents using Pinecone
+        pinecone_retriever = PineconeRetriever(prompt)
+        docs = pinecone_retriever.get_relevant_documents()
+        documents = [doc.page_content for doc in docs]
+        
+        # Reorder documents for long context handling
+        long_context_handler = LongContextHandler()
+        context = long_context_handler.reorder(documents)
+
+    elif  st.session_state.rag_tool == "Calendly":
+        # Schedule Calendly meeting
+        context = positive_calendly(phglob)
+
+    elif st.session_state.rag_tool == "UploadedDoc":
+        # Read text from the uploaded document
+        try:
+            context = "Text from the document: " + st.session_state.uploaded_doc[0].page_content
+        except:
+            context = "No text found in the document. Please check if the document is in the correct format."
+
+    elif st.session_state.rag_tool == "WebScrap":
+        try:
+            context = "Text from the webpage: " + scrape_webpage_text(st.session_state.url_to_scrap)
+        except:
+            context = "No text found in the webpage. Please check if the URL is correct."
+            
+    return context
+
+
+def scrape_webpage_text(url):
+    """
+    Fetches the content of a webpage by URL and returns the textual content,
+    excluding HTML tags and script content.
+
+    Args:
+    - url (str): The URL of the webpage to scrape.
+
+    Returns:
+    - str: The textual content of the webpage.
+    """
+    try:
+        # Send a GET request to the webpage
+        response = requests.get(url)
+        # Raise an exception if the request was unsuccessful
+        response.raise_for_status()
+        
+        # Parse the content of the request with BeautifulSoup
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script_or_style in soup(['script', 'style']):
+            script_or_style.decompose()
+        
+        # Get text from the parsed content
+        text = soup.get_text()
+        
+        # Clean up the text by collapsing whitespace
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        
+        return text
+    except requests.RequestException as e:
+        return f"An error occurred: {e}"
+
+
+def positive_calendly(phglob):
+    with st.sidebar:
+        with phglob.container():
+            calendly_url = "https://calendly.com/djordje-thai/30min/?embed=true"
+            iframe_html = f'<iframe src="{calendly_url}" width="320" height="820"></iframe>'
+            st.components.v1.html(iframe_html, height=820)
+            
+    return "Do not answer to this question, just say Hvala"
