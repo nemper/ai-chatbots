@@ -1004,6 +1004,21 @@ class TextProcessing:
     def add_self_data(self, line):
         """
         Extracts the person's name and topic from a given line of text using a GPT-4 model.
+
+        This function sends a request to a GPT-4 model with a specific prompt that instructs the model to use JSON format
+        for extracting a person's name ('person_name') and a topic from the provided text ('line'). The prompt includes instructions
+        to use the Serbian language for extraction. If the model cannot decide on a name, it is instructed to return 'John Doe'.
+
+        Parameters:
+        - line (str): A line of text from which the person's name and topic are to be extracted.
+
+        Returns:
+        - tuple: A tuple containing the extracted person's name and topic. If the extraction is successful, it returns
+        (person_name, topic). If the model cannot decide on a name, it returns ('John Doe', topic).
+
+        Note:
+        The function assumes that the response from the GPT-4 model is in a JSON-compatible format and that the keys
+        'person_name' and 'topic' are present in the JSON object returned by the model.
         """
         response = self.client.chat.completions.create(
             model="gpt-4-turbo-preview",

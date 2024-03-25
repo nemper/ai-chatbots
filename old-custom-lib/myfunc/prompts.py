@@ -1,0 +1,413 @@
+import mysql.connector
+import os
+from mysql.connector import Error
+
+class PromptDatabase:
+    """
+    A class to interact with a MySQL database for storing and retrieving prompt templates.
+    """
+    
+    def __init__(self, host=None, user=None, password=None, database=None):
+        """
+        Initializes the connection details for the database, with the option to use environment variables as defaults.
+        """
+        self.host = host if host is not None else os.getenv('DB_HOST')
+        self.user = user if user is not None else os.getenv('DB_USER')
+        self.password = password if password is not None else os.getenv('DB_PASSWORD')
+        self.database = database if database is not None else os.getenv('DB_NAME')
+        self.conn = None
+        self.cursor = None
+        
+    def __enter__(self):
+        """
+        Establishes the database connection and returns the instance itself when entering the context.
+        """
+        self.conn = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database=self.database)
+        self.cursor = self.conn.cursor()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Closes the database connection and cursor when exiting the context.
+        Handles any exceptions that occurred within the context.
+        """
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.conn is not None:
+            self.conn.close()
+        # Handle exception if needed, can log or re-raise exceptions based on requirements
+        if exc_type or exc_val or exc_tb:
+            # Optionally log or handle exception
+            pass
+    
+    # !!!! poziva ga osnovni metod za pretragu u ostalim .py - get_prompts_by_names 
+    def query_sql_prompt_strings(self, prompt_names):
+        """
+        Fetches the existing prompt strings for a given list of prompt names, maintaining the order of prompt_names.
+        """
+        order_clause = "ORDER BY CASE PromptName "
+        for idx, name in enumerate(prompt_names):
+            order_clause += f"WHEN %s THEN {idx} "
+        order_clause += "END"
+
+        query = f"""
+        SELECT PromptString FROM PromptStrings
+        WHERE PromptName IN ({','.join(['%s'] * len(prompt_names))})
+        """ + order_clause
+
+        params = tuple(prompt_names) + tuple(prompt_names)  # prompt_names repeated for both IN and ORDER BY
+        self.cursor.execute(query, params)
+        results = self.cursor.fetchall()
+        return [result[0] for result in results] if results else []
+
+
+    # za odabir za selectbox i za funkcije unosa i editovanja - osnovna funkcija
+    def get_records(self, query, params=None):
+        try:
+            if self.conn is None or not self.conn.is_connected():
+                self.__enter__()
+            self.cursor.execute(query, params)
+            records = self.cursor.fetchall()
+            return records
+        except Error as e:
+            
+            return []
+        
+    # opsta funkcija za prikaz polja za selectbox - koristi get_recoirds za pripremu
+    def get_records_from_column(self, table, column):
+        """
+        Fetch records from a specified column in a specified table.
+        """
+        query = f"SELECT DISTINCT {column} FROM {table}"
+        records = self.get_records(query)
+        return [record[0] for record in records] if records else []
+    
+    # !!!! osnovni metod za pretragu u ostalim .py    
+    def get_prompts_by_names(self, variable_names, prompt_names):
+        prompt_strings = self.query_sql_prompt_strings(prompt_names)
+        prompt_variables = dict(zip(variable_names, prompt_strings))
+        return prompt_variables
+
+    # za prikaz cele tabele kao info prilikom unosa i editovanja koristi kasnije df
+    def get_all_records_from_table(self, table_name):
+        """
+        Fetch all records and all columns for a given table.
+        :param table_name: The name of the table from which to fetch records.
+        :return: A pandas DataFrame with all records and columns from the specified table.
+        """
+        query = f"SELECT * FROM {table_name}"
+        try:
+            self.cursor.execute(query)
+            records = self.cursor.fetchall()
+            columns = [desc[0] for desc in self.cursor.description]
+            return records, columns
+        except Exception as e:
+            print(f"Failed to fetch records: {e}")
+            return [],[]  # Return an empty DataFrame in case of an error
+    
+    # prikazuje tabelu promptstrings za dati username
+    def get_prompts_for_username(self, username):
+        """
+        Fetch all prompt texts and matching variable names for a given username.
+        :param username: The username (or partial username) for which to fetch prompt texts and variable names.
+        :return: A pandas DataFrame with the prompt texts and matching variable names.
+        """
+        query = """
+        SELECT ps.PromptName, ps.PromptString, pv.VariableName, pf.Filename, pf.FilePath,u.Username 
+        FROM PromptStrings ps
+        JOIN PromptVariables pv ON ps.VariableID = pv.VariableID
+        JOIN PythonFiles pf ON ps.VariableFileID = pf.FileID
+        JOIN Users u ON ps.UserID = u.UserID
+        WHERE u.Username LIKE %s
+        """
+        params = (f"%{username}%",)
+        records = self.get_records(query, params)
+        return records
+        
+    # za unos u pomocne tabele Users, PythonFiles, PromptVariables
+    def add_record(self, table, **fields):
+        columns = ', '.join(fields.keys())
+        placeholders = ', '.join(['%s'] * len(fields))
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+        try:
+            self.cursor.execute(query, tuple(fields.values()))
+            self.conn.commit()
+            return self.cursor.lastrowid
+        except Error as e:
+            self.conn.rollback()
+            print(f"Error in add_record: {e}")
+            return None
+            
+    # za unos u tabelu promptstrings
+    def add_new_record(self, username, filename, variablename, promptstring, promptname, comment):
+        """
+        Adds a new record to the database, handling the relationships between users, files, variables, and prompts.
+        """
+        try:
+            # Fetch UserID based on username
+            self.cursor.execute("SELECT UserID FROM Users WHERE Username = %s", (username,))
+            user_result = self.cursor.fetchone()
+            user_id = user_result[0] if user_result else None
+
+            # Fetch VariableID based on variablename
+            self.cursor.execute("SELECT VariableID FROM PromptVariables WHERE VariableName = %s", (variablename,))
+            variable_result = self.cursor.fetchone()
+            variable_id = variable_result[0] if variable_result else None
+
+            # Fetch FileID based on filename
+            self.cursor.execute("SELECT FileID FROM PythonFiles WHERE Filename = %s", (filename,))
+            file_result = self.cursor.fetchone()
+            file_id = file_result[0] if file_result else None
+
+            # Ensure all IDs are found
+            if not all([user_id, variable_id, file_id]):
+                return "Error: Missing UserID, VariableID, or VariableFileID."
+
+            # Correctly include FileID in the insertion command
+            self.cursor.execute(
+                "INSERT INTO PromptStrings (PromptString, PromptName, Comment, UserID, VariableID, VariableFileID) VALUES (%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE Comment=VALUES(Comment), UserID=VALUES(UserID), VariableID=VALUES(VariableID), VariableFileID=VALUES(VariableFileID);",
+                (promptstring, promptname, comment, user_id, variable_id, file_id)
+            )
+
+            self.conn.commit()
+            return "Record added successfully."
+        except Exception as e:
+            self.conn.rollback()
+            return f"Failed to add the record: {e}"
+
+    # za brisanje recorda u promptstrings   
+    def delete_prompt_by_name(self, promptname):
+        """
+        Delete a prompt record from PromptStrings by promptname.
+        This method also handles deletions or updates in related tables if necessary.
+        """
+        # Optional: Handle related data in other tables before deleting the prompt.
+        # This could involve setting foreign keys to NULL or cascading deletions, depending on your schema.
+        
+        # Delete the prompt from PromptStrings
+        delete_query = "DELETE FROM PromptStrings WHERE PromptName = %s;"
+        try:
+            if self.conn is None or not self.conn.is_connected():
+                self.__enter__()
+            self.cursor.execute(delete_query, (promptname))
+            self.conn.commit()  # Commit the transaction to finalize the deletion
+            return f"Prompt '{promptname}' deleted successfully."
+        except Error as e:
+            self.conn.rollback()  # Rollback in case of error
+            return f"Error deleting prompt '{promptname}': {e}"
+    
+    # za update u promptstrings
+    def update_prompt_record(self, promptname, new_promptstring, new_comment):
+        """
+        Updates the PromptString and Comment fields of an existing prompt record identified by PromptName.
+    
+        :param promptname: The name of the prompt to update.
+        :param new_promptstring: The new value for the PromptString field.
+        :param new_comment: The new value for the Comment field.
+        """
+        try:
+            if self.conn is None or not self.conn.is_connected():
+                self.__enter__()
+        
+            # Prepare the SQL update statement
+            sql_update_query = """
+            UPDATE PromptStrings 
+            SET PromptString = %s, Comment = %s 
+            WHERE PromptName = %s
+            """
+        
+            # Execute the update query with the new values and promptname
+            self.cursor.execute(sql_update_query, (new_promptstring, new_comment, promptname))
+            self.conn.commit()  # Commit the changes
+            return "Prompt record updated successfully."
+        
+        except Error as e:
+            self.conn.rollback()  # Rollback the transaction in case of error
+            return f"Error occurred while updating the prompt record: {e}"
+
+    # za pretragu promptstrings
+    def search_for_string_in_prompt_text(self, search_string):
+        """
+        Lists all prompt_name and prompt_text where a specific string is part of the prompt_text.
+
+        Parameters:
+        - search_string: The string to search for within prompt_text.
+
+        Returns:
+        - A list of dictionaries, each containing 'prompt_name' and 'prompt_text' for records matching the search criteria.
+        """
+        self.cursor.execute('''
+        SELECT PromptName, PromptString
+        FROM PromptStrings
+        WHERE PromptString LIKE %s
+        ''', ('%' + search_string + '%',))
+        results = self.cursor.fetchall()
+    
+        # Convert the results into a list of dictionaries for easier use
+        records = [{'PromptName': row[0], 'PromptString': row[1]} for row in results]
+        return records
+
+    # za pretragu promptstrings po imenu prompta
+    def get_prompt_details_by_name(self, promptname):
+        """
+        Fetches the details of a prompt record identified by PromptName.
+    
+        :param promptname: The name of the prompt to fetch details for.
+        :return: A dictionary with the details of the prompt record, or None if not found.
+        """
+        query = """
+        SELECT PromptName, PromptString, Comment
+        FROM PromptStrings
+        WHERE PromptName = %s
+        """
+        try:
+            self.cursor.execute(query, (promptname,))
+            result = self.cursor.fetchone()
+            if result:
+                return {"PromptString": result[0], "Comment": result[1]}
+            else:
+                return None
+        except Error as e:
+            print(f"Error occurred: {e}")
+            return None
+        
+    # za user i variables i gde god ima samo jedan    
+    def update_all_record(self, original_value, new_value, table, column):
+        """
+        Updates a specific record identified by the original value in a given table and column.
+    
+        :param original_value: The current value to identify the record to update.
+        :param new_value: The new value to set for the specified column.
+        :param table: The table to update.
+        :param column: The column to update.
+        """
+        try:
+            # Safety check: Validate table and column names
+            valid_tables = ['Users', 'PromptVariables', 'PythonFiles']
+            valid_columns = ['Username', 'VariableName', 'Filename', 'FilePath']
+        
+            if table not in valid_tables or column not in valid_columns:
+                return "Invalid table or column name."
+        
+            # Dynamic SQL update statement construction
+            sql_update_query = f"""
+            UPDATE {table}
+            SET {column} = %s
+            WHERE {column} = %s
+            """
+    
+            # Execute the update query with the new and original values
+            self.cursor.execute(sql_update_query, (new_value, original_value))
+            self.conn.commit()  # Commit the changes
+            return f"Record updated successfully in {table}."
+    
+        except Exception as e:
+            self.conn.rollback()  # Rollback the transaction in case of error
+            return f"Error occurred while updating the record: {e}"
+
+    # za users i variables i gde god ima samo jedan
+    def get_prompt_details_for_all(self, value, table, column):
+        """
+        Fetches the details of a record identified by a value in a specific table and column.
+
+        :param value: The value to fetch details for.
+        :param table: The table to fetch from.
+        :param column: The column to match the value against.
+        :return: A dictionary with the details of the record, or None if not found.
+        """
+        # Safety check: Validate table and column names
+        valid_tables = ['Users', 'PromptVariables', 'PythonFiles']
+        valid_columns = ['Username', 'VariableName', 'Filename', 'FilePath']  # Adjust based on your schema
+    
+        if table not in valid_tables or column not in valid_columns:
+            print("Invalid table or column name.")
+            return None
+
+        # Dynamic SQL query construction
+        query = f"SELECT * FROM {table} WHERE {column} = %s"
+    
+        try:
+            self.cursor.execute(query, (value,))
+            result = self.cursor.fetchone()
+            if result:
+            
+                columns = [desc[0] for desc in self.cursor.description]
+                return dict(zip(columns, result))
+            else:
+                return None
+        except Error as e:
+            print(f"Error occurred: {e}")
+            return None
+        
+    
+    # pomocna funkcija za zatvaranje konekcije
+    def close(self):
+        """
+        Closes the database connection and cursor, if they exist.
+        """
+        if self.cursor is not None:
+            self.cursor.close()
+            self.cursor = None  # Reset cursor to None to avoid re-closing a closed cursor
+        if self.conn is not None and self.conn.is_connected():
+            self.conn.close()
+            self.conn = None  # Reset connection to None for safety
+
+
+    # !!!! legacy stari poziv za ostale .py
+    def query_sql_record(self, prompt_name):
+        """
+        Fetches the existing prompt text and comment for a given prompt name.
+
+        Parameters:
+        - prompt_name: The name of the prompt.
+
+        Returns:
+        - A dictionary with 'prompt_text' and 'comment' if record exists, else None.
+        """
+        self.cursor.execute('''
+        SELECT prompt_text, comment FROM prompts
+        WHERE prompt_name = %s
+        ''', (prompt_name,))
+        result = self.cursor.fetchone()
+        if result:
+            return {'prompt_text': result[0], 'comment': result[1]}
+        else:
+            return None
+
+    # privremeno za PythonFiles
+
+    def get_file_path_by_name(self, filename):
+        """
+        Fetches the FilePath for a given Filename from the PythonFiles table.
+
+        :param filename: The name of the file to fetch the path for.
+        :return: The FilePath of the file if found, otherwise None.
+        """
+        query = "SELECT FilePath FROM PythonFiles WHERE Filename = %s"
+        try:
+            self.cursor.execute(query, (filename,))
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            return None
+
+    # privremeno za PythonFiles
+    def update_filename_and_path(self, original_filename, new_filename, new_file_path):
+        """
+        Updates the Filename and FilePath in the PythonFiles table for a given original Filename.
+
+        :param original_filename: The original name of the file to update.
+        :param new_filename: The new name for the file.
+        :param new_file_path: The new path for the file.
+        :return: A success message or an error message.
+        """
+        query = "UPDATE PythonFiles SET Filename = %s, FilePath = %s WHERE Filename = %s"
+        try:
+            self.cursor.execute(query, (new_filename, new_file_path, original_filename))
+            self.conn.commit()
+            return "File record updated successfully."
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Error occurred: {e}")
+            return None

@@ -11,33 +11,35 @@ from azure.storage.blob import BlobServiceClient
 from os import environ
 import openai
 from myfunc.retrievers import PromptDatabase
+from json import loads as json_loads
+
 
 if "init_promots" not in st.session_state:
     st.session_state["init_promots"] = True
 
-
+# SPECIJALAN SLUCAJ! Zbog broja promptova, bolje je da se ucitaju svi promptovi odjednom - za diskusiju
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(
-            ["result_ps0", "result_pu0", "result_ps1", "result_pu1",
-            "result_ps2", "result_pu2", "result_ps3", "result_pu3",
-            "result_ps4", "result_pu4", "result_vision", "result_transkript"],
+            ["system_prompt_0", "user_prompt_0", "system_prompt_1", "user_prompt_1",
+            "system_prompt_2", "user_prompt_2", "system_prompt_3", "user_prompt_3",
+            "system_prompt_4", "user_prompt_4", "prompt_vision", "prompt_transcript"],
             ["DUGACKI_IZ_KRATKIH_PS0", "DUGACKI_IZ_KRATKIH_PU0", "DUGACKI_IZ_KRATKIH_PS1", "DUGACKI_IZ_KRATKIH_PU1",
             "DUGACKI_IZ_KRATKIH_PS2", "DUGACKI_IZ_KRATKIH_PU2", "DUGACKI_IZ_KRATKIH_PS3", "DUGACKI_IZ_KRATKIH_PU3",
             "DUGACKI_IZ_KRATKIH_PS4", "DUGACKI_IZ_KRATKIH_PU4", "VISION", "MEET_TRANS"]
         )
 
-        st.session_state.result_ps0 = prompt_map.get("result_ps0", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_pu0 = prompt_map.get("result_pu0", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_ps1 = prompt_map.get("result_ps1", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_pu1 = prompt_map.get("result_pu1", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_ps2 = prompt_map.get("result_ps2", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_pu2 = prompt_map.get("result_pu2", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_ps3 = prompt_map.get("result_ps3", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_pu3 = prompt_map.get("result_pu3", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_ps4 = prompt_map.get("result_ps4", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_pu4 = prompt_map.get("result_pu4", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_vision = prompt_map.get("result_vision", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.result_transkript = prompt_map.get("result_transkript", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.system_prompt_0 = prompt_map.get("system_prompt_0", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.user_prompt_0 = prompt_map.get("user_prompt_0", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.system_prompt_1 = prompt_map.get("system_prompt_1", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.user_prompt_1 = prompt_map.get("user_prompt_1", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.system_prompt_2 = prompt_map.get("system_prompt_2", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.user_prompt_2 = prompt_map.get("user_prompt_2", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.system_prompt_3 = prompt_map.get("system_prompt_3", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.user_prompt_3 = prompt_map.get("user_prompt_3", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.system_prompt_4 = prompt_map.get("system_prompt_4", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.user_prompt_4 = prompt_map.get("user_prompt_4", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.prompt_vision = prompt_map.get("prompt_vision", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.prompt_transcript = prompt_map.get("prompt_transcript", "You are a helpful assistant that always responds in Serbian.")
 
 
 
@@ -60,6 +62,13 @@ def read_aad_username():
             f"could not directly read username from azure active directory: {return_value}.")  # this is an error
     
     return username
+
+
+def load_prompts_from_azure(bsc, inner_dict, key):
+    blob_client = bsc.get_container_client("positive-user").get_blob_client("positive_prompts.json")
+    prompts = json_loads(blob_client.download_blob().readall().decode('utf-8'))
+    
+    return prompts["POSITIVE"][inner_dict][key]
 
 
 def load_data_from_azure(bsc, filename, username=None, is_from_altass=False):
@@ -178,7 +187,7 @@ def transkript():
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
 
-                        system_prompt=st.session_state.result_transkript
+                        system_prompt=st.session_state.prompt_transcript
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
                                                 
@@ -219,7 +228,7 @@ def read_local_image():
         # st.session_state["question"] = ""
 
         with placeholder.form(key="my_image", clear_on_submit=False):
-            default_text = st.session_state.result_vision
+            default_text = st.session_state.prompt_vision
             upit = st.text_area("Unesite uputstvo ", default_text)  
             submit_button = st.form_submit_button(label="Submit")
             
@@ -294,7 +303,7 @@ def read_url_image():
         placeholder = st.empty()    
     #if submit_btt:        
         with placeholder.form(key="my_image_url", clear_on_submit=False):
-            default_text = st.session_state.result_vision
+            default_text = st.session_state.prompt_vision
         
             upit = st.text_area("Unesite uputstvo ", default_text)
             submit_button = st.form_submit_button(label="Submit")
@@ -399,16 +408,16 @@ def dugacki_iz_kratkih(uploaded_text, entered_prompt):
 
     if uploaded_text is not None:
         all_prompts = {
-                 "p_system_0" : st.session_state.result_ps0,
-                 "p_user_0" : st.session_state.result_pu0,
-                "p_system_1": st.session_state.result_ps1,
-                "p_user_1": st.session_state.result_pu1,
-                "p_system_2": st.session_state.result_ps2,
-                "p_user_2": st.session_state.result_pu2,
-                "p_system_3": st.session_state.result_ps3,
-                "p_user_3": st.session_state.result_pu3,
-                "p_system_4": st.session_state.result_ps4,
-                "p_user_4": st.session_state.result_pu4
+                 "p_system_0" : st.session_state.system_prompt_0,
+                 "p_user_0" : st.session_state.user_prompt_0,
+                "p_system_1": st.session_state.system_prompt_1,
+                "p_user_1": st.session_state.user_prompt_1,
+                "p_system_2": st.session_state.system_prompt_2,
+                "p_user_2": st.session_state.user_prompt_2,
+                "p_system_3": st.session_state.system_prompt_3,
+                "p_user_3": st.session_state.user_prompt_3,
+                "p_system_4": st.session_state.system_prompt_4,
+                "p_user_4": st.session_state.user_prompt_4
             }
 
         
