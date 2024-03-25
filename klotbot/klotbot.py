@@ -1,12 +1,11 @@
 import streamlit as st
 import os
 from openai import OpenAI
-from sql_prompt import PromptDatabase
+from myfunc.prompts import PromptDatabase
 from myfunc.retrievers import ConversationDatabase, HybridQueryProcessor
 from myfunc.asistenti import read_aad_username
 from myfunc.mojafunkcija import (
     positive_login,
-    show_logo
 )
 import uuid
 import mysql
@@ -17,9 +16,9 @@ processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY"), namespac
 if "init_prompt" not in st.session_state:
     st.session_state.init_prompt = 42
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["result2", "result3"],["CHAT_TOOLS_PROMPT", "ALT_ASISTENT"])
-        st.session_state.result2 = prompt_map.get("result2", "You are helpful assistant")
-        st.session_state.result3 = prompt_map.get("result3", "You are helpful assistant")
+        prompt_map = db.get_prompts_by_names(["user_prompt", "system_prompt"],[os.getenv("CHAT_TOOLS_PROMPT"), os.getenv("ALT_ASISTENT")])
+        st.session_state.user_prompt = prompt_map.get("user_prompt", "You are helpful assistant")
+        st.session_state.system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
     
 def main():
     if "username" not in st.session_state:
@@ -36,7 +35,7 @@ def main():
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = "gpt-4-turbo-preview"
     if "system_prompt" not in st.session_state:
-        st.session_state.system_prompt = st.session_state.result3
+        st.session_state.system_prompt = st.session_state.system_prompt
     if "azure_filename" not in st.session_state:
         st.session_state.azure_filename = "altass.csv"
     if "messages" not in st.session_state:
@@ -64,7 +63,7 @@ def main():
         st.session_state.thread_id = thread_name
         st.session_state.messages[thread_name] = []
     if "system_prompt" not in st.session_state:
-        st.session_state.system_prompt = st.session_state.result3
+        st.session_state.system_prompt = st.session_state.system_prompt
         st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.system_prompt})
     
     avatar_ai="bot.png" 
@@ -100,7 +99,7 @@ def main():
     
         # Original processing to generate complete_prompt
         context, scores = processor.process_query_results(prompt)
-        complete_prompt = st.session_state.result2.format(prompt=prompt, context=context)
+        complete_prompt = st.session_state.user_prompt.format(prompt=prompt, context=context)
     
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
