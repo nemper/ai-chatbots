@@ -11,7 +11,7 @@ from azure.storage.blob import BlobServiceClient
 from os import environ
 import openai
 from myfunc.retrievers import PromptDatabase
-
+# dunja
 if "init_promots" not in st.session_state:
     st.session_state["init_promots"] = True
 
