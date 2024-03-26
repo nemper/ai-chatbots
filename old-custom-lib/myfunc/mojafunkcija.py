@@ -1,23 +1,26 @@
-import streamlit as st
-import yaml
-from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
-from langchain.callbacks.base import BaseCallbackHandler
-from io import StringIO
-import re
+import io
+import markdown
 import os
+import pandas as pd
+import pdfkit
+import re
+import streamlit as st
+import streamlit_authenticator as stauth
+import tiktoken
+import yaml
+
 from datetime import datetime
-from smtplib import SMTP
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from docx import Document
-import io
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from html2docx import html2docx
-import markdown
-import pdfkit
-import tiktoken
-import pandas as pd
+from io import StringIO
+from smtplib import SMTP
+from yaml.loader import SafeLoader
+
+from langchain.callbacks.base import BaseCallbackHandler
+
 
 def show_logo():
     """

@@ -1,6 +1,8 @@
 import mysql.connector
 import os
+
 from mysql.connector import Error
+
 
 class PromptDatabase:
     """

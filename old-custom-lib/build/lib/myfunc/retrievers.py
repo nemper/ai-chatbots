@@ -1,18 +1,32 @@
-import os
-from pinecone import Pinecone
-from langchain_community.vectorstores import Pinecone as LangPine
-from pinecone_text.sparse import BM25Encoder
-import openai
-from langchain_community.agent_toolkits import create_sql_agent
-from langchain_community.agent_toolkits import SQLDatabaseToolkit
-from langchain.sql_database import SQLDatabase
-from langchain.agents.agent_types import AgentType
-from langchain_openai.chat_models import ChatOpenAI
-from langchain.chains.query_constructor.base import AttributeInfo
-from langchain.retrievers.self_query.base import SelfQueryRetriever
-from langchain_openai import OpenAIEmbeddings
-import mysql.connector
+import io
 import json
+import matplotlib.pyplot as plt
+import mysql.connector
+import networkx as nx
+import openai
+import os
+import PyPDF2
+import re
+import streamlit as st
+import sys
+import time
+import unidecode
+
+from pinecone import Pinecone
+from pinecone_text.sparse import BM25Encoder
+
+from langchain.agents.agent_types import AgentType
+from langchain.chains.query_constructor.base import AttributeInfo
+from langchain.indexes import GraphIndexCreator
+from langchain.retrievers.self_query.base import SelfQueryRetriever
+from langchain.sql_database import SQLDatabase
+from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseToolkit
+from langchain_community.document_loaders import UnstructuredFileLoader
+from langchain_community.vectorstores import Pinecone as LangPine
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai.chat_models import ChatOpenAI
+
+from myfunc.mojafunkcija import pinecone_stats
 
 
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-positive', namespace=None, openai_api_key=None, host=None):
@@ -1063,24 +1077,6 @@ class TextProcessing:
 
         return result.choices[0].message.content
 
-
-import streamlit as st
-from pinecone import Pinecone
-import sys
-import os
-import time
-from myfunc.mojafunkcija import pinecone_stats
-from langchain.indexes import GraphIndexCreator
-from langchain_openai import ChatOpenAI
-import networkx as nx
-import matplotlib.pyplot as plt
-# from langchain.indexes.graph import NetworkxEntityGraph
-# from langchain.chains import GraphQAChain
-import PyPDF2
-import io
-import re
-from langchain_community.document_loaders import UnstructuredFileLoader
-import unidecode
 
 class PineconeUtility:
     def __init__(self):

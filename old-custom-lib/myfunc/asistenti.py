@@ -1,21 +1,23 @@
-import streamlit as st
-from io import StringIO, BytesIO
+import base64
+import openai
+import os
 import pandas as pd
 import requests
-import os
-import base64
-from PIL import Image
-from streamlit_javascript import st_javascript
+import streamlit as st
+
 from ast import literal_eval
 from azure.storage.blob import BlobServiceClient
-from os import environ
-import openai
-from myfunc.retrievers import PromptDatabase
+from io import BytesIO, StringIO
 from json import loads as json_loads
+from os import environ
+from PIL import Image
+from streamlit_javascript import st_javascript
+
+from myfunc.retrievers import PromptDatabase
 
 
-if "init_promots" not in st.session_state:
-    st.session_state["init_promots"] = True
+if "init_prompts" not in st.session_state:
+    st.session_state["init_prompts"] = 42
 
 # SPECIJALAN SLUCAJ! Zbog broja promptova, bolje je da se ucitaju svi promptovi odjednom - za diskusiju
     with PromptDatabase() as db:
@@ -27,7 +29,6 @@ if "init_promots" not in st.session_state:
             "DUGACKI_IZ_KRATKIH_PS2", "DUGACKI_IZ_KRATKIH_PU2", "DUGACKI_IZ_KRATKIH_PS3", "DUGACKI_IZ_KRATKIH_PU3",
             "DUGACKI_IZ_KRATKIH_PS4", "DUGACKI_IZ_KRATKIH_PU4", "VISION", "MEET_TRANS"]
         )
-
         st.session_state.system_prompt_0 = prompt_map.get("system_prompt_0", "You are a helpful assistant that always responds in Serbian.")
         st.session_state.user_prompt_0 = prompt_map.get("user_prompt_0", "You are a helpful assistant that always responds in Serbian.")
         st.session_state.system_prompt_1 = prompt_map.get("system_prompt_1", "You are a helpful assistant that always responds in Serbian.")
@@ -40,7 +41,6 @@ if "init_promots" not in st.session_state:
         st.session_state.user_prompt_4 = prompt_map.get("user_prompt_4", "You are a helpful assistant that always responds in Serbian.")
         st.session_state.prompt_vision = prompt_map.get("prompt_vision", "You are a helpful assistant that always responds in Serbian.")
         st.session_state.prompt_transcript = prompt_map.get("prompt_transcript", "You are a helpful assistant that always responds in Serbian.")
-
 
 
 def read_aad_username():
