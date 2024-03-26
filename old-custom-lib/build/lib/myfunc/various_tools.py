@@ -4,22 +4,26 @@ from tqdm.auto import tqdm
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
 import html
-from urllib.parse import urljoin
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 import requests
 import openai
 import sys
-from myfunc.mojafunkcija import st_style
 import datetime
 from langchain.text_splitter import CharacterTextSplitter
 import os
 from myfunc.mojafunkcija import (
-    pinecone_stats,
-)
+    pinecone_stats, st_style
+    )
 from myfunc.retrievers import (
     PineconeUtility, TextProcessing, HybridQueryProcessor, 
-    SQLSearchTool, SelfQueryPositive)
+    SQLSearchTool, SelfQueryPositive
+    )
+from myfunc.various_tools import (
+    MultiQueryDocumentRetriever, CohereReranker, 
+    PineconeRetriever, ContextRetriever, LongContextHandler, 
+    hyde_rag, get_structured_decision_from_model, web_search_process
+    )
 from langchain_community.retrievers import PineconeHybridSearchRetriever
 from pinecone_text.sparse import BM25Encoder
 from time import sleep
@@ -32,18 +36,6 @@ from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import ChatOpenAI
 from langchain.indexes.graph import NetworkxEntityGraph
 from langchain.chains import GraphQAChain
-from myfunc.query_transf import (
-        MultiQueryDocumentRetriever, 
-        CohereReranker, 
-        PineconeRetriever, 
-        ContextRetriever, 
-        LongContextHandler,
-        hyde_rag,
-        get_structured_decision_from_model,
-        web_search_process,
-
-)
-import re
 import ast
 
 st_style()
@@ -159,7 +151,7 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
     f"## Teme sastanka\n\n" + "\n".join([f"{topic}" for topic in topics]) + "\n\n"
     + "\n\n".join(summaries) 
     + f"\n\n## Zaključak\n\n{conclusion}"
-)
+    )
     return full_text
 
 
