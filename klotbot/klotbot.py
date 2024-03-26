@@ -1,14 +1,14 @@
-import streamlit as st
+import mysql
 import os
+import streamlit as st
+import uuid
+
 from openai import OpenAI
+
+from myfunc.asistenti import read_aad_username
+from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import PromptDatabase
 from myfunc.retrievers import ConversationDatabase, HybridQueryProcessor
-from myfunc.asistenti import read_aad_username
-from myfunc.mojafunkcija import (
-    positive_login,
-)
-import uuid
-import mysql
 
 client=OpenAI()
 processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY"), namespace='positive') # namespace moze i iz env
