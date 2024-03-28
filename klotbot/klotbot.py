@@ -7,8 +7,8 @@ from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
 from myfunc.mojafunkcija import positive_login
-from myfunc.prompts import PromptDatabase
-from myfunc.retrievers import ConversationDatabase, HybridQueryProcessor
+from myfunc.prompts import ConversationDatabase, PromptDatabase
+from myfunc.retrievers import HybridQueryProcessor
 
 client=OpenAI()
 processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY"), namespace='positive') # namespace moze i iz env
