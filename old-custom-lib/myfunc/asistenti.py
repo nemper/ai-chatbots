@@ -13,32 +13,14 @@ from os import environ
 from PIL import Image
 from streamlit_javascript import st_javascript
 
-from myfunc.retrievers import PromptDatabase
+from myfunc.prompts import PromptDatabase
 
 
 if "init_prompts" not in st.session_state:
     st.session_state["init_prompts"] = 42
 
-# SPECIJALAN SLUCAJ! Zbog broja promptova, bolje je da se ucitaju svi promptovi odjednom - za diskusiju
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(
-            ["system_prompt_0", "user_prompt_0", "system_prompt_1", "user_prompt_1",
-            "system_prompt_2", "user_prompt_2", "system_prompt_3", "user_prompt_3",
-            "system_prompt_4", "user_prompt_4", "prompt_vision", "prompt_transcript"],
-            ["DUGACKI_IZ_KRATKIH_PS0", "DUGACKI_IZ_KRATKIH_PU0", "DUGACKI_IZ_KRATKIH_PS1", "DUGACKI_IZ_KRATKIH_PU1",
-            "DUGACKI_IZ_KRATKIH_PS2", "DUGACKI_IZ_KRATKIH_PU2", "DUGACKI_IZ_KRATKIH_PS3", "DUGACKI_IZ_KRATKIH_PU3",
-            "DUGACKI_IZ_KRATKIH_PS4", "DUGACKI_IZ_KRATKIH_PU4", "VISION", "MEET_TRANS"]
-        )
-        st.session_state.system_prompt_0 = prompt_map.get("system_prompt_0", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.user_prompt_0 = prompt_map.get("user_prompt_0", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.system_prompt_1 = prompt_map.get("system_prompt_1", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.user_prompt_1 = prompt_map.get("user_prompt_1", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.system_prompt_2 = prompt_map.get("system_prompt_2", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.user_prompt_2 = prompt_map.get("user_prompt_2", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.system_prompt_3 = prompt_map.get("system_prompt_3", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.user_prompt_3 = prompt_map.get("user_prompt_3", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.system_prompt_4 = prompt_map.get("system_prompt_4", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.user_prompt_4 = prompt_map.get("user_prompt_4", "You are a helpful assistant that always responds in Serbian.")
+        prompt_map = db.get_prompts_by_names(["prompt_vision", "prompt_transcript"], [os.getenv("VISION"), os.getenv("MEET_TRANS")])
         st.session_state.prompt_vision = prompt_map.get("prompt_vision", "You are a helpful assistant that always responds in Serbian.")
         st.session_state.prompt_transcript = prompt_map.get("prompt_transcript", "You are a helpful assistant that always responds in Serbian.")
 
@@ -395,72 +377,3 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
         corrected_transcript += " " + response.choices[0].message.content.strip()
 
     return corrected_transcript
-
-
-def dugacki_iz_kratkih(uploaded_text, entered_prompt):
-    """ Generate a summary of a long text. 
-        Parameters: 
-            uploaded_text (str): The long text.
-            entered_prompt (str): The prompt.
-        """    
-   
-    uploaded_text = uploaded_text[0].page_content
-
-    if uploaded_text is not None:
-        all_prompts = {
-                 "p_system_0" : st.session_state.system_prompt_0,
-                 "p_user_0" : st.session_state.user_prompt_0,
-                "p_system_1": st.session_state.system_prompt_1,
-                "p_user_1": st.session_state.user_prompt_1,
-                "p_system_2": st.session_state.system_prompt_2,
-                "p_user_2": st.session_state.user_prompt_2,
-                "p_system_3": st.session_state.system_prompt_3,
-                "p_user_3": st.session_state.user_prompt_3,
-                "p_system_4": st.session_state.system_prompt_4,
-                "p_user_4": st.session_state.user_prompt_4
-            }
-
-        
-
-        def get_response(p_system, p_user_ext):
-            client = openai
-            
-            response = client.chat.completions.create(
-                model="gpt-4-turbo-preview",
-                temperature=0,
-                messages=[
-                    {"role": "system", "content": all_prompts[p_system]},
-                    {"role": "user", "content": uploaded_text},
-                    {"role": "user", "content": p_user_ext}
-                ]
-            )
-            return response.choices[0].message.content.strip()
-
-
-        response = get_response("p_system_1", all_prompts["p_user_1"])
-        
-        # ovaj double check je veoma moguce bespotreban, no sto reskirati
-        response = get_response("p_system_2", all_prompts["p_user_2"]).split('\n')
-        topics = [item for item in response if item != ""]  # just in case - triple check
-
-        # Prvi deo teksta sa naslovom, datumom, temama i ucesnicima
-        formatted_pocetak_summary = f"{get_response('p_system_0', all_prompts['p_user_0'])}"
-        
-        # Start the final summary with the formatted 'pocetak_summary'
-        final_summary = formatted_pocetak_summary + "\n\n"
-        i = 0
-        imax = len(topics)
-
-        for topic in topics:
-            summary = get_response("p_system_3", f"{all_prompts['p_user_3'].format(topic=topic)}")
-            st.info(f"Summarizing topic: {topic} - {i}/{imax}")
-            final_summary += f"{summary}\n\n"
-            i += 1
-
-        final_summary += f"{get_response('p_system_4', all_prompts['p_user_4'])}"
-        
-        return final_summary
-    
-    else:
-        return "Please upload a text file."
-

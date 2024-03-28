@@ -1,4 +1,3 @@
-import ast
 import cohere
 import datetime
 import html
@@ -15,19 +14,15 @@ import sys
 from bs4 import BeautifulSoup
 from io import StringIO
 from openai import OpenAI
-from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 from time import sleep
 from tqdm.auto import tqdm
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
-from langchain.chains import GraphQAChain
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.indexes.graph import NetworkxEntityGraph
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.prompts import PromptTemplate
-from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain_community.document_transformers import LongContextReorder
 from langchain_community.retrievers import PineconeHybridSearchRetriever
@@ -37,7 +32,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from myfunc.mojafunkcija import pinecone_stats, st_style
 from myfunc.prompts import PromptDatabase
-from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, SQLSearchTool, TextProcessing
+from myfunc.retrievers import PineconeUtility, TextProcessing
 
 
 with PromptDatabase() as db:
@@ -655,139 +650,6 @@ def main_scraper(chunk_size, chunk_overlap):
         st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
 
 
-
-
-def rag_tool_answer(prompt, phglob):
-    context = " "
-    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
-
-    if  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="zapisnici")
-        context, scores = processor.process_query_results(prompt)
-        st.info("Score po chunku:")
-        st.write(scores)
-        
-    # SelfQuery Tool Configuration
-    elif  st.session_state.rag_tool == "SelfQuery":
-        # Example configuration for SelfQuery
-        uvod = st.session_state.self_query
-        prompt = uvod + prompt
-        context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
-        
-    # SQL Tool Configuration
-    elif st.session_state.rag_tool == "SQL":
-            processor = SQLSearchTool()
-            try:
-                context = processor.search(prompt)
-            except Exception as e :
-                st.error(f"Ne mogu da ispunim zahtev {e}")
-    elif st.session_state.rag_tool == "WebSearchProcess":
-         context = web_search_process(prompt)
-         
-    # Parent Doc Tool Configuration
-    elif  st.session_state.rag_tool == "ParentDoc":
-        # Define stores
-        h_retriever = HybridQueryProcessor(namespace="pos-50", top_k=1)
-        h_docstore = HybridQueryProcessor(namespace="pos-2650")
-
-        # Perform a basic search hybrid
-        basic_search_result, source_result, chunk = h_retriever.process_query_parent_results(prompt)
-        # Perform a search filtered by source (from basic search)
-        search_by_source_result = h_docstore.search_by_source(prompt, source_result)
-        st.write(f"Osnovni rezultat koji sluzi da nadje prvi: {basic_search_result}")
-        st.write(f"Krajnji rezultat koji se vraca: {search_by_source_result}")
-        return search_by_source_result
-
-    # Parent Chunks Tool Configuration
-    elif  st.session_state.rag_tool == "ParentChunks":
-        # Define stores
-        h_retriever = HybridQueryProcessor(namespace="zapisnici", top_k=1)
-        # Perform a basic search hybrid
-        basic_search_result, source_result, chunk = h_retriever.process_query_parent_results(prompt)
-        # Perform a search filtered by source and a specific chunk range (both from basic search)
-        search_by_chunk_result = h_retriever.search_by_chunk(prompt, source_result, chunk)
-        st.write(f"Osnovni rezultat koji sluzi da nadje prvi: {basic_search_result}")
-        st.write(f"Krajnji rezultat koji se vraca: {search_by_chunk_result}")
-        return search_by_chunk_result
-
-    # Graph Tool Configuration
-    elif  st.session_state.rag_tool == "Graph": 
-        # Read the graph from the file-like object
-        graph = NetworkxEntityGraph.from_gml(st.session_state.graph_file)
-        chain = GraphQAChain.from_llm(ChatOpenAI(model="gpt-4-turbo-preview", temperature=0), graph=graph, verbose=True)
-        rezultat= chain.invoke(prompt)
-        context = rezultat['result']
-
-    # Hyde Tool Configuration
-    elif  st.session_state.rag_tool == "Hyde":
-        # Assuming a processor for Hyde exists
-        context = hyde_rag(prompt)
-
-    # MultiQuery Tool Configuration
-    elif  st.session_state.rag_tool == "MultiQuery":
-        # Initialize the MQDR instance
-        retriever_instance = MultiQueryDocumentRetriever(prompt)
-        # To get documents relevant to the original question
-        context = retriever_instance.get_relevant_documents(prompt)
-        output=retriever_instance.log_messages
-        generated_queries = output[0].split(": ")[1]
-        queries = ast.literal_eval(generated_queries)
-        st.info(f"Dodatna pitanja - MultiQuery Alat:")
-        for query in queries:
-            st.caption(query)
-
-
-    # RAG Fusion Tool Configuration
-    elif  st.session_state.rag_tool == "CohereReranking":
-        # Retrieve documents using Pinecone
-        pinecone_retriever = PineconeRetriever(prompt)
-        docs = pinecone_retriever.get_relevant_documents()
-        documents = [doc.page_content for doc in docs]
-        
-        # Rerank documents using Cohere
-        cohere_reranker = CohereReranker(prompt)
-        context = cohere_reranker.rerank(documents)
-        
-    elif  st.session_state.rag_tool == "ContextualCompression":
-        # Retrieve documents using Pinecone
-        pinecone_retriever = PineconeRetriever(prompt)
-        docs = pinecone_retriever.get_relevant_documents()
-        documents = [doc.page_content for doc in docs]
-       
-        # Retrieve and compressed context
-        context_retriever = ContextRetriever(documents)
-        context = context_retriever.get_compressed_context()
-        
-    elif  st.session_state.rag_tool == "LongContext":
-         # Retrieve documents using Pinecone
-        pinecone_retriever = PineconeRetriever(prompt)
-        docs = pinecone_retriever.get_relevant_documents()
-        documents = [doc.page_content for doc in docs]
-        
-        # Reorder documents for long context handling
-        long_context_handler = LongContextHandler()
-        context = long_context_handler.reorder(documents)
-
-    elif  st.session_state.rag_tool == "Calendly":
-        # Schedule Calendly meeting
-        context = positive_calendly(phglob)
-
-    elif st.session_state.rag_tool == "UploadedDoc":
-        # Read text from the uploaded document
-        try:
-            context = "Text from the document: " + st.session_state.uploaded_doc[0].page_content
-        except:
-            context = "No text found in the document. Please check if the document is in the correct format."
-
-    elif st.session_state.rag_tool == "WebScrap":
-        try:
-            context = "Text from the webpage: " + scrape_webpage_text(st.session_state.url_to_scrap)
-        except:
-            context = "No text found in the webpage. Please check if the URL is correct."
-            
-    return context
-
-
 def scrape_webpage_text(url):
     """
     Fetches the content of a webpage by URL and returns the textual content,
@@ -870,127 +732,6 @@ def upload_data_to_azure(bsc, filename, new_data):
     blob_service_client = bsc
     blob_client = blob_service_client.get_blob_client("positive-user", filename)
     blob_client.upload_blob(csv_data, overwrite=True)
-
-
-
-class MultiQueryDocumentRetriever:
-    """
-    Retrieves relevant documents for complex queries by utilizing multi-query techniques
-    and Pinecone's hybrid search capabilities.
-    
-    Attributes:
-        
-        question (str): Main query for document retrieval.
-        namespace (str): Namespace within Pinecone where documents are stored.
-        model (str): Model used for generating embeddings for the query and documents.
-        temperature (int): Temperature setting for the language model, affecting creativity.
-        host (str): Host URL for the Pinecone service.
-    """
-
-    def __init__(self, question, namespace="zapisnici", model="text-embedding-3-large", host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io", temperature=0):
-        
-        self.question = question
-        self.namespace = namespace
-        self.model = model
-        self.host = host
-        self.temperature = temperature
-        self.log_messages = []
-        self.logger = self._init_logger()
-        self.llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=self.temperature)
-        self.retriever = self._init_retriever()
-
-    def _init_logger(self):
-        """Initializes and configures the logger to store messages in an attribute."""
-        class ListHandler(logging.Handler):
-            def __init__(self, log_messages_list):
-                super().__init__()
-                self.log_messages_list = log_messages_list
-
-            def emit(self, record):
-                log_message = self.format(record)
-                self.log_messages_list.append(log_message)
-
-        log_handler = ListHandler(self.log_messages)
-        log_handler.setLevel(logging.INFO)
-        logger = logging.getLogger("langchain.retrievers.multi_query")
-        logger.setLevel(logging.INFO)
-        logger.addHandler(log_handler)
-        return logger
-
-    def _init_retriever(self):
-        """Initializes the document retriever with Pinecone Hybrid Search."""
-        api_key = os.environ.get("PINECONE_API_KEY_S")
-        pinecone = Pinecone(api_key=api_key, host=self.host)
-        index = pinecone.Index(host=self.host)
-        
-        embeddings = OpenAIEmbeddings(model=self.model)
-        bm25_encoder = BM25Encoder()
-        bm25_encoder.fit(self.question)
-
-        pinecone_retriever = PineconeHybridSearchRetriever(
-            embeddings=embeddings,
-            sparse_encoder=bm25_encoder,
-            index=index,
-            namespace=self.namespace
-        )
-        our_template = """You are an AI language model assistant. Your task is to generate 4 different versions of the given user 
-            question to retrieve relevant documents from a vector  database. 
-            By generating multiple perspectives on the user question, your goal is to help the user overcome some of the limitations 
-            of distance-based similarity search. Provide these alternative questions separated by newlines. 
-            Original question: 
-            {question}
-        """
-        our_prompt = PromptTemplate(input_variables=['question'], template=our_template)
-        return MultiQueryRetriever.from_llm(retriever=pinecone_retriever, llm=self.llm, prompt=our_prompt)
-
-    def get_relevant_documents(self, custom_question=None):
-        """Retrieves documents relevant to the provided or default query."""
-        if custom_question is None:
-            custom_question = self.question
-        
-        result = self.retriever.get_relevant_documents(query=custom_question)
-        
-        return "\n\n".join([doc.page_content for doc in result])
-        
-
-class PineconeRetriever:
-    """Handles document retrieval using Pinecone's hybrid search capabilities.
-    
-    Attributes:
-        query (str): The search query for retrieving documents.
-        namespace (str): The namespace within Pinecone where the documents are stored.
-        model (str): The model used for generating embeddings for the query and documents.
-    """
-    def __init__(self, query, namespace="zapisnici", model="text-embedding-3-large", host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"):
-            self.query = query
-            self.namespace = namespace
-            self.model = model
-            self.host = host  # Ensure the host attribute is correctly set here
-            self.pinecone = self._init_pinecone(host)  # Pass the host to the Pinecone initialization
-            self.index = self.pinecone.Index(host=self.host)  # Use the host attribute here
-            self.embeddings = OpenAIEmbeddings(model=self.model)
-            self.bm25_encoder = BM25Encoder()
-            self.bm25_encoder.fit(self.query)
-            self.retriever = PineconeHybridSearchRetriever(
-                embeddings=self.embeddings,
-                sparse_encoder=self.bm25_encoder,
-                index=self.index,
-                namespace=self.namespace
-            )
-
-    def _init_pinecone(self, host):
-        """Initializes the Pinecone service with the API key and host.
-        
-        Args:
-            host (str): The host URL for the Pinecone service.
-        """
-        api_key = os.environ.get("PINECONE_API_KEY_S")
-        return Pinecone(api_key=api_key, host=host)
-
-
-    def get_relevant_documents(self):
-        """Retrieves documents relevant to the query from Pinecone."""
-        return self.retriever.get_relevant_documents(self.query)
 
 
 class CohereReranker:

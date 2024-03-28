@@ -2,6 +2,7 @@ README.md
 setup.py
 myfunc/__init__.py
 myfunc/asistenti.py
+myfunc/embeddings.py
 myfunc/mojafunkcija.py
 myfunc/prompts.py
 myfunc/retrievers.py
