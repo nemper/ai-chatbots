@@ -13,3 +13,4 @@ slnx.sqlite
 *.JSONL
 *./vs
 .vs
+/myfunc/__pycache__/prompts.cpython-311.pyc
