@@ -16,7 +16,11 @@ from myfunc.various_tools import web_search_process
  
 # First, we create a EventHandler class to define
 # how we want to handle the events in the response stream.
- 
+def display_tool_output(output):
+    # Example function to update Streamlit UI with tool output
+    # Adjust based on how you intend to display or use the output
+    st.write(output)
+    
 class EventHandler(AssistantEventHandler):    
   @override
   def on_text_created(self, text) -> None:
@@ -29,15 +33,37 @@ class EventHandler(AssistantEventHandler):
   def on_tool_call_created(self, tool_call):
     print(f"\nassistant > {tool_call.type}\n", flush=True)
   
-  def on_tool_call_delta(self, delta, snapshot):
-    if delta.type == 'code_interpreter':
-      if delta.code_interpreter.input:
-        print(delta.code_interpreter.input, end="", flush=True)
-      if delta.code_interpreter.outputs:
-        print(f"\n\noutput >", flush=True)
-        for output in delta.code_interpreter.outputs:
-          if output.type == "logs":
-            print(f"\n{output.logs}", flush=True)
+    def on_tool_call_delta(self, delta, snapshot):
+        # Handle tool call responses here
+        # Assuming 'delta' contains 'tool_call' with necessary details about the tool call completion
+        # The precise structure of 'delta' would depend on the OpenAI API documentation
+        
+        # Check if the delta is for a tool call completion with outputs
+        if delta.type == 'tool_call_completed' and delta.tool_call.outputs:
+            for output in delta.tool_call.outputs:
+                tool_name = output.tool_call.function.name  # Adjust based on actual structure
+                arguments = json.loads(output.tool_call.function.arguments)  # Adjust based on actual structure
+                
+                # Handle the output based on the tool's name
+                if tool_name == "web_search_process":
+                    # Assuming 'arguments' contains the necessary input for the tool
+                    try:
+                        query = arguments["query"]
+                    except KeyError:
+                        query = arguments["q"]
+                    result = web_search_process(query)
+                    display_tool_output(result)  # Update the UI with the result
+
+                elif tool_name == "hybrid_search_process":
+                    upit = arguments["upit"]
+                    result = hybrid_search_process(upit)
+                    display_tool_output(result)  # Update the UI with the result
+
+                elif tool_name == "sql_search_tool":
+                    upit = arguments["upit"]
+                    result = sql_search_tool(upit)
+                    display_tool_output(result)  # Update the UI with the result
+
 
 
 # st.set_page_config(page_title="Positive Chatbot", page_icon="🤖")
