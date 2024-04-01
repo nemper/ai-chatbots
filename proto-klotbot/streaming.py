@@ -1,6 +1,3 @@
-
-
-
 import openai
 client = openai.OpenAI()
 thread = client.beta.threads.create()
