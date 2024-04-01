@@ -16,13 +16,13 @@ from streamlit_javascript import st_javascript
 from myfunc.prompts import PromptDatabase
 
 
-if "init_prompts_a" not in st.session_state:
-    st.session_state.init_prompts_a = 42
+if "init_prompts" not in st.session_state:
+    st.session_state["init_prompts"] = 42
 
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["prompt_vision", "prompt_transcript"], [os.getenv("VISION"), os.getenv("MEET_TRANS")])
-        st.session_state.prompt_vision = prompt_map.get("prompt_vision", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.prompt_transcript = prompt_map.get("prompt_transcript", "You are a helpful assistant that always responds in Serbian.")
+        prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
+        st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")
+        st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
 
 
 def read_aad_username():
@@ -169,7 +169,7 @@ def transkript():
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
 
-                        system_prompt=st.session_state.prompt_transcript
+                        system_prompt=st.session_state.text_from_audio
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
                                                 
@@ -210,7 +210,7 @@ def read_local_image():
         # st.session_state["question"] = ""
 
         with placeholder.form(key="my_image", clear_on_submit=False):
-            default_text = st.session_state.prompt_vision
+            default_text = st.session_state.text_from_image
             upit = st.text_area("Unesite uputstvo ", default_text)  
             submit_button = st.form_submit_button(label="Submit")
             
@@ -285,7 +285,7 @@ def read_url_image():
         placeholder = st.empty()    
     #if submit_btt:        
         with placeholder.form(key="my_image_url", clear_on_submit=False):
-            default_text = st.session_state.prompt_vision
+            default_text = st.session_state.text_from_image
         
             upit = st.text_area("Unesite uputstvo ", default_text)
             submit_button = st.form_submit_button(label="Submit")

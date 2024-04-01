@@ -774,10 +774,10 @@ class SQLSearchTool:
         :return: The response from the agent executor.
         """
         with PromptDatabase() as db:
-            prompt_map = db.get_prompts_by_names(["user_prompt"],[os.getenv("SQL_SEARCH_METHOD")])
-            user_prompt = prompt_map.get('user_prompt', 'You are helpful assistant that always writes in Serbian.').format(query=query, queries=queries)
+            prompt_map = db.get_prompts_by_names(["sql_search_method"],[os.getenv("SQL_SEARCH_METHOD")])
+            sql_search_method = prompt_map.get('sql_search_method', 'You are helpful assistant that always writes in Serbian.').format(query=query, queries=queries)
         try:
-            response = self.agent_executor.invoke({user_prompt})["output"]
+            response = self.agent_executor.invoke({sql_search_method})["output"]
         except Exception as e:
             
             response = f"Ne mogu da odgovorim na pitanje, molim vas korigujte zahtev. Opis greske je \n {e}"

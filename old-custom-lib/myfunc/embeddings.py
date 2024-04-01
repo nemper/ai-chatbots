@@ -33,8 +33,8 @@ from myfunc.various_tools import get_structured_decision_from_model, positive_ca
 if "init_prompts" not in st.session_state:
     st.session_state.init_prompts = 42
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["template_prompt"],[os.getenv("CONTEXT_RETRIEVER")])
-        st.session_state.template_prompt = prompt_map.get("template_prompt", "You are helpful assistant").format()
+        prompt_map = db.get_prompts_by_names(["contextual_compression"],[os.getenv("CONTEXTUAL_COMPRESSION")])
+        st.session_state.contextual_compression = prompt_map.get("contextual_compression", "You are helpful assistant").format()
 
 st_style()
 client=OpenAI()
@@ -461,7 +461,7 @@ class ContextRetriever:
         format_instructions = output_parser.get_format_instructions()
         
         self.prompt = PromptTemplate(
-            template=st.session_state.template_prompt,
+            template=st.session_state.contextual_compression,
             input_variables=["documents"],
             partial_variables={"format_instructions": format_instructions},
         )

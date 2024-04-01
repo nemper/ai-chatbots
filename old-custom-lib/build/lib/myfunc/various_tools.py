@@ -1,4 +1,3 @@
-import cohere
 import datetime
 import html
 import json
@@ -14,45 +13,27 @@ import sys
 from bs4 import BeautifulSoup
 from io import StringIO
 from openai import OpenAI
-from pinecone_text.sparse import BM25Encoder
-from time import sleep
 from tqdm.auto import tqdm
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.output_parsers import ResponseSchema, StructuredOutputParser
-from langchain.prompts import PromptTemplate
-from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
-from langchain_community.document_transformers import LongContextReorder
-from langchain_community.retrievers import PineconeHybridSearchRetriever
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
-from langchain_experimental.text_splitter import SemanticChunker
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from myfunc.mojafunkcija import pinecone_stats, st_style
+from myfunc.mojafunkcija import st_style
 from myfunc.prompts import PromptDatabase
-from myfunc.retrievers import PineconeUtility, TextProcessing
 
-if "init_prompts_v" not in st.session_state:
-    st.session_state.init_prompts_v = 42
+if "init_prompts" not in st.session_state:
+    st.session_state.init_prompts = 42
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["system_prompt", "system_prompt_structured", "template_prompt"],[os.getenv("HYDE_RAG"), os.getenv("QT_MAIN_PROMPT"), os.getenv("CONTEXT_RETRIEVER")])
-        system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
-        system_prompt_structured = prompt_map.get("system_prompt_structured", "You are helpful assistant")
-        template_prompt = prompt_map.get("template_prompt", "You are helpful assistant").format()
+        prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
+        st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
+        st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
 st_style()
 client=OpenAI()
-
-
-with PromptDatabase() as db:
-    prompt_map = db.get_prompts_by_names(["system_prompt", "system_prompt_structured", "template_prompt"],[os.getenv("HYDE_RAG"), os.getenv("QT_MAIN_PROMPT"), os.getenv("CONTEXT_RETRIEVER")])
-    system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
-    system_prompt_structured = prompt_map.get("system_prompt_structured", "You are helpful assistant")
-    template_prompt = prompt_map.get("template_prompt", "You are helpful assistant").format()
 
 
 # novi dugacki zapisnik
@@ -103,7 +84,25 @@ class MeetingTranscriptSummarizer:
         return full_text
     
 
-# analogno klasi iznad
+class StringLogHandler(logging.Handler):
+    """A custom logging handler to collect log records in a list.
+
+    This class is primarily used for debugging and development purposes.
+    """
+    def __init__(self):
+        super().__init__()
+        self.log_records = []
+
+    def emit(self, record):
+        """Collects log records into a list.
+
+        Args:
+            record (logging.LogRecord): The log record to be collected.
+        """
+        log_entry = self.format(record)
+        self.log_records.append(log_entry)
+
+
 def summarize_meeting_transcript(transcript, temp, broj_tema):
     """
     Summarize a meeting transcript by first extracting the date, participants, and topics,
@@ -166,247 +165,6 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
     + f"\n\n## Zaključak\n\n{conclusion}"
     )
     return full_text
-
-
-# prepare & do embeddings iz Embeddings repoa
-def prepare_embeddings(chunk_size, chunk_overlap, dokum):
-    skinuto = False
-    napisano = False
-
-    file_name = "chunks.json"
-    with st.form(key="my_form_prepare", clear_on_submit=False):
-        
-        # define delimiter
-        text_delimiter = st.text_input(
-            "Unesite delimiter: ",
-            help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
-        )
-        # define prefix
-        text_prefix = st.text_input(
-            "Unesite prefiks za tekst: ",
-            help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
-        )
-        add_schema = st.radio(
-            "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
-            ("Ne", "Da"),
-            key="add_schema_doc",
-            help="Dodaje u metadata ime i temu",
-        )
-        add_pitanje = st.radio(
-            "Da li želite da dodate pitanje: ",
-            ("Ne", "Da"),
-            key="add_pitanje_doc",
-            help="Dodaje pitanje u text",
-        )
-        semantic = st.radio(
-            "Da li želite semantic chunking: ",
-            ("Ne", "Da"),
-            key="semantic",
-            help="Greg Kamaradt Semantic Chunker",
-        )
-        st.session_state.submit_b = st.form_submit_button(
-            label="Submit",
-            help="Pokreće podelu dokumenta na delove za indeksiranje",
-        )
-        st.info(f"Chunk veličina: {chunk_size}, chunk preklapanje: {chunk_overlap}")
-        if len(text_prefix) > 0:
-            text_prefix = text_prefix + " "
-
-        if dokum is not None and st.session_state.submit_b == True:
-            
-            data=PineconeUtility.read_uploaded_file(dokum, text_delimiter)
-            # Split the document into smaller parts, the separator should be the word "Chapter"
-            if semantic == "Da":
-                text_splitter = SemanticChunker(OpenAIEmbeddings())
-            else:
-                text_splitter = CharacterTextSplitter(
-                        separator=text_delimiter,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap,
-                    )
-
-            texts = text_splitter.split_documents(data)
-
-
-            # # Create the OpenAI embeddings
-            st.success(f"Učitano {len(texts)} tekstova")
-
-            # Define a custom method to convert Document to a JSON-serializable format
-            output_json_list = []
-            
-            # Loop through the Document objects and convert them to JSON
-            i = 0
-            for document in texts:
-                i += 1
-                if add_pitanje=="Da":
-                    pitanje = TextProcessing.add_question(document.page_content) + " "
-                    st.info(f"Dodajem pitanje u tekst {i}")
-                else:
-                    pitanje = ""
-      
-                output_dict = {
-                    "id": str(uuid4()),
-                    "chunk": i,
-                    "text": TextProcessing.format_output_text(text_prefix, pitanje, document.page_content),
-                    "source": document.metadata.get("source", ""),
-                    "date": TextProcessing.get_current_date_formatted(),
-                }
-
-                if add_schema == "Da":
-                    try:
-                        person_name, topic = TextProcessing.add_self_data(document.page_content)
-                    except Exception as e:
-                        st.write(f"An error occurred: {e}")
-                        person_name, topic = "John Doe", "Any"
-    
-                    output_dict["person_name"] = person_name
-                    output_dict["topic"] = topic
-                    st.success(f"Processing {i} of {len(texts)}, {person_name}, {topic}")
-
-                output_json_list.append(output_dict)
-                
-
-            # # Specify the file name where you want to save the JSON data
-            json_string = (
-                "["
-                + ",\n".join(
-                    json.dumps(d, ensure_ascii=False) for d in output_json_list
-                )
-                + "]"
-            )
-
-            # Now, json_string contains the JSON data as a string
-
-            napisano = st.info(
-                "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
-            )
-
-    if napisano:
-        file_name = os.path.splitext(dokum.name)[0]
-        skinuto = st.download_button(
-            "Download JSON",
-            data=json_string,
-            file_name=f"{file_name}.json",
-            mime="application/json",
-        )
-    if skinuto:
-        st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
-
-
-def do_embeddings(dokum, tip, api_key, host, index_name, index):
-    with st.form(key="my_form_do", clear_on_submit=False):
-        err_log = ""
-        # Read the texts from the .txt file
-        chunks = []
-        
-        # Now, you can use stored_texts as your texts
-        namespace = st.text_input(
-            "Unesi naziv namespace-a: ",
-            help="Naziv namespace-a je obavezan za kreiranje Pinecone Indeksa",
-        )
-        submit_b2 = st.form_submit_button(
-            label="Submit", help="Pokreće kreiranje Pinecone Indeksa"
-        )
-        if submit_b2 and dokum and namespace:
-            stringio = StringIO(dokum.getvalue().decode("utf-8"))
-
-            # Directly load the JSON data from file content
-            data = json.load(stringio)
-
-            # Initialize lists outside the loop
-            my_list = []
-            my_meta = []
-
-            # Process each JSON object in the data
-            for item in data:
-                # Append the text to my_list
-                my_list.append(item['text'])
-    
-                # Append other data to my_meta
-                meta_data = {key: value for key, value in item.items() if key != 'text'}
-                my_meta.append(meta_data)
-                
-            if tip == "hybrid":
-               embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-               bm25_encoder = BM25Encoder()
-               # fit tf-idf values on your corpus
-               bm25_encoder.fit(my_list)
-
-               retriever = PineconeHybridSearchRetriever(
-                    embeddings=embeddings,
-                    sparse_encoder=bm25_encoder,
-                    index=index,
-               )
-                           
-               retriever.add_texts(texts=my_list, metadatas=my_meta, namespace=namespace)
-               
-            else:
-                embed_model = "text-embedding-ada-002"
-               
-                batch_size = 100  # how many embeddings we create and insert at once
-                progress_text2 = "Insertovanje u Pinecone je u toku."
-                progress_bar2 = st.progress(0.0, text=progress_text2)
-                ph2 = st.empty()
-            
-                for i in tqdm(range(0, len(data), batch_size)):
-                    # find end of batch
-                    i_end = min(len(data), i + batch_size)
-                    meta_batch = data[i:i_end]
-
-                    # get texts to encode
-                    ids_batch = [x["id"] for x in meta_batch]
-                    texts = [x["text"] for x in meta_batch]
-                
-                    # create embeddings (try-except added to avoid RateLimitError)
-                    try:
-                        res = client.embeddings.create(input=texts, model=embed_model)
-
-                    except Exception as e:
-                        done = False
-                        print(e)
-                        while not done:
-                            sleep(5)
-                            try:
-                                res = client.embeddings.create(input=texts, model=embed_model)
-                                done = True
-
-                            except:
-                                pass
-
-                    embeds = [item.embedding for item in res.data]
-
-                    # Check for [nan] embeddings
-              
-                    if len(embeds) > 0:
-                    
-                        to_upsert = list(zip(ids_batch, embeds, meta_batch))
-                    else:
-                        err_log += f"Greška: {meta_batch}\n"
-                    # upsert to Pinecone
-                    err_log += f"Upserting {len(to_upsert)} embeddings\n"
-                    with open("err_log.txt", "w", encoding="utf-8") as file:
-                        file.write(err_log)
-
-                    index.upsert(vectors=to_upsert, namespace=namespace)
-                    stodva = len(data)
-                    if i_end > i:
-                        deo = i_end
-                    else:
-                        deo = i
-                    progress = deo / stodva
-                    l = int(deo / stodva * 100)
-
-                    ph2.text(f"Učitano je {deo} od {stodva} linkova što je {l} %")
-
-                    progress_bar2.progress(progress, text=progress_text2)
-                    
-
-            # gives stats about index
-            st.info("Napunjen Pinecone")
-
-            st.success(f"Sačuvano u Pinecone-u")
-            pinecone_stats(index, index_name)
-
 
 
 # Define a function to scrape a given URL
@@ -735,107 +493,6 @@ def upload_data_to_azure(bsc, filename, new_data):
     blob_client.upload_blob(csv_data, overwrite=True)
 
 
-class CohereReranker:
-    """Reranks documents based on relevance to the query using Cohere's rerank model.
-
-    Attributes:
-        query (str): The search query for reranking documents.
-    """
-    def __init__(self, query):
-        self.query = query
-        self.client = cohere.Client(os.getenv("COHERE_API_KEY"))
-
-    def rerank(self, documents):
-        """Reranks the given documents based on their relevance to the query.
-
-        Args:
-            documents (list): A list of document texts to be reranked.
-
-        Returns:
-            str: A string containing the top reranked documents concatenated together.
-        """
-        results = self.client.rerank(query=self.query, documents=documents, top_n=3, model="rerank-multilingual-v2.0")
-        return "\n\n".join([result.document['text'] for result in results])
-
-
-class LongContextHandler:
-    """Reorders documents to prioritize more relevant content for long contexts.
-
-    This class does not require initialization parameters.
-    """
-    def reorder(self, documents):
-        """Reorders the given documents based on their relevance and context.
-
-        Args:
-            documents (list): A list of document texts to be reordered.
-
-        Returns:
-            str: A string containing the reordered documents concatenated together.
-        """
-        reordering = LongContextReorder()
-        reordered_docs = reordering.transform_documents(documents)
-        return "\n\n".join(reordered_docs)
-
-
-class ContextRetriever:
-    """Retrieves and compresses documents to only include the most relevant parts.
-    
-    Attributes:
-        documents (list): A list of documents to be compressed.
-        model (str): The model used for compression.
-    """
-    
-    def __init__(self, documents, model="gpt-4-turbo-preview"):
-        self.documents = documents
-        self.model = model
-        
-        response_schemas = [
-            ResponseSchema(name="compressed_text", description="The compressed text of the document"),
-        ]
-        
-        output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
-        format_instructions = output_parser.get_format_instructions()
-        
-        self.prompt = PromptTemplate(
-            template=template_prompt,
-            input_variables=["documents"],
-            partial_variables={"format_instructions": format_instructions},
-        )
-        self.llm = ChatOpenAI(model=self.model, temperature=0)
-        # ovo bar je kako je bilo u primeru
-        self.chain = self.prompt | self.llm | output_parser
-
-    def get_compressed_context(self):
-        """Compresses the provided documents to include only the most relevant parts."""
-        # combine documents into a single string
-        compressed_output = self.chain.invoke({"documents": "\n\n".join(self.documents)})
-
-        # just in case...
-        if isinstance(compressed_output, dict) and 'compressed_text' in compressed_output:
-            return compressed_output['compressed_text']
-        else:
-            return "Error: Unexpected structure of compressed_output"
-
-
-class StringLogHandler(logging.Handler):
-    """A custom logging handler to collect log records in a list.
-
-    This class is primarily used for debugging and development purposes.
-    """
-    def __init__(self):
-        super().__init__()
-        self.log_records = []
-
-    def emit(self, record):
-        """Collects log records into a list.
-
-        Args:
-            record (logging.LogRecord): The log record to be collected.
-        """
-        log_entry = self.format(record)
-        self.log_records.append(log_entry)
-
-
 def web_search_process(query: str) -> str:
     """
     Executes a web search using the provided query string.
@@ -853,6 +510,7 @@ def web_search_process(query: str) -> str:
     """    
     return GoogleSerperAPIWrapper(environment=os.environ["SERPER_API_KEY"]).run(query)
 
+
 def hyde_rag(prompt):
   
     client = OpenAI()
@@ -860,13 +518,14 @@ def hyde_rag(prompt):
         model= "gpt-4-turbo-preview",
         temperature=0.5,
         messages=[
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": st.session_state.hyde_rag},
             {"role": "user", "content": prompt}
             ]
         )
     response = response.choices[0].message.content
     
     return response
+
 
 def create_structured_prompt(user_query):
     """
@@ -886,7 +545,7 @@ def create_structured_prompt(user_query):
       the role (system or user) and the content (instructions for the AI or the user query).
     """
     return [
-        {"role": "system", "content": system_prompt_structured},
+        {"role": "system", "content": st.session_state.choose_rag},
         {"role": "user", "content": user_query}
     ]
 

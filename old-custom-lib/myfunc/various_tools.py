@@ -26,9 +26,9 @@ from myfunc.prompts import PromptDatabase
 if "init_prompts" not in st.session_state:
     st.session_state.init_prompts = 42
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["system_prompt", "system_prompt_structured"],[os.getenv("HYDE_RAG"), os.getenv("QT_MAIN_PROMPT")])
-        st.session_state.system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
-        st.session_state.system_prompt_structured = prompt_map.get("system_prompt_structured", "You are helpful assistant")
+        prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
+        st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
+        st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
@@ -518,7 +518,7 @@ def hyde_rag(prompt):
         model= "gpt-4-turbo-preview",
         temperature=0.5,
         messages=[
-            {"role": "system", "content": st.session_state.system_prompt},
+            {"role": "system", "content": st.session_state.hyde_rag},
             {"role": "user", "content": prompt}
             ]
         )
@@ -545,7 +545,7 @@ def create_structured_prompt(user_query):
       the role (system or user) and the content (instructions for the AI or the user query).
     """
     return [
-        {"role": "system", "content": st.session_state.system_prompt_structured},
+        {"role": "system", "content": st.session_state.choose_rag},
         {"role": "user", "content": user_query}
     ]
 
