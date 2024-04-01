@@ -34,12 +34,13 @@ from myfunc.mojafunkcija import pinecone_stats, st_style
 from myfunc.prompts import PromptDatabase
 from myfunc.retrievers import PineconeUtility, TextProcessing
 
-
-with PromptDatabase() as db:
-    prompt_map = db.get_prompts_by_names(["system_prompt", "system_prompt_structured", "template_prompt"],[os.getenv("HYDE_RAG"), os.getenv("QT_MAIN_PROMPT"), os.getenv("CONTEXT_RETRIEVER")])
-    system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
-    system_prompt_structured = prompt_map.get("system_prompt_structured", "You are helpful assistant")
-    template_prompt = prompt_map.get("template_prompt", "You are helpful assistant").format()
+if "init_prompts_v" not in st.session_state:
+    st.session_state.init_prompts_v = 42
+    with PromptDatabase() as db:
+        prompt_map = db.get_prompts_by_names(["system_prompt", "system_prompt_structured", "template_prompt"],[os.getenv("HYDE_RAG"), os.getenv("QT_MAIN_PROMPT"), os.getenv("CONTEXT_RETRIEVER")])
+        system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
+        system_prompt_structured = prompt_map.get("system_prompt_structured", "You are helpful assistant")
+        template_prompt = prompt_map.get("template_prompt", "You are helpful assistant").format()
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
