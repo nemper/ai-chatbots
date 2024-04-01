@@ -16,9 +16,9 @@ processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY"), namespac
 if "init_prompt" not in st.session_state:
     st.session_state.init_prompt = 42
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["user_prompt", "system_prompt"],[os.getenv("CHAT_TOOLS_PROMPT"), os.getenv("ALT_ASISTENT")])
-        st.session_state.user_prompt = prompt_map.get("user_prompt", "You are helpful assistant")
-        st.session_state.system_prompt = prompt_map.get("system_prompt", "You are helpful assistant")
+        prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
+        st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
+        st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
     
 def main():
     if "username" not in st.session_state:
@@ -34,8 +34,8 @@ def main():
         st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = "gpt-4-turbo-preview"
-    if "system_prompt" not in st.session_state:
-        st.session_state.system_prompt = st.session_state.system_prompt
+    if "sys_ragbot" not in st.session_state:
+        st.session_state.sys_ragbot = st.session_state.sys_ragbot
     if "azure_filename" not in st.session_state:
         st.session_state.azure_filename = "altass.csv"
     if "messages" not in st.session_state:
@@ -50,7 +50,7 @@ def main():
                 return db.list_threads(st.session_state.app_name, st.session_state.username)
         new_thread_id = str(uuid.uuid4())
         thread_name = f"Thread_{new_thread_id}"
-        conversation_data = [{'role': 'system', 'content': st.session_state.system_prompt}]
+        conversation_data = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         if thread_name not in get_thread_ids():
             with ConversationDatabase() as db:
                 try:
@@ -62,9 +62,9 @@ def main():
                         raise  # Re-raise the exception if it's not related to a duplicate entry
         st.session_state.thread_id = thread_name
         st.session_state.messages[thread_name] = []
-    if "system_prompt" not in st.session_state:
-        st.session_state.system_prompt = st.session_state.system_prompt
-        st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.system_prompt})
+    if "sys_ragbot" not in st.session_state:
+        st.session_state.sys_ragbot = st.session_state.sys_ragbot
+        st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
     
     avatar_ai="bot.png" 
     avatar_user = "user.webp"
@@ -99,7 +99,7 @@ def main():
     
         # Original processing to generate complete_prompt
         context, scores = processor.process_query_results(prompt)
-        complete_prompt = st.session_state.user_prompt.format(prompt=prompt, context=context)
+        complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
     
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
