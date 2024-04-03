@@ -205,8 +205,6 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             text_prefix = text_prefix + " "
 
         if dokum is not None and st.session_state.submit_b == True:
-            print("B", dokum)
-            print("B", type(dokum))
             data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
             # Split the document into smaller parts, the separator should be the word "Chapter"
             if semantic == "Da":
