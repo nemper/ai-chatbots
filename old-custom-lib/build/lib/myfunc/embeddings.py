@@ -30,6 +30,16 @@ from myfunc.prompts import PromptDatabase, SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
 from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
 
+import markdown
+import pypandoc
+from langchain_text_splitters import HTMLHeaderTextSplitter
+from langchain_community.document_loaders import PDFMinerPDFasHTMLLoader
+from langchain.docstore.document import Document
+import re
+from datetime import datetime
+from bs4 import BeautifulSoup
+
+
 if "init_prompts" not in st.session_state:
     st.session_state.init_prompts = 42
     with PromptDatabase() as db:
@@ -40,6 +50,151 @@ st_style()
 client=OpenAI()
 text_processor = TextProcessing(gpt_client=client)
 pinecone_utility = PineconeUtility()
+
+
+class DocumentConverter:
+    """
+    A class for converting documents between different formats and extracting structured data.
+
+    This class provides methods to convert documents from Markdown, DOCX, and PDF formats to HTML,
+    and to split HTML content based on headers. It also processes PDF documents to extract
+    structured data based on font size, identifying headings and associated content.
+
+    Methods:
+    - conv_md(tekst): Converts a Markdown file to HTML.
+    - conv_docx(tekst): Converts a DOCX file to HTML.
+    - split_on_headers(html_string): Splits an HTML document into sections based on specified header levels.
+    - conv_pdf(tekst): Converts a PDF file into a list of structured data snippets, each representing a section of the document.
+
+    The class is designed to facilitate the handling of different document formats and to streamline the
+    extraction of meaningful and structured content from these documents.
+    """
+    def __init__(self):
+        self.headers_to_split_on = [("h2", "heading")]
+        # Additional initialization can go here
+
+    def conv_md(self, tekst):
+        with open(tekst, 'r', encoding='utf-8') as f:
+            markdown_text = f.read()
+        return markdown.markdown(markdown_text)
+
+    def conv_docx(self, tekst):
+        return pypandoc.convert_file(tekst, 'html')
+
+    def split_on_headers(self, html_string):
+        html_splitter = HTMLHeaderTextSplitter(headers_to_split_on=self.headers_to_split_on)
+        return html_splitter.split_text(html_string)
+
+    def conv_pdf(self, doc_path):  
+        loader = PDFMinerPDFasHTMLLoader(doc_path)
+        data = loader.load()[0]   # entire PDF is loaded as a single Document
+        soup = BeautifulSoup(data.page_content,'html.parser')
+        content = soup.find_all('div')
+        cur_fs = None
+        cur_text = ''
+        snippets = []   # first collect all snippets that have the same font size
+        for c in content:
+            sp = c.find('span')
+            if not sp:
+                continue
+            st = sp.get('style')
+            if not st:
+                continue
+            fs = re.findall('font-size:(\d+)px',st)
+            if not fs:
+                continue
+            fs = int(fs[0])
+            if not cur_fs:
+                cur_fs = fs
+            if fs == cur_fs:
+                cur_text += c.text
+            else:
+                snippets.append((cur_text,cur_fs))
+                cur_fs = fs
+                cur_text = c.text
+        snippets.append((cur_text,cur_fs))
+        # Note: The above logic is very straightforward. One can also add more strategies such as removing duplicate snippets (as
+        # headers/footers in a PDF appear on multiple pages so if we find duplicates it's safe to assume that it is redundant info)
+        cur_idx = -1
+        semantic_snippets = []
+        # Assumption: headings have higher font size than their respective content
+        for s in snippets:
+            # if current snippet's font size > previous section's heading => it is a new heading
+            if not semantic_snippets or s[1] > semantic_snippets[cur_idx].metadata['heading_font']:
+                metadata={'heading':s[0], 'content_font': 0, 'heading_font': s[1]}
+                metadata.update(data.metadata)
+                semantic_snippets.append(Document(page_content='',metadata=metadata))
+                cur_idx += 1
+                continue
+
+            # if current snippet's font size <= previous section's content => content belongs to the same section (one can also create
+            # a tree like structure for sub sections if needed but that may require some more thinking and may be data specific)
+            if not semantic_snippets[cur_idx].metadata['content_font'] or s[1] <= semantic_snippets[cur_idx].metadata['content_font']:
+                semantic_snippets[cur_idx].page_content += s[0]
+                semantic_snippets[cur_idx].metadata['content_font'] = max(s[1], semantic_snippets[cur_idx].metadata['content_font'])
+                continue
+
+            # if current snippet's font size > previous section's content but less than previous section's heading than also make a new
+            # section (e.g. title of a PDF will have the highest font size but we don't want it to subsume all sections)
+            metadata={'heading':s[0], 'content_font': 0, 'heading_font': s[1]}
+            metadata.update(data.metadata)
+            semantic_snippets.append(Document(page_content='',metadata=metadata))
+            cur_idx += 1
+        return semantic_snippets
+
+
+def create_emb_file(uploaded_file):
+    with st.spinner("In progress..."):    
+        # Instantiate the DocumentConverter class
+        converter = DocumentConverter()
+
+        current_date = datetime.now()
+        date_string = current_date.strftime('%d.%m.%y')
+        structured_data = []
+
+        # Handling file name and extension
+        _, ext = os.path.splitext(uploaded_file.name)
+
+        # Processing the document based on its extension
+        if ext == ".pdf":
+            document = converter.conv_pdf(uploaded_file.name)
+        elif ext == ".docx":
+            html = converter.conv_docx(uploaded_file.name)
+            document = converter.split_on_headers(html)
+        elif ext == ".md":
+            html = converter.conv_md(uploaded_file.name)
+            document = converter.split_on_headers(html)
+        else:
+            st.error("Only .md, .pdf, and .docx files are supported.")
+            return
+
+    
+        i = 0
+        for doc in document:
+            i += 1
+            title = doc.metadata.get('heading', "")
+            content = doc.page_content
+            output_dict = {
+                "id": str(uuid4()),
+                "chunk": i,
+                "text": title + " > " + content,
+                "heading": title,
+                "source": uploaded_file.name,
+                "date": date_string,
+            }
+            structured_data.append(output_dict)
+
+        json_string = (
+            "["
+            + ",\n".join(
+                json.dumps(d, ensure_ascii=False) for d in structured_data
+            )
+            + "]"
+        )
+
+   
+    return json_string
+
 
 class MultiQueryDocumentRetriever:
     """
@@ -196,6 +351,12 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             key="semantic",
             help="Greg Kamaradt Semantic Chunker",
         )
+        by_heading = st.radio(
+            "Da li želite chunking prema h2 headingu: ",
+            ("Ne", "Da"),
+            key="by_heading",
+            help="Chunker by h2 heading",
+        )
         st.session_state.submit_b = st.form_submit_button(
             label="Submit",
             help="Pokreće podelu dokumenta na delove za indeksiranje",
@@ -205,68 +366,71 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             text_prefix = text_prefix + " "
 
         if dokum is not None and st.session_state.submit_b == True:
-            data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-            # Split the document into smaller parts, the separator should be the word "Chapter"
-            if semantic == "Da":
-                text_splitter = SemanticChunker(OpenAIEmbeddings())
+            if by_heading == "Da":
+                json_string = create_emb_file(dokum)
+                napisano = True
             else:
-                text_splitter = CharacterTextSplitter(
-                        separator=text_delimiter,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap,
-                    )
-
-            texts = text_splitter.split_documents(data)
-
-
-            # # Create the OpenAI embeddings
-            st.success(f"Učitano {len(texts)} tekstova")
-
-            # Define a custom method to convert Document to a JSON-serializable format
-            output_json_list = []
-            
-            # Loop through the Document objects and convert them to JSON
-            i = 0
-            for document in texts:
-                i += 1
-                if add_pitanje=="Da":
-                    pitanje = text_processor.add_question(document.page_content) + " "
-                    st.info(f"Dodajem pitanje u tekst {i}")
+                data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
+                # Split the document into smaller parts, the separator should be the word "Chapter"
+                if semantic == "Da":
+                    text_splitter = SemanticChunker(OpenAIEmbeddings())
                 else:
-                    pitanje = ""
-      
-                output_dict = {
-                    "id": str(uuid4()),
-                    "chunk": i,
-                    "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
-                    "source": document.metadata.get("source", ""),
-                    "date": text_processor.get_current_date_formatted(),
-                }
+                    text_splitter = CharacterTextSplitter(
+                            separator=text_delimiter,
+                            chunk_size=chunk_size,
+                            chunk_overlap=chunk_overlap,
+                        )
 
-                if add_schema == "Da":
-                    try:
-                        person_name, topic = text_processor.add_self_data(document.page_content)
-                    except Exception as e:
-                        st.write(f"An error occurred: {e}")
-                        person_name, topic = "John Doe", "Any"
+                texts = text_splitter.split_documents(data)
+
+
+                # # Create the OpenAI embeddings
+                st.success(f"Učitano {len(texts)} tekstova")
+
+                # Define a custom method to convert Document to a JSON-serializable format
+                output_json_list = []
+            
+                # Loop through the Document objects and convert them to JSON
+                i = 0
+                for document in texts:
+                    i += 1
+                    if add_pitanje=="Da":
+                        pitanje = text_processor.add_question(document.page_content) + " "
+                        st.info(f"Dodajem pitanje u tekst {i}")
+                    else:
+                        pitanje = ""
     
-                    output_dict["person_name"] = person_name
-                    output_dict["topic"] = topic
-                    st.success(f"Processing {i} of {len(texts)}, {person_name}, {topic}")
+                    output_dict = {
+                        "id": str(uuid4()),
+                        "chunk": i,
+                        "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
+                        "source": document.metadata.get("source", ""),
+                        "date": text_processor.get_current_date_formatted(),
+                    }
 
-                output_json_list.append(output_dict)
+                    if add_schema == "Da":
+                        try:
+                            person_name, topic = text_processor.add_self_data(document.page_content)
+                        except Exception as e:
+                            st.write(f"An error occurred: {e}")
+                            person_name, topic = "John Doe", "Any"
+    
+                        output_dict["person_name"] = person_name
+                        output_dict["topic"] = topic
+                        st.success(f"Processing {i} of {len(texts)}, {person_name}, {topic}")
+                    output_json_list.append(output_dict)
                 
 
             # # Specify the file name where you want to save the JSON data
-            json_string = (
-                "["
-                + ",\n".join(
-                    json.dumps(d, ensure_ascii=False) for d in output_json_list
+                json_string = (
+                    "["
+                    + ",\n".join(
+                        json.dumps(d, ensure_ascii=False) for d in output_json_list
+                    )
+                    + "]"
                 )
-                + "]"
-            )
 
-            # Now, json_string contains the JSON data as a string
+                    # Now, json_string contains the JSON data as a string
 
             napisano = st.info(
                 "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
