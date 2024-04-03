@@ -25,10 +25,10 @@ from langchain_community.retrievers import PineconeHybridSearchRetriever
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from myfunc.mojafunkcija import st_style, pinecone_stats
-from myfunc.prompts import PromptDatabase, SQLSearchTool
-from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
-from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
+from mojafunkcija import st_style, pinecone_stats
+from prompts import PromptDatabase, SQLSearchTool
+from retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
+from various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
 
 if "init_prompts" not in st.session_state:
     st.session_state.init_prompts = 42
@@ -38,7 +38,8 @@ if "init_prompts" not in st.session_state:
 
 st_style()
 client=OpenAI()
-
+text_processor = TextProcessing(gpt_client=client)
+pinecone_utility = PineconeUtility()
 
 class MultiQueryDocumentRetriever:
     """
@@ -204,8 +205,9 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             text_prefix = text_prefix + " "
 
         if dokum is not None and st.session_state.submit_b == True:
-            
-            data=PineconeUtility.read_uploaded_file(dokum, text_delimiter)
+            print("B", dokum)
+            print("B", type(dokum))
+            data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
             # Split the document into smaller parts, the separator should be the word "Chapter"
             if semantic == "Da":
                 text_splitter = SemanticChunker(OpenAIEmbeddings())
@@ -230,7 +232,7 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             for document in texts:
                 i += 1
                 if add_pitanje=="Da":
-                    pitanje = TextProcessing.add_question(document.page_content) + " "
+                    pitanje = text_processor.add_question(document.page_content) + " "
                     st.info(f"Dodajem pitanje u tekst {i}")
                 else:
                     pitanje = ""
@@ -238,14 +240,14 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
                 output_dict = {
                     "id": str(uuid4()),
                     "chunk": i,
-                    "text": TextProcessing.format_output_text(text_prefix, pitanje, document.page_content),
+                    "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
                     "source": document.metadata.get("source", ""),
-                    "date": TextProcessing.get_current_date_formatted(),
+                    "date": text_processor.get_current_date_formatted(),
                 }
 
                 if add_schema == "Da":
                     try:
-                        person_name, topic = TextProcessing.add_self_data(document.page_content)
+                        person_name, topic = text_processor.add_self_data(document.page_content)
                     except Exception as e:
                         st.write(f"An error occurred: {e}")
                         person_name, topic = "John Doe", "Any"
