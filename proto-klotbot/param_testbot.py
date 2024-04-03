@@ -50,18 +50,18 @@ st.caption("🚀 A streamlit chatbot powered by x")
 
 prompt = st.text_input("Enter your message")
 if prompt:
-  st.markdown("----")
-  res_box = st.empty()
-  report = []
-  stream = client.beta.threads.create_and_run(
-    assistant_id=ASSISTANT_ID,
-    thread={"messages": [{"role": "user", "content": prompt}]},
-    stream=True)
-  for event in stream:
-    if event.data.object == "thread.message.delta":
-      for content in event.data.delta.content:
-        if content.type == "text":
-          report.append(content.text.value)
-          result = "".join(report).strip()
-          res_box.markdown(f"*{result}*")
+    st.markdown("----")
+    res_box = st.empty()
+    report = []
+    stream = client.beta.threads.create_and_run(
+        assistant_id=ASSISTANT_ID,
+        thread={"messages": [{"role": "user", "content": prompt}]},
+        stream=True)
+    for event in stream:
+        if event.data.object == "thread.message.delta":
+            for content in event.data.delta.content:
+                if content.type == "text":
+                  report.append(content.text.value)
+                  result = "".join(report).strip()
+                  res_box.markdown(f"*{result}*")
           

@@ -126,6 +126,26 @@ def main():
     # pitalica
     if prompt := st.chat_input(placeholder=f"Postavite pitanje                                ({version})"):
         if st.session_state.thread_id is not None:
+            #client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=prompt) 
+            res_box = st.empty()
+            report = []
+            stream = client.beta.threads.create_and_run(
+                assistant_id=assistant.id,
+                thread=thread.id,
+                tools=
+                #{"messages": [{"role": "user", "content": prompt}]},
+                stream=True)
+            for event in stream:
+                if event.data.object == "thread.message.delta":
+                    for content in event.data.delta.content:
+                        if content.type == "text":
+                            report.append(content.text.value)
+                            result = "".join(report).strip()
+                            res_box.markdown(f"*{result}*")
+
+    _ = """
+    if prompt := st.chat_input(placeholder=f"Postavite pitanje                                ({version})"):
+        if st.session_state.thread_id is not None:
             client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=prompt) 
 
             # run = client.beta.threads.runs.create_and_stream(thread_id=st.session_state.thread_id, assistant_id=assistant.id)
@@ -139,7 +159,7 @@ def main():
 
         else:
             st.warning("Molimo Vas da izaberete postojeci ili da kreirate novi chat.")
-
+    """
 
     # fixirana poruka za spinner
     with stylable_container(
