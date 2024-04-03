@@ -132,7 +132,7 @@ def main():
             stream = client.beta.threads.create_and_run(
                 assistant_id=assistant.id,
                 thread=thread.id,
-                tools=
+                tools=tools,
                 #{"messages": [{"role": "user", "content": prompt}]},
                 stream=True)
             for event in stream:
