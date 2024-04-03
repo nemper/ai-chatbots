@@ -25,10 +25,10 @@ from langchain_community.retrievers import PineconeHybridSearchRetriever
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from mojafunkcija import st_style, pinecone_stats
-from prompts import PromptDatabase, SQLSearchTool
-from retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
-from various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
+from myfunc.mojafunkcija import st_style, pinecone_stats
+from myfunc.prompts import PromptDatabase, SQLSearchTool
+from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
+from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
 
 if "init_prompts" not in st.session_state:
     st.session_state.init_prompts = 42
