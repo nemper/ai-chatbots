@@ -321,9 +321,11 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
     napisano = False
 
     file_name = "chunks.json"
+    
     with st.form(key="my_form_prepare", clear_on_submit=False):
-        
+        col1, col2 = st.columns(2)     
         # define delimiter
+        st.write("Ukoliko NE korsitite ni jednu od prethodne dve opcije, mozete birati parametre za embedding:")
         text_delimiter = st.text_input(
             "Unesite delimiter: ",
             help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
@@ -333,30 +335,39 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             "Unesite prefiks za tekst: ",
             help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
         )
-        add_schema = st.radio(
-            "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
-            ("Ne", "Da"),
-            key="add_schema_doc",
-            help="Dodaje u metadata ime i temu",
-        )
-        add_pitanje = st.radio(
-            "Da li želite da dodate pitanje: ",
-            ("Ne", "Da"),
-            key="add_pitanje_doc",
-            help="Dodaje pitanje u text",
-        )
-        semantic = st.radio(
-            "Da li želite semantic chunking: ",
-            ("Ne", "Da"),
-            key="semantic",
-            help="Greg Kamaradt Semantic Chunker",
-        )
-        by_heading = st.radio(
-            "Da li želite chunking prema h2 headingu: ",
-            ("Ne", "Da"),
-            key="by_heading",
-            help="Chunker by h2 heading",
-        )
+        col11, col12 = st.columns(2)
+        with col11:
+            add_schema = st.radio(
+                "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
+                ("Ne", "Da"),
+                key="add_schema_doc",
+                horizontal=True,
+                help="Dodaje u metadata ime i temu",
+            )
+        with col12:    
+            add_pitanje = st.radio(
+                "Da li želite da dodate pitanje: ",
+                ("Ne", "Da"),
+                horizontal=True,
+                key="add_pitanje_doc",
+                help="Dodaje pitanje u text",
+            )
+        with col2:    
+            semantic = st.radio(
+                "Da li želite semantic chunking: ",
+                ("Ne", "Da"),
+                key="semantic",
+                horizontal=True,
+                help="Greg Kamaradt Semantic Chunker",
+            )
+        with col1:    
+            by_heading = st.radio(
+                "Da li želite chunking prema h2 headingu: ",
+                ("Ne", "Da"),
+                key="by_heading",
+                horizontal=True,
+                help="Chunker by h2 heading",
+            )
         st.session_state.submit_b = st.form_submit_button(
             label="Submit",
             help="Pokreće podelu dokumenta na delove za indeksiranje",
