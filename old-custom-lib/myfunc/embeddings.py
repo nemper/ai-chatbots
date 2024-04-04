@@ -40,8 +40,8 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 
 
-if "init_prompts" not in st.session_state:
-    st.session_state.init_prompts = 42
+if "init_prompts_e" not in st.session_state:
+    st.session_state.init_prompts_e = 42
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["contextual_compression"],[os.getenv("CONTEXTUAL_COMPRESSION")])
         st.session_state.contextual_compression = prompt_map.get("contextual_compression", "You are helpful assistant").format()

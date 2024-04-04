@@ -16,8 +16,8 @@ from streamlit_javascript import st_javascript
 from myfunc.prompts import PromptDatabase
 
 
-if "init_prompts" not in st.session_state:
-    st.session_state["init_prompts"] = 42
+if "init_prompts_a" not in st.session_state:
+    st.session_state.init_prompts_a = 42
 
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])

@@ -23,8 +23,8 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 from myfunc.mojafunkcija import st_style
 from myfunc.prompts import PromptDatabase
 
-if "init_prompts" not in st.session_state:
-    st.session_state.init_prompts = 42
+if "init_prompts_v" not in st.session_state:
+    st.session_state.init_prompts_v = 42
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
         st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
