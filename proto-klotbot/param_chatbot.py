@@ -4,77 +4,69 @@ import openai
 import os
 import streamlit as st
 
-from openai import AssistantEventHandler
 from st_copy_to_clipboard import st_copy_to_clipboard
 from streamlit_extras.stylable_container import stylable_container
 from time import sleep
-from typing_extensions import override
 
 from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import web_search_process
  
-# First, we create a EventHandler class to define
-# how we want to handle the events in the response stream.
-def display_tool_output(output):
-    # Example function to update Streamlit UI with tool output
-    # Adjust based on how you intend to display or use the output
-    st.write(output)
-    
-class EventHandler(AssistantEventHandler):    
-  @override
-  def on_text_created(self, text) -> None:
-    print(f"\nassistant > ", end="", flush=True)
-      
-  @override
-  def on_text_delta(self, delta, snapshot):
-    print(delta.value, end="", flush=True)
-      
-  def on_tool_call_created(self, tool_call):
-    print(f"\nassistant > {tool_call.type}\n", flush=True)
-  
-    def on_tool_call_delta(self, delta, snapshot):
-        # Handle tool call responses here
-        # Assuming 'delta' contains 'tool_call' with necessary details about the tool call completion
-        # The precise structure of 'delta' would depend on the OpenAI API documentation
-        
-        # Check if the delta is for a tool call completion with outputs
-        if delta.type == 'tool_call_completed' and delta.tool_call.outputs:
-            for output in delta.tool_call.outputs:
-                tool_name = output.tool_call.function.name  # Adjust based on actual structure
-                arguments = json.loads(output.tool_call.function.arguments)  # Adjust based on actual structure
-                
-                # Handle the output based on the tool's name
-                if tool_name == "web_search_process":
-                    # Assuming 'arguments' contains the necessary input for the tool
-                    try:
-                        query = arguments["query"]
-                    except KeyError:
-                        query = arguments["q"]
-                    result = web_search_process(query)
-                    display_tool_output(result)  # Update the UI with the result
+import streamlit as st
+from openai import OpenAI
+import os
 
-                elif tool_name == "hybrid_search_process":
-                    upit = arguments["upit"]
-                    result = hybrid_search_process(upit)
-                    display_tool_output(result)  # Update the UI with the result
-
-                elif tool_name == "sql_search_tool":
-                    upit = arguments["upit"]
-                    result = sql_search_tool(upit)
-                    display_tool_output(result)  # Update the UI with the result
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ASSISTANT_ID = "asst_1YAl3U9XJTOnfYUJrStFO1nH"
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
+tool_descriptions = {
+    "web_search_process" : """
+    This tool uses Google Search to find the most relevant and up-to-date information on the web.
+    """,
+    "hybrid_search_process" : """
+    This function performs a hybrid search process using Pinecone and BM25Encoder. 
+    It initializes Pinecone with the provided API key and environment, creates an index named 'positive', and performs 
+    a hybrid query using the provided query and alpha value. The function then formats the results and returns them in a specific format.
+    """
+}
 
-# st.set_page_config(page_title="Positive Chatbot", page_icon="🤖")
+tools = [
+    {
+    "type": "function",
+    "function": {
+        "name": "web_search_process",
+        "description": tool_descriptions["web_search_process"],
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "q": {
+                    "type": "string",
+                    "description": "The query to be searched."}
+            },
+            "required": ["q"]}
+    }},
+    {
+    "type": "function",
+    "function": {
+        "name": "hybrid_search_process",
+        "description": tool_descriptions["hybrid_search_process"],
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "upit": {
+                    "type": "string",
+                    "description": "The query to be searched."},
+            },
+            "required": ["upit"]}
+    }}
+    ]
 
 version = "v1.0.1 asistenti lib"
-
-os.getenv("OPENAI_API_KEY")
 assistant_id = "asst_1YAl3U9XJTOnfYUJrStFO1nH"
 # assistant_id = os.getenv("ASSISTANT_ID")
 
-client = openai.OpenAI()
 # printuje se u drugoj skripti, a moze jelte da se vidi i na OpenAI Playground-u
 client.beta.assistants.retrieve(assistant_id=assistant_id)
 
@@ -111,7 +103,7 @@ def main():
         st.session_state.thread_id = thread.id
 
     
-    assistant = client.beta.assistants.retrieve(assistant_id=assistant_id)
+    # assistant = client.beta.assistants.retrieve(assistant_id=assistant_id)
     if st.session_state.thread_id:
         thread = client.beta.threads.retrieve(thread_id=st.session_state.thread_id)
 
@@ -126,15 +118,16 @@ def main():
     # pitalica
     if prompt := st.chat_input(placeholder=f"Postavite pitanje                                ({version})"):
         if st.session_state.thread_id is not None:
-            #client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=prompt) 
+            st.markdown("----")
             res_box = st.empty()
             report = []
-            stream = client.beta.threads.create_and_run(
-                assistant_id=assistant.id,
-                thread=thread.id,
+            client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=prompt) 
+            stream = client.beta.threads.runs.create(
+                thread_id=st.session_state.thread_id,
+                assistant_id=ASSISTANT_ID,
                 tools=tools,
-                #{"messages": [{"role": "user", "content": prompt}]},
-                stream=True)
+                stream=True
+                )
             for event in stream:
                 if event.data.object == "thread.message.delta":
                     for content in event.data.delta.content:
@@ -142,24 +135,6 @@ def main():
                             report.append(content.text.value)
                             result = "".join(report).strip()
                             res_box.markdown(f"*{result}*")
-
-    _ = """
-    if prompt := st.chat_input(placeholder=f"Postavite pitanje                                ({version})"):
-        if st.session_state.thread_id is not None:
-            client.beta.threads.messages.create(thread_id=st.session_state.thread_id, role="user", content=prompt) 
-
-            # run = client.beta.threads.runs.create_and_stream(thread_id=st.session_state.thread_id, assistant_id=assistant.id)
-            with client.beta.threads.runs.create_and_stream(
-                thread_id=thread.id,
-                assistant_id=assistant.id,
-                instructions="You are a helpful assistant",
-                event_handler=EventHandler(),
-                ) as stream:
-                stream.until_done()
-
-        else:
-            st.warning("Molimo Vas da izaberete postojeci ili da kreirate novi chat.")
-    """
 
     # fixirana poruka za spinner
     with stylable_container(
