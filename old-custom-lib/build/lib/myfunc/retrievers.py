@@ -44,8 +44,8 @@ class HybridQueryProcessor:
         top_k (int): The number of results to be returned.
             
     Example usage:
-    processor = HybridQueryProcessor(api_key=environ["PINECONE_API_KEY_POS"], 
-                                 environment=environ["PINECONE_ENVIRONMENT_POS"],
+    processor = HybridQueryProcessor(api_key=environ["PINECONE_API_KEY"], 
+                                 environment=environ["PINECONE_API_KEY"],
                                  alpha=0.7, 
                                  score=0.35,
                                  index_name='custom_index'), 
@@ -72,8 +72,8 @@ class HybridQueryProcessor:
                 - namespace (str): The namespace to be used for the Pinecone index (default fetched from environment variable).
                 - top_k (int): The number of results to be returned (default 6).
         """
-        self.api_key = kwargs.get('api_key', os.getenv('PINECONE_API_KEY_POS'))
-        self.environment = kwargs.get('environment', os.getenv('PINECONE_ENVIRONMENT_POS'))
+        self.api_key = kwargs.get('api_key', os.getenv('PINECONE_API_KEY'))
+        self.environment = kwargs.get('environment', os.getenv('PINECONE_API_KEY'))
         self.alpha = kwargs.get('alpha', 0.5)  # Default alpha is 0.5
         self.score = kwargs.get('score', 0.05)  # Default score is 0.05
         self.index_name = kwargs.get('index', 'neo-positive')  # Default index is 'positive'
@@ -652,8 +652,8 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-posi
 
     Parameters:
     upit (str): The query input for retrieving relevant documents.
-    api_key (str, optional): API key for Pinecone. Defaults to PINECONE_API_KEY_POS from environment variables.
-    environment (str, optional): Pinecone environment. Defaults to PINECONE_ENVIRONMENT_POS from environment variables.
+    api_key (str, optional): API key for Pinecone. Defaults to PINECONE_API_KEY from environment variables.
+    environment (str, optional): Pinecone environment. Defaults to PINECONE_API_KEY from environment variables.
     index_name (str, optional): Name of the Pinecone index to use. Defaults to 'positive'.
     namespace (str, optional): Namespace for Pinecone index. Defaults to NAMESPACE from environment variables.
     openai_api_key (str, optional): OpenAI API key. Defaults to OPENAI_API_KEY from environment variables.
@@ -668,8 +668,8 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-posi
     """
     
     # Use the passed values if available, otherwise default to environment variables
-    api_key = api_key if api_key is not None else os.getenv('PINECONE_API_KEY_POS')
-    environment = environment if environment is not None else os.getenv('PINECONE_ENVIRONMENT_POS')
+    api_key = api_key if api_key is not None else os.getenv('PINECONE_API_KEY')
+    environment = environment if environment is not None else os.getenv('PINECONE_API_KEY')
     # index_name is already defaulted to 'positive'
     namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
     openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
