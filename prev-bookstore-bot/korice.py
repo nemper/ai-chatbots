@@ -1,3 +1,5 @@
+# kreira opise naslovnih strana. moze da s ekoristi html fajl ili stranica
+
 from bs4 import BeautifulSoup
 import re
 
