@@ -14,6 +14,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from html2docx import html2docx
 from io import StringIO
 from smtplib import SMTP
@@ -451,7 +452,7 @@ def parse_serbian_date(date_string):
     return datetime.strptime(date_string.strip(), "%d. %B %Y")
 
 
-def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password):
+def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password, image_path=None):
     """
     Sends an email using SMTP protocol.
 
@@ -477,6 +478,13 @@ def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, use
     msg['Subject'] = subject
 
     msg.attach(MIMEText(message, 'plain'))
+    # Attach the body text
+    
+    if image_path is not None: # Attach the image
+        with open(image_path, 'rb') as file:
+            img = MIMEImage(file.read())
+            img.add_header('Content-Disposition', 'attachment; filename=image_path')
+            msg.attach(img)
 
     server = SMTP(smtp_server, smtp_port)
     server.starttls()
