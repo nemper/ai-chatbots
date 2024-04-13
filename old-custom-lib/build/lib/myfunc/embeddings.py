@@ -378,6 +378,7 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
 
         if dokum is not None and st.session_state.submit_b == True:
             if by_heading == "Da":
+                data=pinecone_utility.read_uploaded_file(dokum)
                 json_string = create_emb_file(dokum)
                 napisano = True
             else:
