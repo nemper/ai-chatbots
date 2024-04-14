@@ -208,15 +208,17 @@ class MultiQueryDocumentRetriever:
         model (str): Model used for generating embeddings for the query and documents.
         temperature (int): Temperature setting for the language model, affecting creativity.
         host (str): Host URL for the Pinecone service.
+        tip (str): multiquery or subquery "multi", "sub"
     """
 
-    def __init__(self, question, namespace="zapisnici", model="text-embedding-3-large", host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io", temperature=0):
+    def __init__(self, question, namespace="zapisnici", model="text-embedding-3-large", host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io", temperature=0, tip="multi"):
         
         self.question = question
         self.namespace = namespace
         self.model = model
         self.host = host
         self.temperature = temperature
+        self.tip = tip
         self.log_messages = []
         self.logger = self._init_logger()
         self.llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=self.temperature)
@@ -256,13 +258,21 @@ class MultiQueryDocumentRetriever:
             index=index,
             namespace=self.namespace
         )
-        our_template = """You are an AI language model assistant. Your task is to generate 4 different versions of the given user 
-            question to retrieve relevant documents from a vector  database. 
-            By generating multiple perspectives on the user question, your goal is to help the user overcome some of the limitations 
-            of distance-based similarity search. Provide these alternative questions separated by newlines. 
-            Original question: 
-            {question}
-        """
+        if self.tip == "sub":
+            our_template = """You are a helpful assistant that generates multiple sub-questions related to an input question. \n
+                The goal is to break down the input into a set of sub-problems / sub-questions that can be answers in isolation. \n
+                Generate multiple search queries related to: {question} \n
+                Output (4 queries): 
+                {question}
+            """
+        else:    
+            our_template = """You are an AI language model assistant. Your task is to generate 4 different versions of the given user 
+                question to retrieve relevant documents from a vector  database. 
+                By generating multiple perspectives on the user question, your goal is to help the user overcome some of the limitations 
+                of distance-based similarity search. Provide these alternative questions separated by newlines. 
+                Original question: 
+                {question}
+            """
         our_prompt = PromptTemplate(input_variables=['question'], template=our_template)
         return MultiQueryRetriever.from_llm(retriever=pinecone_retriever, llm=self.llm, prompt=our_prompt)
 
