@@ -9,6 +9,8 @@ from myfunc.asistenti import read_aad_username
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
+from myfunc.varvars_dicts import work_vars
+
 
 client=OpenAI()
 processor = HybridQueryProcessor(api_key=os.getenv("PINECONE_API_KEY"), namespace='positive') # namespace moze i iz env
@@ -33,7 +35,7 @@ def main():
     if "client" not in st.session_state:
         st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     if "openai_model" not in st.session_state:
-        st.session_state["openai_model"] = "gpt-4-turbo-preview"
+        st.session_state["openai_model"] = work_vars["names"]["openai_model"]
     if "sys_ragbot" not in st.session_state:
         st.session_state.sys_ragbot = st.session_state.sys_ragbot
     if "azure_filename" not in st.session_state:
@@ -117,7 +119,7 @@ def main():
             message_placeholder = st.empty()
             full_response = ""
             for response in client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model=work_vars["names"]["openai_model"],
                 temperature=0,
                 messages=temp_messages,  # Use the temporary list with enriched context
                 stream=True,
