@@ -173,9 +173,9 @@ def def_chunk():
     with st.sidebar:
         st.info("Odaberite velicinu chunka i overlap")
         chunk_size = st.slider(
-            "Set chunk size in characters (50 - 8000)",
+            "Set chunk size in characters (50 - 32000)",
             50,
-            8000,
+            32000,
             1500,
             step=100,
             help="Velicina chunka odredjuje velicinu indeksiranog dokumenta. Veci chunk obezbedjuje bolji kontekst, dok manji chunk omogucava precizniji odgovor.",
