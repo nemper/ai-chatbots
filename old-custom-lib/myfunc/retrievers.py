@@ -24,6 +24,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
 from myfunc.mojafunkcija import pinecone_stats
+from myfunc.varvars_dicts import work_vars
 
 
 class HybridQueryProcessor:
@@ -389,7 +390,7 @@ class TextProcessing:
         'person_name' and 'topic' are present in the JSON object returned by the model.
         """
         response = self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model=work_vars["names"]["openai_model"],
             temperature=0,
             response_format={"type": "json_object"},
             messages=[
@@ -421,7 +422,7 @@ class TextProcessing:
         Adds a question to a chunk of text to match the given statement.
         """
         result = self.client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model=work_vars["names"]["openai_model"],
             temperature=0,
             messages=[
                 {"role": "system", "content": "result2"},
@@ -568,7 +569,7 @@ class PineconeUtility:
                 all_text = byte_data.decode('utf-8')
                     
                 # initialize graph engine
-                index_creator = GraphIndexCreator(llm=ChatOpenAI(temperature=0, model="gpt-4-turbo-preview"))
+                index_creator = GraphIndexCreator(llm=ChatOpenAI(temperature=0, model=work_vars["names"]["openai_model"]))
                 text = "\n".join(all_text.split("\n\n"))
             
                 # create graph
@@ -697,7 +698,7 @@ def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-posi
         index_name, embeddings, "context", namespace=namespace)
 
     # Initialize OpenAI embeddings and LLM
-    llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0)
+    llm = ChatOpenAI(model=work_vars["names"]["openai_model"], temperature=0)
     retriever = SelfQueryRetriever.from_llm(
         llm,
         vectorstore,

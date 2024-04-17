@@ -22,6 +22,8 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 
 from myfunc.mojafunkcija import st_style
 from myfunc.prompts import PromptDatabase
+from myfunc.varvars_dicts import work_vars
+
 
 if "init_prompts_v" not in st.session_state:
     st.session_state.init_prompts_v = 42
@@ -45,7 +47,7 @@ class MeetingTranscriptSummarizer:
 
     def get_response(self, prompt, text):
         response = client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model=work_vars["names"]["openai_model"],
             temperature=self.temperature,
             messages=[
                 {"role": "system", "content": prompt + "Use only the Serbian Language"},
@@ -123,7 +125,7 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
         """
         
         response = client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model=work_vars["names"]["openai_model"],
             temperature=temp,  
             messages=[
                 {"role": "system", "content": prompt + "Use only the Serbian Language"},
@@ -515,7 +517,7 @@ def hyde_rag(prompt):
   
     client = OpenAI()
     response = client.chat.completions.create(
-        model= "gpt-4-turbo-preview",
+        model= work_vars["names"]["openai_model"],
         temperature=0.5,
         messages=[
             {"role": "system", "content": st.session_state.hyde_rag},
@@ -570,7 +572,7 @@ def get_structured_decision_from_model(user_query):
     
     client = OpenAI()
     response = client.chat.completions.create(
-        model= "gpt-4-turbo-preview",
+        model= work_vars["names"]["openai_model"],
         temperature=0,
         response_format= { "type": "json_object" },
         messages=create_structured_prompt(user_query),

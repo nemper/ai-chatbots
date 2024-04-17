@@ -29,6 +29,7 @@ from myfunc.mojafunkcija import st_style, pinecone_stats
 from myfunc.prompts import PromptDatabase, SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
 from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
+from myfunc.varvars_dicts import work_vars
 
 import markdown
 import pypandoc
@@ -221,7 +222,7 @@ class MultiQueryDocumentRetriever:
         self.tip = tip
         self.log_messages = []
         self.logger = self._init_logger()
-        self.llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=self.temperature)
+        self.llm = ChatOpenAI(model=work_vars["names"]["openai_model"], temperature=self.temperature)
         self.retriever = self._init_retriever()
 
     def _init_logger(self):
@@ -635,7 +636,7 @@ class ContextRetriever:
         model (str): The model used for compression.
     """
     
-    def __init__(self, documents, model="gpt-4-turbo-preview"):
+    def __init__(self, documents, model=work_vars["names"]["openai_model"]):
         self.documents = documents
         self.model = model
         
@@ -724,7 +725,7 @@ def rag_tool_answer(prompt, phglob):
     elif  st.session_state.rag_tool == "Graph": 
         # Read the graph from the file-like object
         graph = NetworkxEntityGraph.from_gml(st.session_state.graph_file)
-        chain = GraphQAChain.from_llm(ChatOpenAI(model="gpt-4-turbo-preview", temperature=0), graph=graph, verbose=True)
+        chain = GraphQAChain.from_llm(ChatOpenAI(model=work_vars["names"]["openai_model"], temperature=0), graph=graph, verbose=True)
         rezultat= chain.invoke(prompt)
         context = rezultat['result']
 

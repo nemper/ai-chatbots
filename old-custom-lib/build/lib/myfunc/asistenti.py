@@ -14,7 +14,7 @@ from PIL import Image
 from streamlit_javascript import st_javascript
 
 from myfunc.prompts import PromptDatabase
-
+from myfunc.varvars_dicts import work_vars
 
 if "init_prompts_a" not in st.session_state:
     st.session_state.init_prompts_a = 42
@@ -229,7 +229,7 @@ def read_local_image():
                     }
 
                     payload = {
-                      "model": "gpt-4-vision-preview",
+                      "model": work_vars["names"]["openai_model"],
                       "messages": [
                         {
                           "role": "user",
@@ -293,7 +293,7 @@ def read_url_image():
                 with st.spinner("Sačekajte trenutak..."):         
                     
                     response = client.chat.completions.create(
-                      model="gpt-4-vision-preview",
+                      model=work_vars["names"]["openai_model"],
                       messages=[
                         {
                           "role": "user",
@@ -370,7 +370,7 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
         st.caption(f"Obradjujem {i + 1}. deo...")
           
         response = client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model=work_vars["names"]["openai_model"],
             temperature=0,
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": chunk}])
     
