@@ -16,6 +16,7 @@ from myfunc.asistenti import load_data_from_azure, read_aad_username, upload_dat
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor
+from myfunc.varvars_dicts import work_vars
 
 version = "v1.1.3 asistenti lib"
 
@@ -84,7 +85,7 @@ def main():
     # Inicijalizacija session state-a
     default_session_states = {
         "file_id_list": [],
-        "openai_model": "gpt-4-turbo-preview",
+        "openai_model": work_vars["names"]["openai_model"],
         "messages": [],
         "thread_id": None,
         "is_deleted": False,

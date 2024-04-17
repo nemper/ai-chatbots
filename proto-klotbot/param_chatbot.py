@@ -11,7 +11,8 @@ from time import sleep
 from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import web_search_process
- 
+from myfunc.varvars_dicts import work_vars
+
 import streamlit as st
 from openai import OpenAI
 import os
@@ -87,7 +88,7 @@ def main():
     # Inicijalizacija session state-a
     default_session_states = {
         "file_id_list": [],
-        "openai_model": "gpt-4-turbo-preview",
+        "openai_model": work_vars["names"]["openai_model"],
         "messages": [],
         "thread_id": None,
         "is_deleted": False,
