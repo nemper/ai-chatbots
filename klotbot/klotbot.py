@@ -36,8 +36,6 @@ def main():
         st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = work_vars["names"]["openai_model"]
-    if "sys_ragbot" not in st.session_state:
-        st.session_state.sys_ragbot = st.session_state.sys_ragbot
     if "azure_filename" not in st.session_state:
         st.session_state.azure_filename = "altass.csv"
     if "messages" not in st.session_state:
@@ -79,11 +77,13 @@ def main():
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
         current_thread_id = st.session_state.thread_id
+        # st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:
             # If not, initialize it with the conversation from the database or as an empty list
-            with ConversationDatabase() as db:
-                st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
+            #with ConversationDatabase() as db:
+            #    st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
+            st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         if current_thread_id in st.session_state.messages:
             # avatari primena
             for message in st.session_state.messages[current_thread_id]:
@@ -93,6 +93,8 @@ def main():
                 elif message["role"] == "user":         
                     with st.chat_message(message["role"], avatar=avatar_user):
                             st.markdown(message["content"])
+                elif message["role"] == "system":
+                    pass
                 else:         
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
@@ -102,7 +104,8 @@ def main():
         # Original processing to generate complete_prompt
         context, scores = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
-    
+        print(complete_prompt)
+        print("AAAA", st.session_state.sys_ragbot)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
     
