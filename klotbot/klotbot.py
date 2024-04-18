@@ -77,13 +77,14 @@ def main():
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
         current_thread_id = st.session_state.thread_id
-        # st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        st.session_state.messages[current_thread_id].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+        #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:
             # If not, initialize it with the conversation from the database or as an empty list
-            #with ConversationDatabase() as db:
-            #    st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
-            st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+            with ConversationDatabase() as db:
+                st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
+            #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         if current_thread_id in st.session_state.messages:
             # avatari primena
             for message in st.session_state.messages[current_thread_id]:
