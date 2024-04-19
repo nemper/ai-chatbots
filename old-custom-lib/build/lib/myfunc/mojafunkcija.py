@@ -1,3 +1,4 @@
+# in myfunc.mojafunkcija.py
 import io
 import markdown
 import os
@@ -24,6 +25,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from myfunc.varvars_dicts import work_vars
 
 
+# in myfunc.mojafunkcija.py
 def show_logo():
     """
     Display a logo image in the Streamlit sidebar.
@@ -39,6 +41,7 @@ def show_logo():
         )
 
 
+# in myfunc.mojafunkcija.py
 class StreamlitRedirect:
     """
     A class designed to redirect and clean console output for display in Streamlit.
@@ -75,6 +78,7 @@ class StreamlitRedirect:
         return self.output_buffer.getvalue()
 
 
+# in myfunc.mojafunkcija.py
 def tiktoken_len(text):
     """
     Calculates the number of tokens in a given text using the 'tiktoken' tokenizer.
@@ -92,6 +96,7 @@ def tiktoken_len(text):
     return len(tokens)
 
 
+# in myfunc.mojafunkcija.py
 def pinecone_stats(index, index_name):
     """
     Displays statistics of a Pinecone index in a Streamlit application.
@@ -138,6 +143,7 @@ def pinecone_stats(index, index_name):
     st.write(styled_df)
 
 
+# in myfunc.mojafunkcija.py
 def flatten_dict(d, parent_key="", sep="_"):
     """
     Flattens a nested dictionary.
@@ -161,6 +167,7 @@ def flatten_dict(d, parent_key="", sep="_"):
     return dict(items)
 
 
+# in myfunc.mojafunkcija.py
 def def_chunk():
     """
     Defines the size and overlap of chunks in a Streamlit sidebar.
@@ -192,6 +199,7 @@ def def_chunk():
         return chunk_size, chunk_overlap
 
 
+# in myfunc.mojafunkcija.py
 def print_nested_dict_st(d):
     """
     Recursively prints a nested dictionary in a Streamlit application.
@@ -208,6 +216,7 @@ def print_nested_dict_st(d):
             st.write(f"{key}: {value}")
 
 
+# in myfunc.mojafunkcija.py
 class StreamHandler(BaseCallbackHandler):
     """
     A class for handling stream updates in a Streamlit container.
@@ -262,6 +271,7 @@ class StreamHandler(BaseCallbackHandler):
         self.container.empty()
 
 
+# in myfunc.mojafunkcija.py
 def open_file(filepath):
     """
     Opens and reads the content of a file.
@@ -279,6 +289,7 @@ def open_file(filepath):
         return sadrzaj
 
 
+# in myfunc.mojafunkcija.py
 def st_style():
     """
     Applies custom CSS styling to hide certain Streamlit elements.
@@ -295,6 +306,7 @@ def st_style():
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
+# in myfunc.mojafunkcija.py
 def positive_login(main, verzija):
     """
     Manages user authentication for a Streamlit application using a YAML configuration.
@@ -343,7 +355,7 @@ def positive_login(main, verzija):
     return name, authentication_status, email
 
 
-# define model and temperature
+# in myfunc.mojafunkcija.py
 def init_cond_llm(i=None):
     """
     Initializes conditions for a language model in a Streamlit sidebar.
@@ -377,9 +389,7 @@ def init_cond_llm(i=None):
     return model, temp
 
 
-# error handling on Serbian
-
-
+# in myfunc.mojafunkcija.py
 def greska(e):
     """
     Handles exceptions in a Streamlit application by displaying appropriate warning messages in Serbian.
@@ -399,7 +409,7 @@ def greska(e):
             f"Nisam u mogucnosti za zavrsim tekst. Pokusajte ponovo za nekoliko minuta. Opis greske je:\n {e}")
 
 
-# TEST
+# in myfunc.mojafunkcija.py
 def convert_input_to_date(ulazni_datum):
     """
     Converts a given input string to a datetime object.
@@ -419,6 +429,7 @@ def convert_input_to_date(ulazni_datum):
         return None
     
 
+# in myfunc.mojafunkcija.py
 def parse_serbian_date(date_string):
     """
     Parses a date string in Serbian and converts it to a datetime object.
@@ -453,6 +464,7 @@ def parse_serbian_date(date_string):
     return datetime.strptime(date_string.strip(), "%d. %B %Y")
 
 
+# in myfunc.mojafunkcija.py
 def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, username, password, image_path=None):
     """
     Sends an email using SMTP protocol.
@@ -495,6 +507,7 @@ def send_email(subject, message, from_addr, to_addr, smtp_server, smtp_port, use
     server.quit()
 
 
+# in myfunc.mojafunkcija.py
 def sacuvaj_dokument(content, file_name):
     """
     Saves a markdown content as a text, DOCX, and PDF file, providing options to download each format.
@@ -557,6 +570,7 @@ def sacuvaj_dokument(content, file_name):
     )
     
 
+# in myfunc.mojafunkcija.py
 custom_streamlit_style = """
     <style>
     MainMenu {visibility: hidden;}

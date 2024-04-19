@@ -1,3 +1,4 @@
+# in myfunc.asistenti.py
 import base64
 import openai
 import os
@@ -16,6 +17,8 @@ from streamlit_javascript import st_javascript
 from myfunc.prompts import PromptDatabase
 from myfunc.varvars_dicts import work_vars
 
+
+# in myfunc.asistenti.py
 if "init_prompts_a" not in st.session_state:
     st.session_state.init_prompts_a = 42
 
@@ -25,6 +28,7 @@ if "init_prompts_a" not in st.session_state:
         st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
 
 
+# in myfunc.asistenti.py
 def read_aad_username():
     """ Read username from Azure Active Directory. """
     
@@ -46,6 +50,7 @@ def read_aad_username():
     return username
 
 
+# in myfunc.asistenti.py
 def load_prompts_from_azure(bsc, inner_dict, key):
     blob_client = bsc.get_container_client("positive-user").get_blob_client("positive_prompts.json")
     prompts = json_loads(blob_client.download_blob().readall().decode('utf-8'))
@@ -53,6 +58,7 @@ def load_prompts_from_azure(bsc, inner_dict, key):
     return prompts["POSITIVE"][inner_dict][key]
 
 
+# in myfunc.asistenti.py
 def load_data_from_azure(bsc, filename, username=None, is_from_altass=False):
     """ Load data from Azure Blob Storage. """
     try:
@@ -76,6 +82,7 @@ def load_data_from_azure(bsc, filename, username=None, is_from_altass=False):
         return pd.DataFrame(columns=['Username', 'Thread ID', 'Thread Name', 'Conversation']) if is_from_altass else {f"An error occurred: {e}"}
     
 
+# in myfunc.asistenti.py
 def upload_data_to_azure(z, filename):
     """ Upload data to Azure Blob Storage. """
     if "fajlovi" in z.columns:
@@ -84,7 +91,8 @@ def upload_data_to_azure(z, filename):
         environ.get("AZ_BLOB_API_KEY")).get_blob_client("positive-user", filename)
     blob_client.upload_blob(z.to_csv(index=False), overwrite=True)
 
-# ZAPISNIK
+
+# in myfunc.asistenti.py
 def audio_izlaz(content):
     """ Convert text to speech and save the audio file. 
         Parameters: content (str): The text to be converted to speech.
@@ -116,6 +124,7 @@ def audio_izlaz(content):
     st.audio(mp3_data.read(), format="audio/mp3")
 
 
+# in myfunc.asistenti.py
 def priprema():
     """ Prepare the data for the assistant. """    
     
@@ -131,11 +140,11 @@ def priprema():
         read_url_image()
 
 
-
-# This function does transcription of the audio file and then corrects the transcript. 
-# It calls the function transcribe and generate_corrected_transcript
+# in myfunc.asistenti.py
 def transkript():
-    """ Convert mp3 to text. """
+    """This function does transcription of the audio file and then corrects the transcript.
+    It calls the function transcribe and generate_corrected_transcript
+    Convert mp3 to text. """
     
     # Read OpenAI API key from env
     with st.sidebar:  # App start
@@ -185,6 +194,7 @@ def transkript():
                 )
 
 
+# in myfunc.asistenti.py
 def read_local_image():
     """ Describe the image from a local file. """
 
@@ -266,6 +276,7 @@ def read_local_image():
             )
 
 
+# in myfunc.asistenti.py
 def read_url_image():
     """ Describe the image from a URL. """    
     # version url
@@ -323,7 +334,7 @@ def read_url_image():
         )
 
 
-
+# in myfunc.asistenti.py
 def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
     """ Generate corrected transcript. 
         Parameters: 

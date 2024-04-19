@@ -1,3 +1,4 @@
+# in myfunc.embeddings.py
 import ast
 import cohere
 import json
@@ -41,6 +42,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 
 
+# in myfunc.embeddings.py
 if "init_prompts_e" not in st.session_state:
     st.session_state.init_prompts_e = 42
     with PromptDatabase() as db:
@@ -53,6 +55,8 @@ text_processor = TextProcessing(gpt_client=client)
 pinecone_utility = PineconeUtility()
 
 
+
+# in myfunc.embeddings.py
 class DocumentConverter:
     """
     A class for converting documents between different formats and extracting structured data.
@@ -144,6 +148,7 @@ class DocumentConverter:
         return semantic_snippets
 
 
+# in myfunc.embeddings.py
 def create_emb_file(uploaded_file):
     with st.spinner("In progress..."):    
         # Instantiate the DocumentConverter class
@@ -197,6 +202,7 @@ def create_emb_file(uploaded_file):
     return json_string
 
 
+# in myfunc.embeddings.py
 class MultiQueryDocumentRetriever:
     """
     Retrieves relevant documents for complex queries by utilizing multi-query techniques
@@ -287,6 +293,7 @@ class MultiQueryDocumentRetriever:
         return "\n\n".join([doc.page_content for doc in result])
 
 
+# in myfunc.embeddings.py
 class PineconeRetriever:
     """Handles document retrieval using Pinecone's hybrid search capabilities.
     
@@ -327,6 +334,7 @@ class PineconeRetriever:
         return self.retriever.get_relevant_documents(self.query)
 
 
+# in myfunc.embeddings.py
 def prepare_embeddings(chunk_size, chunk_overlap, dokum):
     skinuto = False
     napisano = False
@@ -471,6 +479,7 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
         st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
 
 
+# in myfunc.embeddings.py
 def do_embeddings(dokum, tip, api_key, host, index_name, index):
     with st.form(key="my_form_do", clear_on_submit=False):
         err_log = ""
@@ -586,6 +595,7 @@ def do_embeddings(dokum, tip, api_key, host, index_name, index):
             pinecone_stats(index, index_name)
 
 
+# in myfunc.embeddings.py
 class CohereReranker:
     """Reranks documents based on relevance to the query using Cohere's rerank model.
 
@@ -609,6 +619,7 @@ class CohereReranker:
         return "\n\n".join([result.document['text'] for result in results])
 
 
+# in myfunc.embeddings.py
 class LongContextHandler:
     """Reorders documents to prioritize more relevant content for long contexts.
 
@@ -628,6 +639,7 @@ class LongContextHandler:
         return "\n\n".join(reordered_docs)
 
 
+# in myfunc.embeddings.py
 class ContextRetriever:
     """Retrieves and compresses documents to only include the most relevant parts.
     
@@ -668,6 +680,7 @@ class ContextRetriever:
             return "Error: Unexpected structure of compressed_output"
         
 
+# in myfunc.embeddings.py
 def rag_tool_answer(prompt, phglob):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)

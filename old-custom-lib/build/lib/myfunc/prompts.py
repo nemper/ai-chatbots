@@ -1,3 +1,4 @@
+# in myfunc.prompts.py
 import json
 import mysql.connector
 import os
@@ -12,6 +13,7 @@ from mysql.connector import Error
 from myfunc.varvars_dicts import work_vars
 
 
+# in myfunc.prompts.py
 class PromptDatabase:
     """
     A class to interact with a MySQL database for storing and retrieving prompt templates.
@@ -585,6 +587,7 @@ class PromptDatabase:
         return records
         
 
+# in myfunc.prompts.py
 class ConversationDatabase:
     """
     A class to interact with a MySQL database for storing and retrieving conversation data.
@@ -736,6 +739,7 @@ class ConversationDatabase:
         self.conn.close()
 
 
+# in myfunc.prompts.py
 class SQLSearchTool:
     """
     A tool to search an SQL database using natural language queries.

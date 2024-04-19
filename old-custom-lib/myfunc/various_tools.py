@@ -1,3 +1,4 @@
+# in myfunc.various_tools.py
 import datetime
 import html
 import json
@@ -25,6 +26,7 @@ from myfunc.prompts import PromptDatabase
 from myfunc.varvars_dicts import work_vars
 
 
+# in myfunc.various_tools.py
 if "init_prompts_v" not in st.session_state:
     st.session_state.init_prompts_v = 42
     with PromptDatabase() as db:
@@ -38,7 +40,7 @@ st_style()
 client=OpenAI()
 
 
-# novi dugacki zapisnik
+# in myfunc.various_tools.py
 class MeetingTranscriptSummarizer:
     def __init__(self, transcript, temperature, number_of_topics):
         self.transcript = transcript
@@ -86,6 +88,7 @@ class MeetingTranscriptSummarizer:
         return full_text
     
 
+# in myfunc.various_tools.py
 class StringLogHandler(logging.Handler):
     """A custom logging handler to collect log records in a list.
 
@@ -105,6 +108,7 @@ class StringLogHandler(logging.Handler):
         self.log_records.append(log_entry)
 
 
+# in myfunc.various_tools.py
 def summarize_meeting_transcript(transcript, temp, broj_tema):
     """
     Summarize a meeting transcript by first extracting the date, participants, and topics,
@@ -169,7 +173,7 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
     return full_text
 
 
-# Define a function to scrape a given URL
+# in myfunc.various_tools.py
 def scrape(url: str):
     global headers, sajt, err_log, tiktoken_len, vrsta
     # Send a GET request to the URL
@@ -234,7 +238,7 @@ def scrape(url: str):
     return {"url": url, "text": main_content_text}, local_links
 
 
-# Define a function to scrape a given URL
+# in myfunc.various_tools.py
 def main_scraper(chunk_size, chunk_overlap):
     skinuto = False
     napisano = False
@@ -411,6 +415,7 @@ def main_scraper(chunk_size, chunk_overlap):
         st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
 
 
+# in myfunc.various_tools.py
 def scrape_webpage_text(url):
     """
     Fetches the content of a webpage by URL and returns the textual content,
@@ -448,6 +453,7 @@ def scrape_webpage_text(url):
         return f"An error occurred: {e}"
 
 
+# in myfunc.various_tools.py
 def positive_calendly(phglob):
     with st.sidebar:
         with phglob.container():
@@ -458,6 +464,7 @@ def positive_calendly(phglob):
     return "Do not answer to this question, just say Hvala"
 
 
+# in myfunc.various_tools.py
 def load_prompts_from_azure(bsc, inner_dict, key):
     blob_client = bsc.get_container_client("positive-user").get_blob_client("positive_prompts.json")
     prompts = json.loads(blob_client.download_blob().readall().decode('utf-8'))
@@ -465,6 +472,7 @@ def load_prompts_from_azure(bsc, inner_dict, key):
     return prompts["POSITIVE"][inner_dict][key]
 
 
+# in myfunc.various_tools.py
 def load_data_from_azure(bsc, filename):
     """ Load data from Azure Blob Storage. """
     try:
@@ -483,6 +491,7 @@ def load_data_from_azure(bsc, filename):
         return pd.DataFrame(columns=['Username', 'Thread ID', 'Thread Name', 'Conversation'])
 
 
+# in myfunc.various_tools.py
 def upload_data_to_azure(bsc, filename, new_data):
     """ Upload data to Azure Blob Storage with appending new data. """
 
@@ -495,6 +504,7 @@ def upload_data_to_azure(bsc, filename, new_data):
     blob_client.upload_blob(csv_data, overwrite=True)
 
 
+# in myfunc.various_tools.py
 def web_search_process(query: str) -> str:
     """
     Executes a web search using the provided query string.
@@ -513,6 +523,7 @@ def web_search_process(query: str) -> str:
     return GoogleSerperAPIWrapper(environment=os.environ["SERPER_API_KEY"]).run(query)
 
 
+# in myfunc.various_tools.py
 def hyde_rag(prompt):
   
     client = OpenAI()
@@ -529,6 +540,7 @@ def hyde_rag(prompt):
     return response
 
 
+# in myfunc.various_tools.py
 def create_structured_prompt(user_query):
     """
     Constructs a structured prompt for use with an AI model, based on a user's query.
@@ -552,6 +564,7 @@ def create_structured_prompt(user_query):
     ]
 
 
+# in myfunc.various_tools.py
 def get_structured_decision_from_model(user_query):
 
     """

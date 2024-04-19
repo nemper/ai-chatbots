@@ -1,3 +1,4 @@
+# in myfunc.retrievers.py
 import datetime
 import io
 import json
@@ -27,6 +28,7 @@ from myfunc.mojafunkcija import pinecone_stats
 from myfunc.varvars_dicts import work_vars
 
 
+# in myfunc.retrievers.py
 class HybridQueryProcessor:
     """
     A processor for executing hybrid queries using Pinecone.
@@ -277,6 +279,7 @@ class HybridQueryProcessor:
         return result
 
 
+# in myfunc.retrievers.py
 class ParentPositiveManager:
     """
     This class manages the functionality for performing similarity searches using Pinecone and OpenAI Embeddings.
@@ -366,6 +369,7 @@ class ParentPositiveManager:
         return top_result.page_content, top_result.metadata['source'], top_result.metadata['chunk']
    
 
+# in myfunc.retrievers.py
 class TextProcessing:
     def __init__(self, gpt_client):
         self.client = gpt_client
@@ -433,6 +437,7 @@ class TextProcessing:
         return result.choices[0].message.content
 
 
+# in myfunc.retrievers.py
 class PineconeUtility:
     def __init__(self):
         # Nothing to initialize
@@ -643,6 +648,7 @@ class PineconeUtility:
         return data
 
 
+# in myfunc.retrievers.py
 def SelfQueryPositive(upit, api_key=None, environment=None, index_name='neo-positive', namespace=None, openai_api_key=None, host=None):
     """
     Executes a query against a Pinecone vector database using specified parameters or environment variables. 
