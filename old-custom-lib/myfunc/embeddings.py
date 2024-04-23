@@ -46,8 +46,9 @@ from bs4 import BeautifulSoup
 if "init_prompts_e" not in st.session_state:
     st.session_state.init_prompts_e = 42
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["contextual_compression"],[os.getenv("CONTEXTUAL_COMPRESSION")])
+        prompt_map = db.get_prompts_by_names(["contextual_compression", "self_query"],[os.getenv("CONTEXTUAL_COMPRESSION"), os.getenv("SELF_QUERY")])
         st.session_state.contextual_compression = prompt_map.get("contextual_compression", "You are helpful assistant").format()
+        st.session_state.self_query = prompt_map.get("self_query", "You are helpful assistant")
 
 st_style()
 client=OpenAI()
