@@ -29,10 +29,10 @@ from myfunc.varvars_dicts import work_vars
 # in myfunc.various_tools.py
 if "init_prompts_v" not in st.session_state:
     st.session_state.init_prompts_v = 42
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
-        st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
-        st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
+with PromptDatabase() as db:
+    prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
+    st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
+    st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
