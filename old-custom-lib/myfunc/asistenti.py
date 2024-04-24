@@ -17,11 +17,10 @@ from streamlit_javascript import st_javascript
 from myfunc.prompts import PromptDatabase
 from myfunc.varvars_dicts import work_vars
 
-
 # in myfunc.asistenti.py
-if "init_prompts_a" not in st.session_state:
-    st.session_state.init_prompts_a = 42
-
+try:
+    x = st.session_state.text_from_audio
+except:
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
         st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")

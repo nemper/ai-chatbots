@@ -43,8 +43,9 @@ from bs4 import BeautifulSoup
 
 
 # in myfunc.embeddings.py
-if "init_prompts_e" not in st.session_state:
-    st.session_state.init_prompts_e = 42
+try:
+    x = st.session_state.contextual_compression
+except:
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["contextual_compression", "self_query"],[os.getenv("CONTEXTUAL_COMPRESSION"), os.getenv("SELF_QUERY")])
         st.session_state.contextual_compression = prompt_map.get("contextual_compression", "You are helpful assistant").format()
