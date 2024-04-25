@@ -176,6 +176,10 @@ def transkript():
                 client = openai
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
+                        with PromptDatabase() as db:
+                            prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
+                            st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")
+                            st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
 
                         system_prompt=st.session_state.text_from_audio
                         # does transcription of the audio file and then corrects the transcript
