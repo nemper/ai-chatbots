@@ -15,8 +15,9 @@ from myfunc.varvars_dicts import work_vars
 client=OpenAI()
 processor = HybridQueryProcessor() # namespace moze i iz env
 
-if "init_prompt" not in st.session_state:
-    st.session_state.init_prompt = 42
+try:
+    x = st.session_state.sys_ragbot
+except:
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
