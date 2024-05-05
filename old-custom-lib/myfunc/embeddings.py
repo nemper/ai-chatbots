@@ -26,6 +26,10 @@ from langchain_community.retrievers import PineconeHybridSearchRetriever
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+from semantic_router.encoders import OpenAIEncoder
+from semantic_router.splitters import RollingWindowSplitter
+# from semantic_router.utils.logger import logger
+
 from myfunc.mojafunkcija import st_style, pinecone_stats
 from myfunc.prompts import PromptDatabase, SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
@@ -150,6 +154,53 @@ class DocumentConverter:
         return semantic_snippets
 
 
+# ovo ce da dobije vec gotovo
+
+# ovo funkcija radi
+def SemanticAurelio(sadrzaj, source):
+    '''
+    Ulaz je Document object iz loadera i naziv source fajla
+    Izlaz je Document object iz splittera
+    Ima opcije za ploting i statistike, dobro za testiranj eoptimalnih parametara
+    '''
+    encoder = OpenAIEncoder(name="text-embedding-3-large", dimensions = 3072)
+    # encoder.score_threshold = 0.2 ako se postavi dinamic_treshold = False
+    # logger.setLevel("WARNING")  # reduce logs from splitter
+    splitter = RollingWindowSplitter(
+        encoder=encoder,
+        dynamic_threshold=True, # mora biti False ako se definise fixni
+        min_split_tokens=100,
+        max_split_tokens=500,
+        window_size=5, # deafult
+        plot_splits=False,  # set this to true to visualize chunking
+        enable_statistics=False  # to print chunking stats
+    )
+    splits = splitter([sadrzaj[0].page_content])
+    current_date = datetime.now()
+    date_string = current_date.strftime('%Y%m%d')
+    structured_data = []
+    
+    for i, s in enumerate(splits):  
+            output_dict = {
+                "id": str(uuid4()),
+                "chunk": i,
+                "text": s.content,
+                "source": source,
+                "date": date_string,
+            }
+            structured_data.append(output_dict)
+
+                
+    json_string = (
+        "["
+        + ",\n".join(
+            json.dumps(d, ensure_ascii=False) for d in structured_data
+        )
+        + "]"
+    )
+
+   
+    return json_string
 # in myfunc.embeddings.py
 def create_emb_file(uploaded_file):
     with st.spinner("In progress..."):    
@@ -157,7 +208,7 @@ def create_emb_file(uploaded_file):
         converter = DocumentConverter()
 
         current_date = datetime.now()
-        date_string = current_date.strftime('%d.%m.%y')
+        date_string = current_date.strftime('%Y%m%d')
         structured_data = []
 
         # Handling file name and extension
@@ -402,17 +453,21 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
                 data=pinecone_utility.read_uploaded_file(dokum)
                 json_string = create_emb_file(dokum)
                 napisano = True
+            
+              
+                # Split the document into smaller parts, the separator should be the word "Chapter"
+            elif semantic == "Da":
+                # ovo ce da dobije vec gotovo
+                data=pinecone_utility.read_uploaded_file(dokum)
+                json_string = SemanticAurelio(data, dokum.name)
+                napisano = True    
             else:
                 data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-                # Split the document into smaller parts, the separator should be the word "Chapter"
-                if semantic == "Da":
-                    text_splitter = SemanticChunker(OpenAIEmbeddings())
-                else:
-                    text_splitter = CharacterTextSplitter(
-                            separator=text_delimiter,
-                            chunk_size=chunk_size,
-                            chunk_overlap=chunk_overlap,
-                        )
+                text_splitter = CharacterTextSplitter(
+                        separator=text_delimiter,
+                        chunk_size=chunk_size,
+                        chunk_overlap=chunk_overlap,
+                    )
 
                 texts = text_splitter.split_documents(data)
 
@@ -422,7 +477,8 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
 
                 # Define a custom method to convert Document to a JSON-serializable format
                 output_json_list = []
-            
+                current_date = datetime.now()
+                date_string = current_date.strftime('%Y%m%d')
                 # Loop through the Document objects and convert them to JSON
                 i = 0
                 for document in texts:
@@ -438,7 +494,7 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
                         "chunk": i,
                         "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
                         "source": document.metadata.get("source", ""),
-                        "date": text_processor.get_current_date_formatted(),
+                        "date": date_string,
                     }
 
                     if add_schema == "Da":
