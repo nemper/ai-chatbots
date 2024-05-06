@@ -160,8 +160,8 @@ class DocumentConverter:
 def SemanticAurelio(sadrzaj, source):
     '''
     Ulaz je Document object iz loadera i naziv source fajla
-    Izlaz je Document object iz splittera
-    Ima opcije za ploting i statistike, dobro za testiranj eoptimalnih parametara
+    Izlaz je JSON string za embedding
+    Ima opcije za ploting i statistike, dobro za testiranje optimalnih parametara
     '''
     encoder = OpenAIEncoder(name="text-embedding-3-large", dimensions = 3072)
     # encoder.score_threshold = 0.2 ako se postavi dinamic_treshold = False
@@ -186,7 +186,7 @@ def SemanticAurelio(sadrzaj, source):
                 "chunk": i,
                 "text": s.content,
                 "source": source,
-                "date": date_string,
+                "date": int(date_string),
             }
             structured_data.append(output_dict)
 
@@ -201,55 +201,59 @@ def SemanticAurelio(sadrzaj, source):
 
    
     return json_string
-# in myfunc.embeddings.py
+
+
 def create_emb_file(uploaded_file):
-    with st.spinner("In progress..."):    
-        # Instantiate the DocumentConverter class
-        converter = DocumentConverter()
+    '''
+    Ulaz je fajl iz st.upload_file
+    Izlaz je JSON string za embedding
+    '''
+    # Instantiate the DocumentConverter class
+    converter = DocumentConverter()
 
-        current_date = datetime.now()
-        date_string = current_date.strftime('%Y%m%d')
-        structured_data = []
+    current_date = datetime.now()
+    date_string = current_date.strftime('%Y%m%d')
+    structured_data = []
 
-        # Handling file name and extension
-        _, ext = os.path.splitext(uploaded_file.name)
+    # Handling file name and extension
+    _, ext = os.path.splitext(uploaded_file.name)
 
-        # Processing the document based on its extension
-        if ext == ".pdf":
-            document = converter.conv_pdf(uploaded_file.name)
-        elif ext == ".docx":
-            html = converter.conv_docx(uploaded_file.name)
-            document = converter.split_on_headers(html)
-        elif ext == ".md":
-            html = converter.conv_md(uploaded_file.name)
-            document = converter.split_on_headers(html)
-        else:
-            st.error("Only .md, .pdf, and .docx files are supported.")
-            return
+    # Processing the document based on its extension
+    if ext == ".pdf":
+        document = converter.conv_pdf(uploaded_file.name)
+    elif ext == ".docx":
+        html = converter.conv_docx(uploaded_file.name)
+        document = converter.split_on_headers(html)
+    elif ext == ".md":
+        html = converter.conv_md(uploaded_file.name)
+        document = converter.split_on_headers(html)
+    else:
+        st.error("Only .md, .pdf, and .docx files are supported.")
+        return 
 
     
-        i = 0
-        for doc in document:
-            i += 1
-            title = doc.metadata.get('heading', "")
-            content = doc.page_content
-            output_dict = {
-                "id": str(uuid4()),
-                "chunk": i,
-                "text": title + " > " + content,
-                "heading": title,
-                "source": uploaded_file.name,
-                "date": date_string,
-            }
-            structured_data.append(output_dict)
+    i = 0
+    for doc in document:
+        i += 1
+        title = doc.metadata.get('heading', "")
+        content = doc.page_content
+        output_dict = {
+            "id": str(uuid4()),
+            "chunk": i,
+            "text": title + " > " + content,
+            "heading": title,
+            "source": uploaded_file.name,
+            "date": int(date_string),
+        }
+        structured_data.append(output_dict)
 
-        json_string = (
-            "["
-            + ",\n".join(
-                json.dumps(d, ensure_ascii=False) for d in structured_data
-            )
-            + "]"
+    json_string = (
+        "["
+        + ",\n".join(
+            json.dumps(d, ensure_ascii=False) for d in structured_data
         )
+        + "]"
+    )
 
    
     return json_string
@@ -394,74 +398,52 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
 
     file_name = "chunks.json"
     
-    with st.form(key="my_form_prepare", clear_on_submit=False):
-        col1, col2 = st.columns(2)     
-        # define delimiter
-        st.write("Ukoliko NE korsitite ni jednu od prethodne dve opcije, mozete birati parametre za embedding:")
-        text_delimiter = st.text_input(
-            "Unesite delimiter: ",
-            help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
-        )
-        # define prefix
-        text_prefix = st.text_input(
-            "Unesite prefiks za tekst: ",
-            help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
-        )
-        col11, col12 = st.columns(2)
-        with col11:
-            add_schema = st.radio(
-                "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
-                ("Ne", "Da"),
-                key="add_schema_doc",
-                horizontal=True,
-                help="Dodaje u metadata ime i temu",
-            )
-        with col12:    
-            add_pitanje = st.radio(
-                "Da li želite da dodate pitanje: ",
-                ("Ne", "Da"),
-                horizontal=True,
-                key="add_pitanje_doc",
-                help="Dodaje pitanje u text",
-            )
-        with col2:    
-            semantic = st.radio(
-                "Da li želite semantic chunking: ",
-                ("Ne", "Da"),
+    semantic = st.radio(
+                "Odaberite tip pripreme: ",
+                ("Standard", "Heading", "Semantic"),
                 key="semantic",
+                index=None,
                 horizontal=True,
-                help="Greg Kamaradt Semantic Chunker",
+                help="Način pripreme JSON fajla za embeding",
             )
-        with col1:    
-            by_heading = st.radio(
-                "Da li želite chunking prema h2 headingu: ",
-                ("Ne", "Da"),
-                key="by_heading",
-                horizontal=True,
-                help="Chunker by h2 heading",
+    if semantic == "Standard":
+        with st.form(key="my_form_prepare", clear_on_submit=False):
+            text_delimiter = st.text_input(
+                "Unesite delimiter: ",
+                help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
             )
-        st.session_state.submit_b = st.form_submit_button(
-            label="Submit",
-            help="Pokreće podelu dokumenta na delove za indeksiranje",
-        )
-        st.info(f"Chunk veličina: {chunk_size}, chunk preklapanje: {chunk_overlap}")
-        if len(text_prefix) > 0:
-            text_prefix = text_prefix + " "
+            # define prefix
+            text_prefix = st.text_input(
+                "Unesite prefiks za tekst: ",
+                help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
+            )
+            col11, col12 = st.columns(2)
+            with col11:
+                add_schema = st.radio(
+                    "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
+                    ("Ne", "Da"),
+                    key="add_schema_doc",
+                    horizontal=True,
+                    help="Dodaje u metadata ime i temu",
+                )
+            with col12:    
+                add_pitanje = st.radio(
+                    "Da li želite da dodate pitanje: ",
+                    ("Ne", "Da"),
+                    horizontal=True,
+                    key="add_pitanje_doc",
+                    help="Dodaje pitanje u text",
+                )
+        
+            st.session_state.submit_b = st.form_submit_button(
+                label="Submit",
+                help="Pokreće podelu dokumenta na delove za indeksiranje",
+            )
+            st.info(f"Chunk veličina: {chunk_size}, chunk preklapanje: {chunk_overlap}")
+            if len(text_prefix) > 0:
+                text_prefix = text_prefix + " "
 
-        if dokum is not None and st.session_state.submit_b == True:
-            if by_heading == "Da":
-                data=pinecone_utility.read_uploaded_file(dokum)
-                json_string = create_emb_file(dokum)
-                napisano = True
-            
-              
-                # Split the document into smaller parts, the separator should be the word "Chapter"
-            elif semantic == "Da":
-                # ovo ce da dobije vec gotovo
-                data=pinecone_utility.read_uploaded_file(dokum)
-                json_string = SemanticAurelio(data, dokum.name)
-                napisano = True    
-            else:
+            if dokum is not None and st.session_state.submit_b == True:
                 data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
                 text_splitter = CharacterTextSplitter(
                         separator=text_delimiter,
@@ -494,7 +476,7 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
                         "chunk": i,
                         "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
                         "source": document.metadata.get("source", ""),
-                        "date": date_string,
+                        "date": int(date_string),
                     }
 
                     if add_schema == "Da":
@@ -510,29 +492,61 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
                     output_json_list.append(output_dict)
                 
 
-            # # Specify the file name where you want to save the JSON data
-                json_string = (
-                    "["
-                    + ",\n".join(
-                        json.dumps(d, ensure_ascii=False) for d in output_json_list
+                # # Specify the file name where you want to save the JSON data
+                    json_string = (
+                        "["
+                        + ",\n".join(
+                            json.dumps(d, ensure_ascii=False) for d in output_json_list
+                        )
+                        + "]"
                     )
-                    + "]"
-                )
 
-                    # Now, json_string contains the JSON data as a string
+                        # Now, json_string contains the JSON data as a string
+                napisano = st.info(
+                            "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
+                        )
 
-            napisano = st.info(
-                "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
+        if napisano:
+            file_name = os.path.splitext(dokum.name)[0]
+            skinuto = st.download_button(
+                "Download JSON",
+                data=json_string,
+                file_name=f"{file_name}.json",
+                mime="application/json",
             )
-
-    if napisano:
-        file_name = os.path.splitext(dokum.name)[0]
-        skinuto = st.download_button(
-            "Download JSON",
-            data=json_string,
-            file_name=f"{file_name}.json",
-            mime="application/json",
-        )
+    elif semantic == "Heading":
+        if st.button(f"Pripremi {semantic}"):
+            with st.spinner(f"Radim {semantic}"):    
+                data=pinecone_utility.read_uploaded_file(dokum)
+                json_string = create_emb_file(dokum)
+                if json_string is not None:
+                    napisano = st.info(
+                                    "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
+                                )
+                    file_name = os.path.splitext(dokum.name)[0]
+                    skinuto = st.download_button(
+                        "Download JSON",
+                        data=json_string,
+                        file_name=f"{file_name}.json",
+                        mime="application/json",
+                    )
+           
+    elif semantic == "Semantic":
+        if st.button(f"Pripremi {semantic}"):
+            with st.spinner(f"Radim {semantic}"): 
+                data=pinecone_utility.read_uploaded_file(dokum)
+                json_string = SemanticAurelio(data, dokum.name)
+                napisano = st.info(
+                                "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
+                            )
+                file_name = os.path.splitext(dokum.name)[0]
+                skinuto = st.download_button(
+                    "Download JSON",
+                    data=json_string,
+                    file_name=f"{file_name}.json",
+                    mime="application/json",
+                )
+        
     if skinuto:
         st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
 
