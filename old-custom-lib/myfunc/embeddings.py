@@ -23,7 +23,6 @@ from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_transformers import LongContextReorder
 from langchain_community.retrievers import PineconeHybridSearchRetriever
-from langchain_experimental.text_splitter import SemanticChunker
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from semantic_router.encoders import OpenAIEncoder
@@ -153,11 +152,106 @@ class DocumentConverter:
             cur_idx += 1
         return semantic_snippets
 
+def standard_chunks(dokum,chunk_size, chunk_overlap):
+    
+    with st.form(key="my_form_prepare", clear_on_submit=False):
+            text_delimiter = st.text_input(
+                "Unesite delimiter: ",
+                help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
+            )
+            # define prefix
+            text_prefix = st.text_input(
+                "Unesite prefiks za tekst: ",
+                help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
+            )
+            col11, col12 = st.columns(2)
+            with col11:
+                add_schema = st.radio(
+                    "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
+                    ("Ne", "Da"),
+                    key="add_schema_doc",
+                    horizontal=True,
+                    help="Dodaje u metadata ime i temu",
+                )
+            with col12:    
+                add_pitanje = st.radio(
+                    "Da li želite da dodate pitanje: ",
+                    ("Ne", "Da"),
+                    horizontal=True,
+                    key="add_pitanje_doc",
+                    help="Dodaje pitanje u text",
+                )
+        
+            st.session_state.submit_b = st.form_submit_button(
+                label="Submit",
+                help="Pokreće podelu dokumenta na delove za indeksiranje",
+            )
+            with st.spinner(f"Radim Standard"): 
+                st.info(f"Chunk veličina: {chunk_size}, chunk preklapanje: {chunk_overlap}")
+                if len(text_prefix) > 0:
+                    text_prefix = text_prefix + " "
 
-# ovo ce da dobije vec gotovo
+                if dokum is not None and st.session_state.submit_b == True:
+                    data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
+                    text_splitter = CharacterTextSplitter(
+                            separator=text_delimiter,
+                            chunk_size=chunk_size,
+                            chunk_overlap=chunk_overlap,
+                        )
+
+                    texts = text_splitter.split_documents(data)
+
+
+                    # # Create the OpenAI embeddings
+                    st.success(f"Učitano {len(texts)} tekstova")
+
+                    # Define a custom method to convert Document to a JSON-serializable format
+                    output_json_list = []
+                    current_date = datetime.now()
+                    date_string = current_date.strftime('%Y%m%d')
+                    # Loop through the Document objects and convert them to JSON
+                    i = 0
+                    for document in texts:
+                        i += 1
+                        if add_pitanje=="Da":
+                            pitanje = text_processor.add_question(document.page_content) + " "
+                            st.info(f"Dodajem pitanje u tekst {i}")
+                        else:
+                            pitanje = ""
+    
+                        output_dict = {
+                            "id": str(uuid4()),
+                            "chunk": i,
+                            "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
+                            "source": document.metadata.get("source", ""),
+                            "date": int(date_string),
+                        }
+
+                        if add_schema == "Da":
+                            try:
+                                person_name, topic = text_processor.add_self_data(document.page_content)
+                            except Exception as e:
+                                st.write(f"An error occurred: {e}")
+                                person_name, topic = "John Doe", "Any"
+    
+                            output_dict["person_name"] = person_name
+                            output_dict["topic"] = topic
+                            st.success(f"Processing {i} of {len(texts)}, {person_name}, {topic}")
+                        output_json_list.append(output_dict)
+                
+
+                    # # Specify the file name where you want to save the JSON data
+                        json_string = (
+                            "["
+                            + ",\n".join(
+                                json.dumps(d, ensure_ascii=False) for d in output_json_list
+                            )
+                            + "]"
+                        )
+                    return json_string
 
 # ovo funkcija radi
-def SemanticAurelio(sadrzaj, source):
+def semantic_chunks(sadrzaj, source):
     '''
     Ulaz je Document object iz loadera i naziv source fajla
     Izlaz je JSON string za embedding
@@ -203,7 +297,7 @@ def SemanticAurelio(sadrzaj, source):
     return json_string
 
 
-def create_emb_file(uploaded_file):
+def heading_chunks(uploaded_file):
     '''
     Ulaz je fajl iz st.upload_file
     Izlaz je JSON string za embedding
@@ -258,6 +352,18 @@ def create_emb_file(uploaded_file):
    
     return json_string
 
+def dl_json(dokum, json_string):
+    napisano = st.info(
+                    "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
+                )
+    file_name = os.path.splitext(dokum.name)[0]
+    skinuto = st.download_button(
+        "Download JSON",
+        data=json_string,
+        file_name=f"{file_name}.json",
+        mime="application/json",
+    )
+    return napisano, skinuto
 
 # in myfunc.embeddings.py
 class MultiQueryDocumentRetriever:
@@ -393,170 +499,44 @@ class PineconeRetriever:
 
 # in myfunc.embeddings.py
 def prepare_embeddings(chunk_size, chunk_overlap, dokum):
-    skinuto = False
-    napisano = False
-
     file_name = "chunks.json"
-    
     semantic = st.radio(
-                "Odaberite tip pripreme: ",
-                ("Standard", "Heading", "Semantic"),
-                key="semantic",
-                index=None,
-                horizontal=True,
-                help="Način pripreme JSON fajla za embeding",
-            )
+        "Odaberite tip pripreme: ",
+        ("Standard", "Heading", "Semantic"),
+        key="semantic",
+        index=None,
+        horizontal=True,
+        help="Način pripreme JSON fajla za embeding",
+    )
+
+    json_string = None
     if semantic == "Standard":
-        with st.form(key="my_form_prepare", clear_on_submit=False):
-            text_delimiter = st.text_input(
-                "Unesite delimiter: ",
-                help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
-            )
-            # define prefix
-            text_prefix = st.text_input(
-                "Unesite prefiks za tekst: ",
-                help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
-            )
-            col11, col12 = st.columns(2)
-            with col11:
-                add_schema = st.radio(
-                    "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
-                    ("Ne", "Da"),
-                    key="add_schema_doc",
-                    horizontal=True,
-                    help="Dodaje u metadata ime i temu",
-                )
-            with col12:    
-                add_pitanje = st.radio(
-                    "Da li želite da dodate pitanje: ",
-                    ("Ne", "Da"),
-                    horizontal=True,
-                    key="add_pitanje_doc",
-                    help="Dodaje pitanje u text",
-                )
+        json_string = standard_chunks(dokum, chunk_size, chunk_overlap)
+    elif semantic in ["Heading", "Semantic"] and st.button(f"Pripremi {semantic}"):
+        with st.spinner(f"Radim {semantic}"):
+            if semantic == "Heading":
+                json_string = heading_chunks(dokum)
+            elif semantic == "Semantic":
+                data = pinecone_utility.read_uploaded_file(dokum)
+                json_string = semantic_chunks(data, dokum.name)
+
+    if json_string is not None:
+        file_name = os.path.splitext(dokum.name)[0] + ".json"
+        # Download button
+        dl_button = st.download_button(
+            "Download JSON",
+            data=json_string,
+            file_name=file_name,
+            mime="application/json",
         
-            st.session_state.submit_b = st.form_submit_button(
-                label="Submit",
-                help="Pokreće podelu dokumenta na delove za indeksiranje",
-            )
-            st.info(f"Chunk veličina: {chunk_size}, chunk preklapanje: {chunk_overlap}")
-            if len(text_prefix) > 0:
-                text_prefix = text_prefix + " "
-
-            if dokum is not None and st.session_state.submit_b == True:
-                data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-                text_splitter = CharacterTextSplitter(
-                        separator=text_delimiter,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap,
-                    )
-
-                texts = text_splitter.split_documents(data)
-
-
-                # # Create the OpenAI embeddings
-                st.success(f"Učitano {len(texts)} tekstova")
-
-                # Define a custom method to convert Document to a JSON-serializable format
-                output_json_list = []
-                current_date = datetime.now()
-                date_string = current_date.strftime('%Y%m%d')
-                # Loop through the Document objects and convert them to JSON
-                i = 0
-                for document in texts:
-                    i += 1
-                    if add_pitanje=="Da":
-                        pitanje = text_processor.add_question(document.page_content) + " "
-                        st.info(f"Dodajem pitanje u tekst {i}")
-                    else:
-                        pitanje = ""
-    
-                    output_dict = {
-                        "id": str(uuid4()),
-                        "chunk": i,
-                        "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
-                        "source": document.metadata.get("source", ""),
-                        "date": int(date_string),
-                    }
-
-                    if add_schema == "Da":
-                        try:
-                            person_name, topic = text_processor.add_self_data(document.page_content)
-                        except Exception as e:
-                            st.write(f"An error occurred: {e}")
-                            person_name, topic = "John Doe", "Any"
-    
-                        output_dict["person_name"] = person_name
-                        output_dict["topic"] = topic
-                        st.success(f"Processing {i} of {len(texts)}, {person_name}, {topic}")
-                    output_json_list.append(output_dict)
-                
-
-                # # Specify the file name where you want to save the JSON data
-                    json_string = (
-                        "["
-                        + ",\n".join(
-                            json.dumps(d, ensure_ascii=False) for d in output_json_list
-                        )
-                        + "]"
-                    )
-
-                        # Now, json_string contains the JSON data as a string
-                napisano = st.info(
-                            "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
-                        )
-
-        if napisano:
-            file_name = os.path.splitext(dokum.name)[0]
-            skinuto = st.download_button(
-                "Download JSON",
-                data=json_string,
-                file_name=f"{file_name}.json",
-                mime="application/json",
-            )
-    elif semantic == "Heading":
-        if st.button(f"Pripremi {semantic}"):
-            with st.spinner(f"Radim {semantic}"):    
-                data=pinecone_utility.read_uploaded_file(dokum)
-                json_string = create_emb_file(dokum)
-                if json_string is not None:
-                    napisano = st.info(
-                                    "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
-                                )
-                    file_name = os.path.splitext(dokum.name)[0]
-                    skinuto = st.download_button(
-                        "Download JSON",
-                        data=json_string,
-                        file_name=f"{file_name}.json",
-                        mime="application/json",
-                    )
-           
-    elif semantic == "Semantic":
-        if st.button(f"Pripremi {semantic}"):
-            with st.spinner(f"Radim {semantic}"): 
-                data=pinecone_utility.read_uploaded_file(dokum)
-                json_string = SemanticAurelio(data, dokum.name)
-                napisano = st.info(
-                                "Tekstovi su sačuvani u JSON obliku, downloadujte ih na svoj računar"
-                            )
-                file_name = os.path.splitext(dokum.name)[0]
-                skinuto = st.download_button(
-                    "Download JSON",
-                    data=json_string,
-                    file_name=f"{file_name}.json",
-                    mime="application/json",
-                )
-        
-    if skinuto:
-        st.success(f"Tekstovi sačuvani na {file_name} su sada spremni za Embeding")
+        )
+       
 
 
 # in myfunc.embeddings.py
 def do_embeddings(dokum, tip, api_key, host, index_name, index):
     with st.form(key="my_form_do", clear_on_submit=False):
         err_log = ""
-        # Read the texts from the .txt file
-        chunks = []
         
         # Now, you can use stored_texts as your texts
         namespace = st.text_input(
