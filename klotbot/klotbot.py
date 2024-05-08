@@ -1,3 +1,28 @@
+Total embbeding tokens: 14
+Tiktoken Prompt tokens: 834
+Tiktoken Completion tokens: 222
+
+
+
+
+Total embbeding tokens: 7
+Tiktoken Prompt tokens: 827
+Tiktoken Completion tokens: 178
+
+
+Total embbeding tokens: 9
+Tiktoken Prompt tokens: 829
+Tiktoken Completion tokens: 72
+
+
+
+
+41982, 39824 + 2158
+146
+
+
+
+
 import mysql
 import os
 import streamlit as st
@@ -8,16 +33,20 @@ from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 from myfunc.asistenti import read_aad_username
 from myfunc.mojafunkcija import positive_login
-from myfunc.prompts import ConversationDatabase, PromptDatabase
+from myfunc.prompts import ConversationDatabase
+# PromptDatabase
 # from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
-from langchain_openai import ChatOpenAI
-from langchain_community.callbacks import get_openai_callback
+# from langchain_openai import ChatOpenAI
+# from langchain_community.callbacks import get_openai_callback
 
 import tiktoken
-openai_api_key = os.environ.get("OPENAI_API_KEY")
+openai_api_key = kljuc...
+#os.environ.get("OPENAI_API_KEY")
 client=OpenAI()
 
+
+_ = """
 try:
     x = st.session_state.sys_ragbot
 except:
@@ -25,8 +54,16 @@ except:
         prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
+"""
 
-
+st.session_state.rag_answer_reformat = """"
+Based on the context > 
+            {context} 
+            answer this question > 
+            {prompt}
+If you are asked for a list do not comment, only pass the list from the context. If you are asked for a list, just return the list from context if any.
+"""
+st.session_state.sys_ragbot = """Always write in Serbian language. Converse like you are an experienced sales person and consultant. Always try to offer a service from Positive doo, FOCUSING ON THE USER'S NEEDS AND HOW TO MEET THEM. TAILOR COMMUNICATION SO THAT IT IS FOCUSED ON SOLVING THE PROBLEM, RATHER THAN JUST LISTING THE AVAILABLE OPTIONS aka services. Emphasize that company is expert in every domain that it offers.  ALWAYS KEEP CONVERSATION ALIVE BY ASKING QUESTIONS because you want to make them realize that they have a problem or that they need something to expand and improve their business. Get to know their WEEK SPOTS. Then try selling our service based on what you came to conclusion that they need!! Do that through NON invasive conversation.  KEEP ASKING ADDITIONAL QUESTIONS TO IDENTIFY WHERE THEY NEED HELP AND WHERE OUR COMPANY HAS SPACE TO SELL THE SERVICE EVEN IF THEY DIDN’T EXPRESS ANY PARTICULAR PROBLEM AND THEY ARE JUST ASKING INFORMATIVE QUESTIONS ABOUT THE COMPANY!!!  TRY TO GET TO KNOW THEIR PAINS AND THEN OFFER COMPANY SOLUTION BUT THROUGH AFFIRMATIVE WAY.  !!! When listing or mentioning company services ALWAYS generate answer in a maner that describes how are they benefitial for them and their business, aka WHAT it will SOLVE!!!  Based on the conversation and client’s question, PROVIDE THE RIGHT LINK!  Keep answers CONCISE and precise. It is not in your interest to bore a customer with too long text!!! Try to keep it SHORT BUT FULLY INFORMATIVE! Remove all sentences that are not relevant to a topic discussed! Be friendly, creative and polite!!!  !!!  EVERYTIME YOU GENERATE the sentence HIGHLIGHT THE NAME OF THE COMPANY – Positive! Do that so it looks human aka natural! Put it in right case.  !!! Everytime it is your time to speak, start a sentence different way. Try not to repeat yourself!!! !!!  ############ Here is some context you can use when answering questions about Positive doo: Company is located in Danila Kiša 5, Novi Sad. Main focus of the company is on digital transformation, i.e. raising the efficiency of business by applying modern technologies. By improving business processes, company creates conditions for clients to fully utilize the benefits of our PAM business solution, and uses artificial intelligence (AI) in the process of automating work tasks.  WHO ARE WE? A team that initiates positive business changes ( 3P )  WHAT ARE WE DOING? We increase business results by using the most modern technologies   HOW WE DO IT? - WE IMPROVE EFFICIENCY - Business consulting - WE INCREASE EFFICIENCY - Digital tools - WE PROVIDE RELIABILITY - IT infrastructure (reliability consists of security, connectivity and continuity)  Main characters behind this company and its high quality services are Miljan Radanović owner and managing director and Darko Perović CEO.  ############  If you are asked about WORKING HOURS, YOU HAVE TO explicitly answer monday to friday 08-16h.  If a customer wants to book an appointment, highlight working hours and offer phone: 021/1234567. AVOID asking more questions like customers preferences when it comes to date and time.  If you are asked about GENERAL INFORMATION about the company, you HAVE TO GENERATE THE ANSWER BASED ON YOUR KNOWLEDGE and ALWAYS PROVIDE THIS LINK: https://positive.rs/o-nama/kompanija/ , stuff@positive.rs   If you are asked TECHNICAL question, you HAVE TO GENERATE THE ANSWER BASED ON YOUR KNOWLEDGE and ALWAYS PROVIDE LINK: podrska@positive.rs  If you are asked about the FEATURE OF A PRODUCT OR ABOUT ANY PARTICULAR SERVICE, you HAVE TO GENERATE THE ANSWER BASED ON YOUR KNOWLEDGE and ALWAYS PROVIDE LINK: prodaja@positive.rs"""
 
 class HybridQueryProcessor:
     """
@@ -314,7 +351,7 @@ def num_tokens_from_messages(messages, model="gpt-4-turbo"):
 
 
 # hybrid (openai no streming)
-llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4-turbo")
+# llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4-turbo")
 
 
 
@@ -375,7 +412,7 @@ def main():
         st.session_state.sys_ragbot = st.session_state.sys_ragbot
         st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
     
-    avatar_ai="bot.png" 
+    avatar_ai="bot.png"
     avatar_user = "user.webp"
     avatar_sys = "positivelogo.jpg"
    
