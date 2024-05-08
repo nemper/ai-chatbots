@@ -1,28 +1,3 @@
-Total embbeding tokens: 14
-Tiktoken Prompt tokens: 834
-Tiktoken Completion tokens: 222
-
-
-
-
-Total embbeding tokens: 7
-Tiktoken Prompt tokens: 827
-Tiktoken Completion tokens: 178
-
-
-Total embbeding tokens: 9
-Tiktoken Prompt tokens: 829
-Tiktoken Completion tokens: 72
-
-
-
-
-41982, 39824 + 2158
-146
-
-
-
-
 import mysql
 import os
 import streamlit as st
@@ -37,13 +12,13 @@ from myfunc.prompts import ConversationDatabase
 # PromptDatabase
 # from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
-# from langchain_openai import ChatOpenAI
-# from langchain_community.callbacks import get_openai_callback
+#from langchain_openai import ChatOpenAI
+#from langchain_community.callbacks import get_openai_callback
 
 import tiktoken
-openai_api_key = kljuc...
-#os.environ.get("OPENAI_API_KEY")
-client=OpenAI()
+openai_api_key = os.environ.get("OPENAI_API_KEY")
+
+client=OpenAI(api_key=openai_api_key)
 
 
 _ = """
@@ -379,7 +354,7 @@ def main():
         st.session_state.username = username
 
     if "client" not in st.session_state:
-        st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        st.session_state.client = OpenAI(api_key=openai_api_key)
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = work_vars["names"]["openai_model"]
     if "azure_filename" not in st.session_state:
