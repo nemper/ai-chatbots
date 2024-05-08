@@ -316,11 +316,6 @@ def num_tokens_from_messages(messages, model="gpt-4-turbo"):
 # hybrid (openai no streming)
 llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4-turbo")
 
-total_prompt = 0
-total_completion = 0
-# total_emb_prompt = 0
-# emb_prompt_tokens = 0
-
 
 
 processor = HybridQueryProcessor()
@@ -416,7 +411,6 @@ def main():
 
     # Main conversation UI
     if prompt := st.chat_input("Kako vam mogu pomoci?"):
-    
         # Original processing to generate complete_prompt
         context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
@@ -451,14 +445,17 @@ def main():
         
 
         total_prompt = 0
-        total_completion = 00
+        total_completion = 0
+        total_emb_prompt = 0
 
         tiktoken_prompt = [system_message, user_message]
         tiktoken_prompt_tokens = num_tokens_from_messages(tiktoken_prompt)
         tiktoken_completion_tokens = num_tokens_from_messages(full_response)
 
+        total_emb_prompt += emb_prompt_tokens
         total_prompt += tiktoken_prompt_tokens
         total_completion += tiktoken_completion_tokens
+        st.write(f"- Total embbeding tokens: {total_emb_prompt}")
         st.write(f"- Tiktoken Prompt tokens: {tiktoken_prompt_tokens}")
         st.write(f"- Tiktoken Completion tokens: {tiktoken_completion_tokens}")
 
