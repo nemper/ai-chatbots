@@ -459,9 +459,8 @@ def main():
 
         total_prompt += tiktoken_prompt_tokens
         total_completion += tiktoken_completion_tokens
-        print("")
-        print(f"- Tiktoken Prompt tokens: {tiktoken_prompt_tokens}")
-        print(f"- Tiktoken Completion tokens: {tiktoken_completion_tokens}")
+        st.write(f"- Tiktoken Prompt tokens: {tiktoken_prompt_tokens}")
+        st.write(f"- Tiktoken Completion tokens: {tiktoken_completion_tokens}")
 
 
         # Append assistant's response to the conversation
