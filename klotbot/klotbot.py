@@ -352,9 +352,7 @@ def main():
         st.session_state.username = "lokal"
     elif deployment_environment == "Streamlit":
         st.session_state.username = username
-
-    if "client" not in st.session_state:
-        st.session_state.client = OpenAI(api_key=openai_api_key)
+        
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = work_vars["names"]["openai_model"]
     if "azure_filename" not in st.session_state:
