@@ -425,7 +425,7 @@ def main():
         system_message = {"role": "system", "content": st.session_state.sys_ragbot}
         user_message = {"role": "user", "content": prompt}
         ctx= {"role": "user", "content": complete_prompt}
-        mem = {"role": "user", "content": str(st.session_state.messages[current_thread_id])}
+        mem = {"role": "user", "content": str(st.session_state.messages[current_thread_id])}    # sumirati value od key content
         # Generate and display the assistant's response using the temporary messages list
         with st.chat_message("assistant", avatar=avatar_ai):
             message_placeholder = st.empty()

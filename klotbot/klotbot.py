@@ -63,9 +63,13 @@ def main():
                         raise  # Re-raise the exception if it's not related to a duplicate entry
         st.session_state.thread_id = thread_name
         st.session_state.messages[thread_name] = []
-    if "sys_ragbot" not in st.session_state:
-        st.session_state.sys_ragbot = st.session_state.sys_ragbot
-        st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+    try:
+        if "Thread_" in st.session_state.thread_id:
+            contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
+            if not contains_system_role:
+                st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+    except:
+        pass
     
     avatar_ai="bot.png" 
     avatar_user = "user.webp"
@@ -78,7 +82,13 @@ def main():
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
         current_thread_id = st.session_state.thread_id
-        st.session_state.messages[current_thread_id].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+        try:
+            if "Thread_" in st.session_state.thread_id:
+                contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
+                if not contains_system_role:
+                    st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+        except:
+            pass
         #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:
