@@ -323,22 +323,7 @@ def num_tokens_from_messages(messages, model="gpt-4-turbo"):
         num_tokens += len(encoding.encode(messages))
     return num_tokens
 
-
-
-# hybrid (openai no streming)
-# llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4-turbo")
-
-
-
 processor = HybridQueryProcessor()
-
-
-
-
-
-
-
-
 
 def main():
     if "username" not in st.session_state:
@@ -423,6 +408,7 @@ def main():
     if prompt := st.chat_input("Kako vam mogu pomoci?"):
         # Original processing to generate complete_prompt
         context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
+        
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
@@ -438,7 +424,8 @@ def main():
 
         system_message = {"role": "system", "content": st.session_state.sys_ragbot}
         user_message = {"role": "user", "content": prompt}
-
+        ctx= {"role": "user", "content": complete_prompt}
+        mem = {"role": "user", "content": str(st.session_state.messages[current_thread_id])}
         # Generate and display the assistant's response using the temporary messages list
         with st.chat_message("assistant", avatar=avatar_ai):
             message_placeholder = st.empty()
@@ -458,10 +445,10 @@ def main():
         total_completion = 0
         total_emb_prompt = 0
 
-        tiktoken_prompt = [system_message, user_message]
+        tiktoken_prompt = [system_message, user_message, ctx, mem]
         tiktoken_prompt_tokens = num_tokens_from_messages(tiktoken_prompt)
         tiktoken_completion_tokens = num_tokens_from_messages(full_response)
-
+       
         total_emb_prompt += emb_prompt_tokens
         total_prompt += tiktoken_prompt_tokens
         total_completion += tiktoken_completion_tokens
