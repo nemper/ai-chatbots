@@ -418,35 +418,18 @@ def main():
             st.markdown(prompt)
         
         # Prepare a temporary messages list for generating the assistant's response
-        x = st.session_state.messages[current_thread_id]
-
-        y = []
-        for i in range(1, len(x)):
-            if x[i]["role"] == "system":
-                y.append(i)
-        
-        y.reverse()
-        for i in y:
-            del x[i]
-        
-        x[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
-
-        temp_messages = x.copy()
+        temp_messages = st.session_state.messages[current_thread_id].copy()
+        temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
     
 
         system_message = {"role": "system", "content": st.session_state.sys_ragbot}
         user_message = {"role": "user", "content": prompt}
         ctx= {"role": "user", "content": complete_prompt}
-        mem = {"role": "user", "content": str(x)}    # sumirati value od key content
+        mem = {"role": "user", "content": str(st.session_state.messages[current_thread_id])}    # sumirati value od key content
 
 
         print("1", mem)
         print("2", temp_messages)
-
-
-
-
-
         # Generate and display the assistant's response using the temporary messages list
         with st.chat_message("assistant", avatar=avatar_ai):
             message_placeholder = st.empty()
@@ -465,6 +448,7 @@ def main():
         total_prompt = 0
         total_completion = 0
         total_emb_prompt = 0
+
         tiktoken_prompt = [system_message, user_message, ctx, mem]
         tiktoken_prompt_tokens = num_tokens_from_messages(tiktoken_prompt)
         tiktoken_completion_tokens = num_tokens_from_messages(full_response)

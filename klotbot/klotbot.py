@@ -13,7 +13,7 @@ from myfunc.varvars_dicts import work_vars
 
 
 client=OpenAI()
-processor = HybridQueryProcessor() # namespace moze i iz env
+processor = HybridQueryProcessor(namespace="embedding-za-sajt") # namespace moze i iz env
 
 try:
     x = st.session_state.sys_ragbot
