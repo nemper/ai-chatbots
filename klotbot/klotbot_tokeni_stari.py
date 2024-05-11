@@ -119,8 +119,10 @@ class HybridQueryProcessor:
         """
         
         text = text.replace("\n", " ")
-        prompt_tokens = client.embeddings.create(input=[text], model=model).usage.prompt_tokens
-        result = client.embeddings.create(input=[text], model=model).data[0].embedding
+
+        odjednom = client.embeddings.create(input=[text], model=model)
+        prompt_tokens = odjednom.usage.prompt_tokens
+        result = odjednom.data[0].embedding
        
         return result, prompt_tokens
 
@@ -425,7 +427,12 @@ def main():
         system_message = {"role": "system", "content": st.session_state.sys_ragbot}
         user_message = {"role": "user", "content": prompt}
         ctx= {"role": "user", "content": complete_prompt}
-        mem = {"role": "user", "content": str(st.session_state.messages[current_thread_id])}    # sumirati value od key content
+
+        y = ""
+        for i in st.session_state.messages[current_thread_id]:
+            y += i["content"]
+
+        mem = {"role": "user", "content": y}    # sumirati value od key content
 
 
         print("1", mem)
