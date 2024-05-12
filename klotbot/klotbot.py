@@ -13,7 +13,7 @@ from myfunc.varvars_dicts import work_vars
 
 
 client=OpenAI()
-processor = HybridQueryProcessor(namespace="embedding-za-sajt") # namespace moze i iz env
+processor = HybridQueryProcessor() # namespace moze i iz env
 
 try:
     x = st.session_state.sys_ragbot
@@ -56,6 +56,7 @@ def main():
             with ConversationDatabase() as db:
                 try:
                     db.add_sql_record(st.session_state.app_name, st.session_state.username, thread_name, conversation_data)
+                    
                 except mysql.connector.IntegrityError as e:
                     if e.errno == 1062:  # Duplicate entry for key
                         st.error("Thread ID already exists. Please try again with a different ID.")
@@ -146,7 +147,7 @@ def main():
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
-
+        
 deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
 if deployment_environment == "Streamlit":

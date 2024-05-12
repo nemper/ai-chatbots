@@ -381,7 +381,7 @@ def main():
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
         current_thread_id = st.session_state.thread_id
-        st.session_state.messages[current_thread_id].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+        #st.session_state.messages[current_thread_id].append({'role': 'system', 'content': st.session_state.sys_ragbot})
         #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:

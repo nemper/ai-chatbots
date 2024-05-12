@@ -6,20 +6,12 @@ import uuid
 from openai import OpenAI
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
-from myfunc.asistenti import read_aad_username
-from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase
-# PromptDatabase
-# from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
-#from langchain_openai import ChatOpenAI
-#from langchain_community.callbacks import get_openai_callback
-
 import tiktoken
+
 openai_api_key = os.environ.get("OPENAI_API_KEY")
-
 client=OpenAI(api_key=openai_api_key)
-
 
 _ = """
 try:
@@ -291,12 +283,6 @@ class HybridQueryProcessor:
     
         return result, prompt_tokens
 
-
-
-
-
-
-
 # tokenizacija za streaming
 def num_tokens_from_messages(messages, model="gpt-4-turbo"):
     """
@@ -325,21 +311,11 @@ def num_tokens_from_messages(messages, model="gpt-4-turbo"):
         num_tokens += len(encoding.encode(messages))
     return num_tokens
 
-processor = HybridQueryProcessor()
+processor = HybridQueryProcessor(namespace="embedding-za-sajt")
 
 def main():
     if "username" not in st.session_state:
-        st.session_state.username = "positive"
-    if deployment_environment == "Azure":    
-        st.session_state.username = read_aad_username()
-
-
-
-    elif deployment_environment == "Windows":
-        st.session_state.username = "lokal"
-    elif deployment_environment == "Streamlit":
-        st.session_state.username = username
-        
+        st.session_state.username = "positive"    
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = work_vars["names"]["openai_model"]
     if "azure_filename" not in st.session_state:
@@ -349,7 +325,7 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = {}
     if "app_name" not in st.session_state:
-        st.session_state.app_name = "KlotBot"
+        st.session_state.app_name = "TestBot"
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -357,6 +333,7 @@ def main():
         new_thread_id = str(uuid.uuid4())
         thread_name = f"Thread_{new_thread_id}"
         conversation_data = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        
         if thread_name not in get_thread_ids():
             with ConversationDatabase() as db:
                 try:
@@ -368,6 +345,7 @@ def main():
                         raise  # Re-raise the exception if it's not related to a duplicate entry
         st.session_state.thread_id = thread_name
         st.session_state.messages[thread_name] = []
+        st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
     if "sys_ragbot" not in st.session_state:
         st.session_state.sys_ragbot = st.session_state.sys_ragbot
         st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
@@ -375,22 +353,18 @@ def main():
     avatar_ai="bot.png"
     avatar_user = "user.webp"
     avatar_sys = "positivelogo.jpg"
-   
-    #with st.sidebar:
-    #    st.info(f"Prijavljeni ste kao: {st.session_state.username}")
-
+    
     if st.session_state.thread_id is None:
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
         current_thread_id = st.session_state.thread_id
-        st.session_state.messages[current_thread_id].append({'role': 'system', 'content': st.session_state.sys_ragbot})
-        #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:
             # If not, initialize it with the conversation from the database or as an empty list
             with ConversationDatabase() as db:
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
-            #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        
         if current_thread_id in st.session_state.messages:
             # avatari primena
             for message in st.session_state.messages[current_thread_id]:
@@ -407,11 +381,11 @@ def main():
                             st.markdown(message["content"])
 
     # Main conversation UI
-    if prompt := st.chat_input("Kako vam mogu pomoci?"):
+    if prompt := st.chat_input("Kako vam mogu pomoci? - Token test 12.05.24"):
         # Original processing to generate complete_prompt
         context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
-        
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
+      
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
     
@@ -422,21 +396,7 @@ def main():
         # Prepare a temporary messages list for generating the assistant's response
         temp_messages = st.session_state.messages[current_thread_id].copy()
         temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
-    
-
-        system_message = {"role": "system", "content": st.session_state.sys_ragbot}
-        user_message = {"role": "user", "content": prompt}
-        ctx= {"role": "user", "content": complete_prompt}
-
-        y = ""
-        for i in st.session_state.messages[current_thread_id]:
-            y += i["content"]
-
-        mem = {"role": "user", "content": y}    # sumirati value od key content
-
-
-        print("1", mem)
-        print("2", temp_messages)
+        
         # Generate and display the assistant's response using the temporary messages list
         with st.chat_message("assistant", avatar=avatar_ai):
             message_placeholder = st.empty()
@@ -451,33 +411,26 @@ def main():
                 message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
         
-
-        total_prompt = 0
-        total_completion = 0
-        total_emb_prompt = 0
-
-        tiktoken_prompt = [system_message, user_message, ctx, mem]
-        tiktoken_prompt_tokens = num_tokens_from_messages(tiktoken_prompt)
+        # kalkulacija tokena    
+        mem_correction = 2*len(st.session_state.messages[current_thread_id]) + 1
+        tiktoken_prompt_tokens = num_tokens_from_messages(complete_prompt)
+        tiktoken_mem_tokens = num_tokens_from_messages(st.session_state.messages[current_thread_id]) - mem_correction
         tiktoken_completion_tokens = num_tokens_from_messages(full_response)
-       
-        total_emb_prompt += emb_prompt_tokens
-        total_prompt += tiktoken_prompt_tokens
-        total_completion += tiktoken_completion_tokens
-        st.write(f"- Total embbeding tokens: {total_emb_prompt}")
-        st.write(f"- Tiktoken Prompt tokens: {tiktoken_prompt_tokens}")
+        tiktoken_total_prompt_tokens= tiktoken_prompt_tokens + tiktoken_mem_tokens
+        
+        st.write(f"- Total embbeding tokens: {emb_prompt_tokens}")
+        st.write(f"- Tiktoken New Prompt tokens: {tiktoken_prompt_tokens}")
+        st.write(f"- Tiktoken Memory tokens: {tiktoken_mem_tokens}")
+        st.write(f"- Tiktoken Total Prompt tokens: {tiktoken_total_prompt_tokens}")
         st.write(f"- Tiktoken Completion tokens: {tiktoken_completion_tokens}")
 
 
         # Append assistant's response to the conversation
         st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
-
+        st.write(st.session_state.messages[current_thread_id])
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
 
-deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
-if deployment_environment == "Streamlit":
-    name, authentication_status, username = positive_login(main, " ")
-else:
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+     main()
