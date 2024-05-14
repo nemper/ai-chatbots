@@ -4,7 +4,6 @@ import io
 import json
 import matplotlib.pyplot as plt
 import networkx as nx
-import openai
 import os
 import PyPDF2
 import re
@@ -13,6 +12,7 @@ import sys
 import time
 import unidecode
 
+from openai import OpenAI
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 
@@ -26,6 +26,8 @@ from langchain_openai.chat_models import ChatOpenAI
 
 from myfunc.mojafunkcija import pinecone_stats
 from myfunc.varvars_dicts import work_vars
+
+client=OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # in myfunc.retrievers.py
@@ -94,20 +96,26 @@ class HybridQueryProcessor:
         self.index = pinecone.Index(host=self.host)
 
     def get_embedding(self, text, model="text-embedding-3-large"):
+
         """
         Retrieves the embedding for the given text using the specified model.
 
         Args:
             text (str): The text to be embedded.
-            model (str): The model to be used for embedding. Default is "text-embedding-ada-002".
+            model (str): The model to be used for embedding. Default is "text-embedding-3-large".
 
         Returns:
             list: The embedding vector of the given text.
+            int: The number of prompt tokens used.
         """
-        client = openai
-        text = text.replace("\n", " ")
         
-        return client.embeddings.create(input=[text], model=model).data[0].embedding
+        text = text.replace("\n", " ")
+
+        odjednom = client.embeddings.create(input=[text], model=model)
+        prompt_tokens = odjednom.usage.prompt_tokens
+        result = odjednom.data[0].embedding
+       
+        return result, prompt_tokens
 
     def hybrid_score_norm(self, dense, sparse):
         """
@@ -123,24 +131,17 @@ class HybridQueryProcessor:
         return ([v * self.alpha for v in dense], 
                 {"indices": sparse["indices"], 
                  "values": [v * (1 - self.alpha) for v in sparse["values"]]})
-
+    
     def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
-        """
-        Executes a hybrid query on the Pinecone index using the provided query text.
+        # Get embedding and unpack results
+        dense, prompt_tokens = self.get_embedding(text=upit)
 
-        Args:
-            upit (str): The query text.
-            top_k (int, optional): The number of results to be returned. If not provided, use the class's top_k value.
-            filter (dict, optional): Additional filter criteria for the query.
-            namespace (str, optional): The namespace to be used for the query. If not provided, use the class's namespace.
-
-        Returns:
-            list: A list of query results, each being a dictionary containing page content, chunk, and source.
-        """
+        # Use those results in another function call
         hdense, hsparse = self.hybrid_score_norm(
             sparse=BM25Encoder().fit([upit]).encode_queries(upit),
-            dense=self.get_embedding(upit))
-    
+            dense=dense
+        )
+
         query_params = {
             'top_k': top_k or self.top_k,
             'vector': hdense,
@@ -156,7 +157,6 @@ class HybridQueryProcessor:
 
         matches = response.to_dict().get('matches', [])
 
-        # Construct the results list
         results = []
         for match in matches:
             metadata = match.get('metadata', {})
@@ -167,36 +167,38 @@ class HybridQueryProcessor:
                 score = match.get('score', 0)
             except:
                 score = metadata.get('score', 0)
-
-            # Append a dictionary with page content, chunk, and source
-            if context:  # Ensure that 'context' is not empty
+            if context:
                 results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
         
-        return results
-
+        return results, prompt_tokens  # Also return prompt_tokens
+       
 
     def process_query_results(self, upit):
         """
-        Processes the query results based on relevance score and formats them for a chat or dialogue system.
+        Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
         Additionally, returns a list of scores for items that meet the score threshold.
-
-        Args:
-            upit (str): The original query text.
-        
-        Returns:
-            tuple: A tuple containing the formatted string for chat prompt and a list of scores.
         """
-        tematika = self.hybrid_query(upit)
+        tematika, prompt_tokens = self.hybrid_query(upit)  # Also retrieve prompt_tokens
 
-        uk_teme = ""  # Formatted string for chat prompt
-        score_list = []  # List to hold scores that meet the threshold
-
+        uk_teme = ""
+        score_list = []
         for item in tematika:
-            if item["score"] > self.score:  # Score threshold
+             if item["score"] > self.score:
                 uk_teme += item["page_content"] + "\n\n"
-                score_list.append(item["score"])  # Append the score to the list
+                score_list.append(item["score"])
+        
+        return uk_teme, score_list, prompt_tokens  # Return prompt_tokens along with other results
+    
+    def process_query_results_dict(self, upit):
+        """
+        Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
+        
+        """
+        tematika, prompt_tokens = self.hybrid_query(upit)  # Also retrieve prompt_tokens
 
-        return uk_teme, score_list
+        score_list = []
+        
+        return tematika, score_list, prompt_tokens  # Return prompt_tokens along with other results
 
     def process_query_parent_results(self, upit):
         """
@@ -209,7 +211,7 @@ class HybridQueryProcessor:
         Returns:
             tuple: Formatted string for chat prompt, source name, and chunk number.
         """
-        tematika = self.hybrid_query(upit)
+        tematika, prompt_tokens = self.hybrid_query(upit)
 
         # Check if there are any matches
         if not tematika:
@@ -221,7 +223,7 @@ class HybridQueryProcessor:
         top_chunk = top_result.get('chunk')
         top_source = top_result.get('source')
 
-        return top_context, top_source, top_chunk
+        return top_context, top_source, top_chunk, prompt_tokens
 
      
     def search_by_source(self, upit, source_result, top_k=5, filter=None):
@@ -238,10 +240,10 @@ class HybridQueryProcessor:
         filter_criteria['source'] = source_result
         top_k = top_k or self.top_k
         
-        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+        doc_result, prompt_tokens = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
         result = "\n\n".join(document['page_content'] for document in doc_result)
     
-        return result
+        return result, prompt_tokens
         
        
     def search_by_chunk(self, upit, source_result, chunk, razmak=3, top_k=20, filter=None):
@@ -268,7 +270,7 @@ class HybridQueryProcessor:
         }
         
         
-        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+        doc_result, prompt_tokens = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
 
         # Sort the doc_result based on the 'chunk' value
         sorted_doc_result = sorted(doc_result, key=lambda document: document.get('chunk', float('inf')))
@@ -276,7 +278,7 @@ class HybridQueryProcessor:
         # Generate the result string
         result = " ".join(document.get('page_content', '') for document in sorted_doc_result)
     
-        return result
+        return result, prompt_tokens
 
 
 # in myfunc.retrievers.py

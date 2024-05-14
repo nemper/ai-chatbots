@@ -2,6 +2,7 @@
 import json
 import mysql.connector
 import os
+import tiktoken
 
 from langchain.agents.agent_types import AgentType
 from langchain.sql_database import SQLDatabase
@@ -737,6 +738,56 @@ class ConversationDatabase:
         Closes the database connection.
         """
         self.conn.close()
+
+    # Naredne dve metode su vezane isključivo za upisivanje potrosnje tokena u mysql tabelu
+    def add_token_record(self, app_id, model_name, embedding_tokens, complete_prompt, full_response, messages):
+        """
+        Adds a new record to the database with the provided details.
+        """
+        mem_correction = 2*len(messages) + 1
+        prompt_tokens = self.num_tokens_from_messages(complete_prompt, model_name)
+        completion_tokens = self.num_tokens_from_messages(messages, model_name) - mem_correction
+
+        # completion
+        tiktoken_completion_tokens = self.num_tokens_from_messages(full_response)
+        # prompt
+        tiktoken_total_prompt_tokens= prompt_tokens + completion_tokens
+
+        sql = """
+        INSERT INTO chatbot_token_log (app_id, embedding_tokens, tiktoken_total_prompt_tokens, tiktoken_completion_tokens, model_name)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        values = (app_id, embedding_tokens, tiktoken_total_prompt_tokens, tiktoken_completion_tokens, model_name)
+        self.cursor.execute(sql, values)
+        self.conn.commit()
+    
+    def num_tokens_from_messages(self, messages, model):
+        """
+        Return the number of tokens used by a list of messages.
+        """
+        
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            print("Warning: model not found. Using cl100k_base encoding.")
+            encoding = tiktoken.get_encoding("cl100k_base")
+
+        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        tokens_per_name = -1  # if there's a name, the role is omitted
+        num_tokens = 0
+
+        if type(messages) == list:
+            for message in messages:
+                num_tokens += tokens_per_message
+                for key, value in message.items():
+                    num_tokens += len(encoding.encode(value))
+                    if key == "name":
+                        num_tokens += tokens_per_name
+            num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+        elif type(messages) == str:
+            num_tokens += len(encoding.encode(messages))
+        return num_tokens
+
 
 
 # in myfunc.prompts.py

@@ -6,7 +6,7 @@ work_vars = {
         },
 
     "names" : {
-        "openai_model": "gpt-4-turbo",
+        "openai_model": "gpt-4o",
         },
 
     "addresses" : {
