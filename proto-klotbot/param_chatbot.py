@@ -75,7 +75,7 @@ client.beta.assistants.retrieve(assistant_id=assistant_id)
 # funkcije za obradu upita prebacene su iz myfunc zato da bi se lakse dodavali opcioni parametri u funkcije
 def hybrid_search_process(upit: str) -> str:
         processor = HybridQueryProcessor()
-        stringic = processor.process_query_results(upit)
+        stringic, x, y = processor.process_query_results(upit)
         return stringic
     
 def sql_search_tool(upit: str) -> str:
