@@ -739,7 +739,7 @@ def rag_tool_answer(prompt, phglob):
 
     if  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="zapisnici")
-        context, scores = processor.process_query_results(prompt)
+        context, scores, tokens = processor.process_query_results(prompt)
         st.info("Score po chunku:")
         st.write(scores)
         
