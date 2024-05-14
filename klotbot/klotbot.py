@@ -115,7 +115,7 @@ def main():
     if prompt := st.chat_input("Kako vam mogu pomoci?"):
     
         # Original processing to generate complete_prompt
-        context, scores = processor.process_query_results(prompt)
+        context, scores, tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
