@@ -754,7 +754,7 @@ class ConversationDatabase:
         tiktoken_total_prompt_tokens= prompt_tokens + completion_tokens
 
         sql = """
-        INSERT INTO chatbot_token_log (app_id, embedding_tokens, tiktoken_total_prompt_tokens, tiktoken_completion_tokens, model_name)
+        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, model_name)
         VALUES (%s, %s, %s, %s, %s)
         """
         values = (app_id, embedding_tokens, tiktoken_total_prompt_tokens, tiktoken_completion_tokens, model_name)
