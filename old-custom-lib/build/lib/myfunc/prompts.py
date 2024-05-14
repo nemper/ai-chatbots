@@ -749,7 +749,7 @@ class ConversationDatabase:
         completion_tokens = self.num_tokens_from_messages(messages, model_name) - mem_correction
 
         # completion
-        tiktoken_completion_tokens = self.num_tokens_from_messages(full_response)
+        tiktoken_completion_tokens = self.num_tokens_from_messages(full_response, model_name)
         # prompt
         tiktoken_total_prompt_tokens= prompt_tokens + completion_tokens
 
