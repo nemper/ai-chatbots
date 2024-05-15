@@ -171,21 +171,23 @@ class HybridQueryProcessor:
         
         return results, prompt_tokens  # Also return prompt_tokens
        
-    def process_query_results(self, upit):
+    def process_query_results(self, upit, dict=False):
         """
         Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
         Additionally, returns a list of scores for items that meet the score threshold.
         """
         tematika, prompt_tokens = self.hybrid_query(upit)  # Also retrieve prompt_tokens
-
-        uk_teme = ""
-        score_list = []
-        for item in tematika:
-             if item["score"] > self.score:
-                uk_teme += item["page_content"] + "\n\n"
-                score_list.append(item["score"])
-        
-        return uk_teme, score_list, prompt_tokens  # Return prompt_tokens along with other results
+        if not dict:
+            uk_teme = ""
+            score_list = []
+            for item in tematika:
+                if item["score"] > self.score:
+                    uk_teme += item["page_content"] + "\n\n"
+                    score_list.append(item["score"])
+            
+            return uk_teme, score_list, prompt_tokens  # Return prompt_tokens along with other results
+        else:
+            return tematika, [], prompt_tokens
 
     def process_query_parent_results(self, upit):
         """
