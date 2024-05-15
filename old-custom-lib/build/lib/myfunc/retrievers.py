@@ -110,12 +110,11 @@ class HybridQueryProcessor:
         """
         
         text = text.replace("\n", " ")
-
-        odjednom = client.embeddings.create(input=[text], model=model)
-        prompt_tokens = odjednom.usage.prompt_tokens
-        result = odjednom.data[0].embedding
+        prompt_tokens = client.embeddings.create(input=[text], model=model).usage.prompt_tokens
+        result = client.embeddings.create(input=[text], model=model).data[0].embedding
        
         return result, prompt_tokens
+
 
     def hybrid_score_norm(self, dense, sparse):
         """
@@ -172,7 +171,6 @@ class HybridQueryProcessor:
         
         return results, prompt_tokens  # Also return prompt_tokens
        
-
     def process_query_results(self, upit):
         """
         Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
@@ -188,17 +186,6 @@ class HybridQueryProcessor:
                 score_list.append(item["score"])
         
         return uk_teme, score_list, prompt_tokens  # Return prompt_tokens along with other results
-    
-    def process_query_results_dict(self, upit):
-        """
-        Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
-        
-        """
-        tematika, prompt_tokens = self.hybrid_query(upit)  # Also retrieve prompt_tokens
-
-        score_list = []
-        
-        return tematika, score_list, prompt_tokens  # Return prompt_tokens along with other results
 
     def process_query_parent_results(self, upit):
         """

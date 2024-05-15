@@ -1,6 +1,7 @@
 # in myfunc.various_tools.py
 import datetime
 import html
+import io
 import json
 import logging
 import openai
@@ -11,9 +12,12 @@ import requests
 import streamlit as st
 import sys
 
+from audiosegment import AudioSegment
 from bs4 import BeautifulSoup
 from io import StringIO
 from openai import OpenAI
+import sounddevice as sd
+import soundfile as sf
 from tqdm.auto import tqdm
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
@@ -598,4 +602,44 @@ def get_structured_decision_from_model(user_query):
     tool_value = data_dict['tool']
     
     return tool_value  
-        
+
+
+# in myfunc.various_tools.py
+def transcribe_audio_file(file_path, language="en"):
+    '''
+    prosledjuje snimljeni audio kao pitanje
+    '''
+    with open(file_path, "rb") as audio_file:
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1", 
+            file=audio_file, 
+            language=language,
+            response_format="text"
+        )
+    return transcript
+
+
+# in myfunc.various_tools.py
+def play_audio_from_stream(spoken_response):
+    '''
+    prosledjuje odgovor ai kao audio
+    '''
+    buffer = io.BytesIO()
+    for chunk in spoken_response.iter_bytes(chunk_size=4096):
+        buffer.write(chunk)
+    buffer.seek(0)
+
+    with sf.SoundFile(buffer, 'r') as sound_file:
+        data = sound_file.read(dtype='int16')
+        sd.play(data, sound_file.samplerate)
+        sd.wait()
+
+
+# in myfunc.various_tools.py
+def record_audio(duration=5, samplerate=16000, file_path='output.mp3'):
+    myrecording = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
+    sd.wait()  # Wait until recording is finished
+    # Convert the NumPy array to an audio segment
+    audio_segment = AudioSegment(myrecording.tobytes(), frame_rate=samplerate, sample_width=myrecording.dtype.itemsize, channels=1)
+    audio_segment.export(file_path, format="mp3")
+    return file_path
