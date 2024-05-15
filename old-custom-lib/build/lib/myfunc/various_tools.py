@@ -47,12 +47,40 @@ client=OpenAI()
 
 # in myfunc.various_tools.py
 class MeetingTranscriptSummarizer:
+    """
+    A class to summarize meeting transcripts by extracting main topics and summarizing discussions.
+
+    This class takes a meeting transcript, temperature setting for the AI model, and the number of 
+    topics to identify. It uses an AI model to extract meeting details, identify main topics, 
+    summarize discussions for each topic, and generate a conclusion for the meeting.
+
+    Attributes:
+    - transcript: The full text of the meeting transcript.
+    - temperature: The temperature setting for the AI model, controlling the randomness of its responses.
+    - number_of_topics: The maximum number of main topics to identify in the transcript.
+
+    Methods:
+    - get_response(prompt, text): Sends a prompt and text to the AI model and returns the model's response.
+    - summarize(): Extracts meeting details, identifies main topics, summarizes discussions for each topic, and generates a conclusion.
+    """
     def __init__(self, transcript, temperature, number_of_topics):
         self.transcript = transcript
         self.temperature = temperature
         self.number_of_topics = number_of_topics
 
     def get_response(self, prompt, text):
+        """
+        Sends a prompt and text to the AI model and returns the model's response.
+
+        This method uses the AI model to generate a response based on the provided prompt and text.
+        
+        Parameters:
+        - prompt: The prompt instructing the AI on how to process the text.
+        - text: The text to be processed by the AI model.
+
+        Returns:
+        - The AI model's response as a string.
+        """
         response = client.chat.completions.create(
             model=work_vars["names"]["openai_model"],
             temperature=self.temperature,
@@ -64,6 +92,15 @@ class MeetingTranscriptSummarizer:
         return response.choices[0].message.content
 
     def summarize(self):
+        """
+        Extracts meeting details, identifies main topics, summarizes discussions for each topic, and generates a conclusion.
+
+        This method processes the transcript to extract the meeting date and participants, identify main topics discussed, 
+        summarize each topic, and generate a conclusion for the meeting. The final summarized text is formatted and returned.
+        
+        Returns:
+        - The full summarized text of the meeting as a string.
+        """
         introduction = self.get_response("Extract the meeting date and the participants.", self.transcript)
         topic_identification_prompt = (
             f"List up to {self.number_of_topics} main topics discussed in the transcript "
@@ -122,6 +159,7 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
 
     Parameters: 
         transcript (str): The transcript of the meeting.
+    Returns: full_text (str): The summarized meeting transcript.
     """
 
     def get_response(prompt, text, temp):
@@ -180,6 +218,23 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
 
 # in myfunc.various_tools.py
 def scrape(url: str):
+    """
+    Scrapes the main content and local links from a given URL.
+
+    This function sends a GET request to the specified URL, checks the response status code,
+    and extracts the main content and local links from the webpage using BeautifulSoup. The main
+    content is identified based on the specified CSS selector and cleaned to remove HTML tags and
+    extra whitespace. Local links are collected if they point to pages within the same domain.
+
+    Parameters:
+    - url: The URL of the webpage to be scraped.
+
+    Returns:
+    - A tuple containing:
+        - A dictionary with the URL and cleaned text content of the main section.
+        - A list of local links found on the webpage.
+      If an error occurs, None is returned.
+    """
     global headers, sajt, err_log, tiktoken_len, vrsta
     # Send a GET request to the URL
     res = requests.get(url, headers=headers)
@@ -245,6 +300,21 @@ def scrape(url: str):
 
 # in myfunc.various_tools.py
 def main_scraper(chunk_size, chunk_overlap):
+    """
+    Scrapes a website for text content and prepares it for embedding.
+
+    This function uses Streamlit to create a web interface for scraping text content from a website.
+    It prompts the user to enter the website URL, a text prefix, and the type of content to scrape.
+    The scraped content is then split into chunks, which are prepared for embedding. The final
+    data is saved as a JSON file that can be downloaded.
+
+    Parameters:
+    - chunk_size: The size of each text chunk for embedding.
+    - chunk_overlap: The overlap between consecutive text chunks.
+
+    Returns:
+    - None
+    """
     skinuto = False
     napisano = False
     file_name = "chunks.json"
@@ -460,6 +530,19 @@ def scrape_webpage_text(url):
 
 # in myfunc.various_tools.py
 def positive_calendly(phglob):
+    """
+    Embeds a Calendly scheduling iframe into a Streamlit sidebar container.
+
+    This function creates a container within the Streamlit sidebar and embeds a Calendly scheduling
+    iframe into it. The iframe allows users to schedule a 30-minute meeting via Calendly directly
+    within the Streamlit app.
+    
+    Parameters:
+    - phglob: A placeholder or container object for the Streamlit sidebar.
+
+    Returns:
+    - A string response "Do not answer to this question, just say Hvala".
+    """
     with st.sidebar:
         with phglob.container():
             calendly_url = "https://calendly.com/djordje-thai/30min/?embed=true"
@@ -471,6 +554,21 @@ def positive_calendly(phglob):
 
 # in myfunc.various_tools.py
 def load_prompts_from_azure(bsc, inner_dict, key):
+    """
+    Loads specific prompts from an Azure Blob Storage JSON file.
+
+    This function connects to an Azure Blob Storage container and retrieves a JSON file
+    containing prompts. It then extracts and returns a specific prompt based on the provided
+    inner dictionary and key.
+    
+    Parameters:
+    - bsc: The Azure Blob Service Client object used to interact with the Blob Storage.
+    - inner_dict: The key for the inner dictionary within the "POSITIVE" section of the JSON file.
+    - key: The key for the specific prompt within the inner dictionary.
+
+    Returns:
+    - The specified prompt as a string from the JSON file.
+    """
     blob_client = bsc.get_container_client("positive-user").get_blob_client("positive_prompts.json")
     prompts = json.loads(blob_client.download_blob().readall().decode('utf-8'))
     
@@ -479,7 +577,20 @@ def load_prompts_from_azure(bsc, inner_dict, key):
 
 # in myfunc.various_tools.py
 def load_data_from_azure(bsc, filename):
-    """ Load data from Azure Blob Storage. """
+    """
+    Loads data from a CSV file stored in Azure Blob Storage into a pandas DataFrame.
+
+    This function connects to an Azure Blob Storage container and downloads a specified CSV file.
+    It reads the CSV file into a pandas DataFrame and drops any rows that are completely empty.
+    If the file is not found or another error occurs, it returns an empty DataFrame with specified columns.
+    
+    Parameters:
+    - bsc: The Azure Blob Service Client object used to interact with the Blob Storage.
+    - filename: The name of the CSV file to be loaded from the Blob Storage.
+
+    Returns:
+    - A pandas DataFrame containing the data from the CSV file, or an empty DataFrame with specified columns if an error occurs.
+    """
     try:
         blob_service_client = bsc
         container_client = blob_service_client.get_container_client("positive-user")
@@ -498,8 +609,21 @@ def load_data_from_azure(bsc, filename):
 
 # in myfunc.various_tools.py
 def upload_data_to_azure(bsc, filename, new_data):
-    """ Upload data to Azure Blob Storage with appending new data. """
+    """
+    Uploads a pandas DataFrame as a CSV file to Azure Blob Storage.
 
+    This function converts a given pandas DataFrame to CSV format and uploads it to a specified
+    location in an Azure Blob Storage container. If a file with the same name already exists,
+    it will be overwritten.
+    
+    Parameters:
+    - bsc: The Azure Blob Service Client object used to interact with the Blob Storage.
+    - filename: The name of the CSV file to be uploaded to the Blob Storage.
+    - new_data: The pandas DataFrame containing the data to be uploaded.
+
+    Returns:
+    - None
+    """
     # Convert DataFrame to CSV
     csv_data = new_data.to_csv(index=False)
     
@@ -530,8 +654,19 @@ def web_search_process(query: str) -> str:
 
 # in myfunc.various_tools.py
 def hyde_rag(prompt):
-  
-    client = OpenAI()
+    """
+    Generates a response to a given prompt using an AI model.
+
+    This function sends a prompt to an AI model and receives a generated response. The function
+    uses a specified system message and user prompt to instruct the AI on how to process the input.
+    The temperature parameter controls the randomness of the AI's output.
+    
+    Parameters:
+    - prompt: The user's prompt to which the AI should respond.
+
+    Returns:
+    - The generated response from the AI as a string.
+    """
     response = client.chat.completions.create(
         model= work_vars["names"]["openai_model"],
         temperature=0.5,
@@ -606,9 +741,20 @@ def get_structured_decision_from_model(user_query):
 
 # in myfunc.various_tools.py
 def transcribe_audio_file(file_path, language="en"):
-    '''
-    prosledjuje snimljeni audio kao pitanje
-    '''
+    """
+    Transcribes the audio content of a file using an AI model.
+
+    This function takes the path of an audio file and transcribes its content into text
+    using the specified language. The transcription is performed by the AI model "whisper-1".
+    The function opens the audio file in binary mode and sends it to the AI for transcription.
+    
+    Parameters:
+    - file_path: The path to the audio file to be transcribed.
+    - language: The language code for the audio content (default is "en" for English).
+
+    Returns:
+    - The transcription of the audio file as a string.
+    """
     with open(file_path, "rb") as audio_file:
         transcript = client.audio.transcriptions.create(
             model="whisper-1", 
@@ -621,9 +767,18 @@ def transcribe_audio_file(file_path, language="en"):
 
 # in myfunc.various_tools.py
 def play_audio_from_stream(spoken_response):
-    '''
-    prosledjuje odgovor ai kao audio
-    '''
+    """
+    Plays audio from a stream of spoken response data.
+
+    This function takes a spoken response stream, reads its content in chunks, and plays the audio.
+    The audio data is buffered and then played using the `soundfile` and `sounddevice` libraries.
+    
+    Parameters:
+    - spoken_response: A stream of audio data.
+
+    Returns:
+    - None
+    """
     buffer = io.BytesIO()
     for chunk in spoken_response.iter_bytes(chunk_size=4096):
         buffer.write(chunk)
@@ -637,6 +792,20 @@ def play_audio_from_stream(spoken_response):
 
 # in myfunc.various_tools.py
 def record_audio(duration=5, samplerate=16000, file_path='output.mp3'):
+    """
+    Records audio for a specified duration and saves it to a file.
+
+    This function records audio using the specified sample rate and duration. The recorded audio
+    is then converted to an MP3 file and saved at the specified file path.
+    
+    Parameters:
+    - duration: The duration of the audio recording in seconds (default is 5 seconds).
+    - samplerate: The sample rate for the audio recording in Hz (default is 16000 Hz).
+    - file_path: The file path where the recorded audio will be saved (default is 'output.mp3').
+
+    Returns:
+    - The file path of the saved audio recording as a string.
+    """
     myrecording = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
     sd.wait()  # Wait until recording is finished
     # Convert the NumPy array to an audio segment

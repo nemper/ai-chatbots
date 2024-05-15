@@ -430,12 +430,34 @@ class TextProcessing:
 
 # in myfunc.retrievers.py
 class PineconeUtility:
+    """
+    A utility class for managing Pinecone indices, creating graph structures, and processing uploaded files.
+
+    This class provides methods for deleting Pinecone indices, creating nodes and edges for graph structures,
+    creating overall graph structures, handling the graph creation process, and reading and processing uploaded files.
+
+    Methods:
+    - obrisi_index(): Handles the deletion of a Pinecone index.
+    - create_node(id, label): Creates a graph node with a given ID and label.
+    - create_edge(source, target, relation): Creates a graph edge between two nodes with a specified relation.
+    - create_graph_structure(data): Creates the overall graph structure from given data.
+    - create_graph(dokum): Handles the graph creation process from a given document.
+    - read_uploaded_file(dokum, text_delimiter): Reads and processes an uploaded file.
+    """
     def __init__(self):
         # Nothing to initialize
         x = 1
 
     def obrisi_index(self):
-        # Method for handling Pinecone index deletion
+        """
+        Handles the deletion of a Pinecone index.
+
+        This method allows the user to select a Pinecone index and delete namespaces within the index based on user input.
+        It interacts with the Pinecone API to delete specific records or entire namespaces.
+        
+        Returns:
+        - None
+        """
         index_name = st.selectbox("Odaberite index", ["neo-positive", "embedings1"], help="Unesite ime indeksa", key="opcije"
     )
         if index_name is not None and index_name!=" " and index_name !="" :
@@ -510,17 +532,50 @@ class PineconeUtility:
                                 st.success("Uspešno obrisano")
 
     def create_node(self, id, label):
-        # Method for creating a graph node
+        """
+        Creates a graph node with a given ID and label.
+
+        This method converts the label to ASCII format and creates a node in the graph.
+        
+        Parameters:
+        - id: The ID of the node.
+        - label: The label of the node.
+
+        Returns:
+        - A string representing the node in the graph.
+        """
         ascii_label = unidecode.unidecode(label)  # Convert label to ASCII
         return f'  node [\n    id {id}\n    label "{ascii_label}"\n  ]\n'
 
     def create_edge(self, source, target, relation):
-        # Method for creating a graph edge
+        """
+        Creates a graph edge between two nodes with a specified relation.
+
+        This method converts the relation to ASCII format and creates an edge in the graph.
+        
+        Parameters:
+        - source: The source node ID.
+        - target: The target node ID.
+        - relation: The relation between the source and target nodes.
+
+        Returns:
+        - A string representing the edge in the graph.
+        """
         ascii_relation = unidecode.unidecode(relation)  # Convert relation to ASCII
         return f'  edge [\n    source {source}\n    target {target}\n    relation "{ascii_relation}"\n  ]\n'
 
     def create_graph_structure(self, data):
-        # Method for creating the overall graph structure
+        """
+        Creates the overall graph structure from given data.
+
+        This method processes the data to create nodes and edges, forming the complete graph structure.
+        
+        Parameters:
+        - data: A list of tuples representing the nodes and their relations.
+
+        Returns:
+        - A string representing the complete graph structure in GML format.
+        """
         graph = "graph [\n  directed 1\n"
         nodes = {}
         edges = []
@@ -548,7 +603,18 @@ class PineconeUtility:
 
 
     def create_graph(self, dokum):
-        # Method for handling the graph creation process
+        """
+        Handles the graph creation process from a given document.
+
+        This method reads the document, creates a graph structure, and allows the user to download the graph as a GML file.
+        It also provides an option to upload and display the graph.
+        
+        Parameters:
+        - dokum: The document containing the data for the graph.
+
+        Returns:
+        - None
+        """
         skinuto = False
         napisano = False
         slika_grafa = False
@@ -610,7 +676,19 @@ class PineconeUtility:
                 st.pyplot(plt)  # Display the plot in Streamlit
 
     def read_uploaded_file(self, dokum, text_delimiter="space"):
-        # Method for reading and processing the uploaded file
+        """
+        Reads and processes an uploaded file.
+
+        This method reads the content of the uploaded file and processes it based on the specified delimiter.
+        It handles both text and PDF files and returns the loaded data.
+        
+        Parameters:
+        - dokum: The uploaded document file.
+        - text_delimiter: The delimiter used to split the text content (default is "space").
+
+        Returns:
+        - The loaded data from the file.
+        """
         with io.open(dokum.name, "wb") as file:
             file.write(dokum.getbuffer())
 
