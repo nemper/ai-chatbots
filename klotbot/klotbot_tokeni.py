@@ -95,11 +95,11 @@ def main():
                             st.markdown(message["content"])
 
     # Main conversation UI
-    if prompt := st.chat_input("Kako vam mogu pomoci? - Token test 12.05.24"):
+    if prompt := st.chat_input("Kako vam mogu pomoci? - Token test 15.05.24"):
         # Original processing to generate complete_prompt
         context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
-      
+        st.write(context, "AAA", scores)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
     
