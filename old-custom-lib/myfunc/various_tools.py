@@ -812,3 +812,28 @@ def record_audio(duration=5, samplerate=16000, file_path='output.mp3'):
     audio_segment = AudioSegment(myrecording.tobytes(), frame_rate=samplerate, sample_width=myrecording.dtype.itemsize, channels=1)
     audio_segment.export(file_path, format="mp3")
     return file_path
+
+
+# in myfunc.various_tools.py
+def suggest_questions(prompt): 
+    
+    system_message = {
+            "role": "system",
+            "content": f"Use only the Serbian language"
+        }
+    user_message = {
+            "role": "user",
+            "content": 
+    f"""You are an AI language model assistant. Your task is to generate 3 different possible questions ure will aks based on the given context.
+                By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. Provide these questions separated by newlines. 
+                Original question: 
+                {prompt}
+            """    
+        }
+    response = client.chat.completions.create(
+                    model=work_vars["names"]["openai_model"],
+                    messages=[system_message, user_message],
+                    )
+               
+    odgovor =  response.choices[0].message.content
+    return odgovor

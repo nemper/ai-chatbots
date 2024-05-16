@@ -1,8 +1,9 @@
+# in myfunc.pyui_javascript.py
 from typing import Literal
 import streamlit as st
 from streamlit.components.v1 import html
 
-
+# in myfunc.pyui_javascript.py
 ui_features = {
 "FIXED_CONTAINER_CSS" : """
 :root {{
