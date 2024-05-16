@@ -738,7 +738,7 @@ def rag_tool_answer(prompt, phglob):
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
     if  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="embedding_za_sajt")
+        processor = HybridQueryProcessor(namespace="embedding-za-sajt")
         context, scores, tokens = processor.process_query_results(prompt)
         # st.info("Score po chunku:")
         # st.write(scores)
