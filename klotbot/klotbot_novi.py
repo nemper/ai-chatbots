@@ -122,7 +122,7 @@ def main():
                             st.markdown(message["content"])
 
     with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
-        audio = audiorecorder("🎤 Record Question", "⏹ Stop Recording")
+        audio = audiorecorder("🎤 Snimanje pitanja", "⏹ Zaustavi snimanje")
         if len(audio) > 0:
             audio.export("audio.wav", format="wav")  
 
@@ -189,7 +189,7 @@ def main():
         # Create buttons for each question
         for question in questions:
             
-              st.button(question, on_click=handle_question_click, args=(question,), key=str(question))
+              st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
         
         # Display the selected question
         prompt = st.session_state.selected_question
