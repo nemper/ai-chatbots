@@ -7,10 +7,11 @@ from audiorecorder import audiorecorder
 from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
+from myfunc.embeddings import rag_tool_answer, phglob
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream
+from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, positive_calendly
 from myfunc.varvars_dicts import work_vars
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 
@@ -136,7 +137,14 @@ def main():
     # Main conversation UI
     if prompt:
         # Original processing to generate complete_prompt
-        context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
+        result = rag_tool_answer(prompt, phglob)
+
+        if isinstance(result, tuple) and len(result) == 3:
+            context, scores, emb_prompt_tokens = result
+        else:
+            context, scores, emb_prompt_tokens = result, None, None
+
+        # context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
