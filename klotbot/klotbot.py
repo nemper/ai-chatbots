@@ -3,13 +3,16 @@ import os
 import streamlit as st
 import uuid
 
+from audiorecorder import audiorecorder 
 from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
+from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream
 from myfunc.varvars_dicts import work_vars
+from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 
 
 client=OpenAI()
@@ -24,6 +27,8 @@ except:
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
     
 def main():
+    chat_placeholder_color(color="white")
+
     if "username" not in st.session_state:
         st.session_state.username = "positive"
     if deployment_environment == "Azure":    
@@ -111,11 +116,27 @@ def main():
                 else:         
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
+
+    with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
+        audio = audiorecorder("🎤 Record Question", "⏹ Stop Recording")
+        if len(audio) > 0:
+            audio.export("audio.wav", format="wav")  
+
+    prompt = st.chat_input("Kako vam mogu pomoci?")
+
+    if not prompt : # stavlja transcript audia u prompt ako prompt nije unet
+        if os.path.exists("audio.wav"):
+            try:
+                    prompt = transcribe_audio_file("audio.wav", "sr")
+                    if os.path.exists("audio.wav"):
+                        os.remove("audio.wav")
+            except:
+                    prompt = ""
+                    
     # Main conversation UI
-    if prompt := st.chat_input("Kako vam mogu pomoci?"):
-    
+    if prompt:
         # Original processing to generate complete_prompt
-        context, scores, tokens = processor.process_query_results(prompt)
+        context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
@@ -147,6 +168,15 @@ def main():
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+            db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
+
+        # cita odgovor
+        spoken_response = client.audio.speech.create(
+            model="tts-1-hd",
+            voice="nova",
+            input=full_response,
+        )
+        play_audio_from_stream(spoken_response)
         
 deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
