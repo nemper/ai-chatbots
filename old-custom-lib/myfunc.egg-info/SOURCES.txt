@@ -5,6 +5,7 @@ myfunc/asistenti.py
 myfunc/embeddings.py
 myfunc/mojafunkcija.py
 myfunc/prompts.py
+myfunc/pyui_javascript.py
 myfunc/retrievers.py
 myfunc/various_tools.py
 myfunc/varvars_dicts.py
