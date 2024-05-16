@@ -250,7 +250,7 @@ def st_fixed_container(
         id=counter,
     )
     with fixed_container:
-        html(f"<script>{ui_features["FIXED_CONTAINER_JS"]}</script>", scrolling=False, height=0)
+        html(f"<script>{ui_features['FIXED_CONTAINER_JS']}</script>", scrolling=False, height=0)
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
         st.markdown(
             f"<div class='fixed-container-{counter}'></div>",
