@@ -738,10 +738,10 @@ def rag_tool_answer(prompt, phglob):
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
     if  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="zapisnici")
+        processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="embedding_za_sajt")
         context, scores, tokens = processor.process_query_results(prompt)
-        st.info("Score po chunku:")
-        st.write(scores)
+        # st.info("Score po chunku:")
+        # st.write(scores)
         
     # SelfQuery Tool Configuration
     elif  st.session_state.rag_tool == "SelfQuery":
@@ -859,5 +859,8 @@ def rag_tool_answer(prompt, phglob):
             context = "Text from the webpage: " + scrape_webpage_text(st.session_state.url_to_scrap)
         except:
             context = "No text found in the webpage. Please check if the URL is correct."
-            
-    return context
+    
+    if st.session_state.rag_tool != "Hybrid":
+        return context
+    else:
+        return context, scores, tokens
