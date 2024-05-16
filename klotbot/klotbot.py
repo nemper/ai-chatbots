@@ -11,7 +11,7 @@ from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream
+from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, suggest_questions
 from myfunc.varvars_dicts import work_vars
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 
@@ -52,6 +52,8 @@ def main():
         st.session_state.messages = {}
     if "app_name" not in st.session_state:
         st.session_state.app_name = "KlotBot"
+    if 'selected_question' not in st.session_state:
+        st.session_state['selected_question'] = None
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -134,7 +136,9 @@ def main():
                         os.remove("audio.wav")
             except:
                     prompt = ""
-                    
+    if st.session_state.selected_question != None:
+        prompt = st.session_state['selected_question']
+        st.session_state['selected_question'] = None
     # Main conversation UI
     if prompt:
         # Original processing to generate complete_prompt
@@ -174,6 +178,22 @@ def main():
         
         # Append assistant's response to the conversation
         st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
+        odgovor = suggest_questions(full_response)
+        questions = odgovor.split('\n')
+               
+        
+        def handle_question_click(question):
+            """Set the selected question in the session state."""
+            st.session_state.selected_question = question
+
+        # Create buttons for each question
+        for question in questions:
+            
+              st.button(question, on_click=handle_question_click, args=(question,))
+        
+        # Display the selected question
+        prompt = st.session_state.selected_question
+        st.session_state['selected_question'] = None
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
