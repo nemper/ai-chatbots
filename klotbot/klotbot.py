@@ -7,11 +7,11 @@ from audiorecorder import audiorecorder
 from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
-from myfunc.embeddings import rag_tool_answer, phglob
+from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, positive_calendly
+from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream
 from myfunc.varvars_dicts import work_vars
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 
@@ -29,7 +29,8 @@ except:
     
 def main():
     chat_placeholder_color(color="white")
-
+    global phglob
+    phglob=st.empty()
     if "username" not in st.session_state:
         st.session_state.username = "positive"
     if deployment_environment == "Azure":    
