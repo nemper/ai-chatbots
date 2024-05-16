@@ -3,13 +3,17 @@ import os
 import streamlit as st
 import uuid
 
+from audiorecorder import audiorecorder 
 from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
+from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
+from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, suggest_questions
 from myfunc.varvars_dicts import work_vars
+from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 
 
 client=OpenAI()
@@ -24,6 +28,9 @@ except:
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
     
 def main():
+    chat_placeholder_color(color="white")
+    global phglob
+    phglob=st.empty()
     if "username" not in st.session_state:
         st.session_state.username = "positive"
     if deployment_environment == "Azure":    
@@ -45,6 +52,8 @@ def main():
         st.session_state.messages = {}
     if "app_name" not in st.session_state:
         st.session_state.app_name = "KlotBot"
+    if 'selected_question' not in st.session_state:
+        st.session_state['selected_question'] = None
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -111,11 +120,36 @@ def main():
                 else:         
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
+
+    with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
+        audio = audiorecorder("🎤 Record Question", "⏹ Stop Recording")
+        if len(audio) > 0:
+            audio.export("audio.wav", format="wav")  
+
+    prompt = st.chat_input("Kako vam mogu pomoci?")
+
+    if not prompt : # stavlja transcript audia u prompt ako prompt nije unet
+        if os.path.exists("audio.wav"):
+            try:
+                    prompt = transcribe_audio_file("audio.wav", "sr")
+                    if os.path.exists("audio.wav"):
+                        os.remove("audio.wav")
+            except:
+                    prompt = ""
+    if st.session_state.selected_question != None:
+        prompt = st.session_state['selected_question']
+        st.session_state['selected_question'] = None
     # Main conversation UI
-    if prompt := st.chat_input("Kako vam mogu pomoci?"):
-    
+    if prompt:
         # Original processing to generate complete_prompt
-        context, scores, tokens = processor.process_query_results(prompt)
+        result = rag_tool_answer(prompt, phglob)
+
+        if isinstance(result, tuple) and len(result) == 3:
+            context, scores, emb_prompt_tokens = result
+        else:
+            context, scores, emb_prompt_tokens = result, None, None
+
+        # context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
@@ -144,9 +178,34 @@ def main():
         
         # Append assistant's response to the conversation
         st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
+        odgovor = suggest_questions(full_response)
+        questions = odgovor.split('\n')
+               
+        
+        def handle_question_click(question):
+            """Set the selected question in the session state."""
+            st.session_state.selected_question = question
+
+        # Create buttons for each question
+        for question in questions:
+            
+              st.button(question, on_click=handle_question_click, args=(question,), key=str(question))
+        
+        # Display the selected question
+        prompt = st.session_state.selected_question
+        st.session_state['selected_question'] = None
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+            db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
+
+        # cita odgovor
+        spoken_response = client.audio.speech.create(
+            model="tts-1-hd",
+            voice="nova",
+            input=full_response,
+        )
+        play_audio_from_stream(spoken_response)
         
 deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
