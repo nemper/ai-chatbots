@@ -31,8 +31,8 @@ except:
 @st.experimental_fragment
 def fragment_function():
     with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje        
-                st.session_state.pricaj = st.toggle("Da li da pričam? (levo - Ne, desno - Da)")  
-                st.write('')      
+        st.session_state.pricaj = st.toggle("Da li da pričam? (levo - Ne, desno - Da)")  
+        st.write('')      
 
 
 # Embed the CSS in your Streamlit app
@@ -222,14 +222,14 @@ def main():
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
             db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
-
-        # cita odgovor
-        spoken_response = client.audio.speech.create(
-            model="tts-1-hd",
-            voice="nova",
-            input=full_response,
-        )
-        play_audio_from_stream(spoken_response)
+        if st.session_state.pricaj:
+            # cita odgovor
+            spoken_response = client.audio.speech.create(
+                model="tts-1-hd",
+                voice="nova",
+                input=full_response,
+            )
+            play_audio_from_stream(spoken_response)
         
 deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
