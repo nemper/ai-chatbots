@@ -14,3 +14,4 @@ slnx.sqlite
 *./vs
 .vs
 /myfunc/__pycache__/prompts.cpython-311.pyc
+/myfunc/__pycache__/pyui_javascript.cpython-311.pyc
