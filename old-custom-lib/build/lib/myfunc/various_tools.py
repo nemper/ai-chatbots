@@ -727,7 +727,7 @@ def get_structured_decision_from_model(user_query):
     response = client.chat.completions.create(
         model=work_vars["names"]["openai_model"],
         temperature=0,
-        response_format="json_object",
+        response_format={"type": "json_object"},
         messages=create_structured_prompt(user_query),
     )
     json_string = response.choices[0].message['content']
@@ -737,7 +737,6 @@ def get_structured_decision_from_model(user_query):
     tool_value = data_dict['tool']
     
     return tool_value
-
 
 # in myfunc.various_tools.py
 def transcribe_audio_file(file_path, language="en"):
