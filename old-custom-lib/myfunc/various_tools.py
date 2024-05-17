@@ -32,10 +32,11 @@ from myfunc.varvars_dicts import work_vars
 
 # in myfunc.various_tools.py
 try:
-    x = st.session_state.hoose_rag
+    x = st.session_state.choose_rag
 except:
     with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
+        prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG_KLOT")])
+        # prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
         st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
         st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     
@@ -545,7 +546,7 @@ def positive_calendly(phglob):
     """
     with st.sidebar:
         with phglob.container():
-            calendly_url = "https://calendly.com/djordje-thai/30min/?embed=true"
+            calendly_url = "https://calendly.com/nina-lalovic/30min/?embed=true"
             iframe_html = f'<iframe src="{calendly_url}" width="320" height="820"></iframe>'
             st.components.v1.html(iframe_html, height=820)
             
@@ -824,7 +825,8 @@ def suggest_questions(prompt):
     user_message = {
             "role": "user",
             "content": 
-    f"""You are an AI language model assistant. Your task is to generate 3 different possible questions ure will aks based on the given context.
+                f"""You are an AI language model assistant. Your task is to generate from 0 to 3 different possible questions user will ask based on the given context.
+                Number of generated questions (0 - 3) is not fixed, and it is independent of the given context. You should choose completely at random how many questions you will generate (everything should have equal probability).
                 By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. Provide these questions separated by newlines. 
                 Original question: 
                 {prompt}

@@ -207,6 +207,21 @@ document.addEventListener("DOMContentLoaded", main);
     </style>
     """
 ,
+"aifriend_css" : """
+<div data-testid="column" class="st-emotion-cache-ocqkz7">
+<style>
+.st-emotion-cache-ocqkz7 {
+    display: flex;
+    flex-wrap: wrap;
+    -webkit-box-flex: 1;
+    flex-grow: 1;
+    -webkit-box-align: stretch;
+    align-items: stretch;
+    gap: 0;
+}
+</style>
+</div>
+"""
 }
 
 counter = 0
