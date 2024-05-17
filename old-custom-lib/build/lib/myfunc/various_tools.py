@@ -734,8 +734,7 @@ def get_structured_decision_from_model(user_query):
     # Parse the JSON string into a Python dictionary
     data_dict = json.loads(json_string)
     # Access the 'tool' value
-    print(data_dict)
-    return data_dict['tool'] if 'tool' in data_dict else data_dict["response"]
+    return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
 
 
 # in myfunc.various_tools.py
