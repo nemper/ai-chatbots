@@ -734,7 +734,7 @@ def get_structured_decision_from_model(user_query):
     # Parse the JSON string into a Python dictionary
     data_dict = json.loads(json_string)
     # Access the 'tool' value
-
+    print(data_dict)
     return data_dict['tool'] if 'tool' in data_dict else data_dict["answer"]
 
 
@@ -824,8 +824,8 @@ def suggest_questions(prompt):
             "role": "user",
             "content": 
                 f"""You are an AI language model assistant. Your task is to generate from 0 to 3 different possible questions user will ask based on the given context.
-                Number of generated questions (0 - 3) is not fixed, and it is independent of the given context. You should choose completely at random how many questions you will generate (everything should have equal probability).
-                By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. Provide these questions separated by newlines. 
+                Number of generated questions (0 - 3) is not fixed, and it is independent of the given context. You choose completely at random how many questions you will generate (everything from 0 to 3 has equal probability).
+                Your goal is to help to guide the user through the Q&A process. Provide these questions separated by newlines. 
                 Original question: 
                 {prompt}
             """    
