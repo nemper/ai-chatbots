@@ -730,7 +730,7 @@ def get_structured_decision_from_model(user_query):
         response_format={"type": "json_object"},
         messages=create_structured_prompt(user_query),
     )
-    json_string = response.choices[0].message['content']
+    json_string = response.choices[0].message.content
     # Parse the JSON string into a Python dictionary
     data_dict = json.loads(json_string)
     # Access the 'tool' value
