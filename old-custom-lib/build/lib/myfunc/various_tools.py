@@ -701,7 +701,7 @@ def create_structured_prompt(user_query):
     """
     return [
         {"role": "system", "content": st.session_state.choose_rag},
-        {"role": "user", "content": user_query}
+        {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}
     ]
 
 
@@ -723,21 +723,20 @@ def get_structured_decision_from_model(user_query):
     Returns:
     - The name of the recommended tool as a string, based on the AI's analysis of the user query.
     """
-    
     client = OpenAI()
     response = client.chat.completions.create(
-        model= work_vars["names"]["openai_model"],
+        model=work_vars["names"]["openai_model"],
         temperature=0,
-        response_format= { "type": "json_object" },
+        response_format="json_object",
         messages=create_structured_prompt(user_query),
     )
-    json_string = response.choices[0].message.content
+    json_string = response.choices[0].message['content']
     # Parse the JSON string into a Python dictionary
     data_dict = json.loads(json_string)
     # Access the 'tool' value
     tool_value = data_dict['tool']
     
-    return tool_value  
+    return tool_value
 
 
 # in myfunc.various_tools.py
