@@ -210,7 +210,6 @@ def main():
         # Create buttons for each question
         try:
             for question in questions:
-                
                 st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
         except:
             pass
