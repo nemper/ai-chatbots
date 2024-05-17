@@ -823,9 +823,9 @@ def suggest_questions(prompt):
     user_message = {
             "role": "user",
             "content": 
-                f"""You are an AI language model assistant. Your task is to generate from 0 to 3 different possible questions user will ask based on the given context.
-                Number of generated questions (0 - 3) is not fixed, and it is independent of the given context. You choose completely at random how many questions you will generate (everything from 0 to 3 has equal probability).
-                Your goal is to help to guide the user through the Q&A process. Provide these questions separated by newlines. 
+                f"""You are an AI language model assistant. Your task is to generate between 0 to 3 different possible questions a user might ask based on the given context. 
+                The number of generated questions (ranging from 0 to 3) should be chosen completely at random, with each possibility having an equal probability of occurrence, regardless of the context.
+                Your goal is to assist in guiding the user through the Q&A process. If more than one question is generated, separate them by newlines.
                 Original question: 
                 {prompt}
             """    
