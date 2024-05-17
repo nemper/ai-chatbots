@@ -13,7 +13,7 @@ from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, suggest_questions
 from myfunc.varvars_dicts import work_vars
-from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
+from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container, ui_features
 
 
 client=OpenAI()
@@ -26,7 +26,18 @@ except:
         prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
-    
+
+
+@st.experimental_fragment
+def fragment_function():
+    with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje        
+                st.session_state.pricaj = st.toggle("Da li da pričam? (levo - Ne, desno - Da)")  
+                st.write('')      
+
+
+# Embed the CSS in your Streamlit app
+st.markdown(ui_features["aifriend_css"], unsafe_allow_html=True)
+
 def main():
     chat_placeholder_color(color="white")
     global phglob
@@ -121,10 +132,17 @@ def main():
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
 
-    with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
-        audio = audiorecorder("🎤 Snimanje pitanja", "⏹ Zaustavi snimanje")
-        if len(audio) > 0:
-            audio.export("audio.wav", format="wav")  
+
+    col1, col2 = st.columns(2)
+    with col1:
+        with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
+    
+            audio = audiorecorder("⏺ Snimi pitanje", "⏹ Zaustavi snimanje", "⏸ Pauza")
+            if len(audio) > 0:
+                audio.export("audio.wav", format="wav")    
+    with col2:
+        with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
+            fragment_function()   
 
     prompt = st.chat_input("Kako vam mogu pomoci?")
 
@@ -179,7 +197,10 @@ def main():
         # Append assistant's response to the conversation
         st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
         odgovor = suggest_questions(full_response)
-        questions = odgovor.split('\n')
+        try:
+            questions = odgovor.split('\n')
+        except:
+            pass
                
         
         def handle_question_click(question):
@@ -187,9 +208,12 @@ def main():
             st.session_state.selected_question = question
 
         # Create buttons for each question
-        for question in questions:
-            
-              st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
+        try:
+            for question in questions:
+                
+                st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
+        except:
+            pass
         
         # Display the selected question
         prompt = st.session_state.selected_question
