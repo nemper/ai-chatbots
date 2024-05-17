@@ -1,8 +1,7 @@
 [theme]
-base = "dark"
 primaryColor="black"
-backgroundColor="#353a40"
-secondaryBackgroundColor="#495058"
+backgroundColor="#343541"
+secondaryBackgroundColor="#454654"
 textColor="white"
 font="sans serif"
 
@@ -22,7 +21,7 @@ gatherUsageStats = false
 #                 Streamlit Community Cloud) or through st.set_page_config.
 #                 If there are no options left, hide the menu.
 
-# Default: "auto"
+# Default: "minimal"
 
 [client]
 toolbarMode = "viewer"

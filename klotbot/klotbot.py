@@ -10,6 +10,7 @@ from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
+from myfunc.pyui_javascript import chat_placeholder_color
 
 
 client=OpenAI()
@@ -24,6 +25,7 @@ except:
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
     
 def main():
+    chat_placeholder_color(color="#f1f1f1")
     if "username" not in st.session_state:
         st.session_state.username = "positive"
     if deployment_environment == "Azure":    
@@ -112,7 +114,7 @@ def main():
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
     # Main conversation UI
-    if prompt := st.chat_input("Kako vam mogu pomoci?"):
+    if prompt := st.chat_input("Kako vam mogu pomoći?"):
     
         # Original processing to generate complete_prompt
         context, scores, tokens = processor.process_query_results(prompt)
