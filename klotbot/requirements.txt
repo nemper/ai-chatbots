@@ -97,6 +97,7 @@ six==1.16.0
 smmap==5.0.1
 sniffio==1.3.1
 sounddevice==0.4.6
+soundfile
 SQLAlchemy==2.0.28
 streamlit==1.33.0
 streamlit-audiorecorder==0.0.5
