@@ -15,6 +15,8 @@
 
 # Mono auto generated files
 mono_crash.*
+*.wav
+*.mp3
 
 # Build results
 [Dd]ebug/

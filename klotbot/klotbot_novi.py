@@ -44,12 +44,12 @@ def main():
     phglob=st.empty()
     if "username" not in st.session_state:
         st.session_state.username = "positive"
-    if deployment_environment == "Azure":    
-        st.session_state.username = read_aad_username()
-    elif deployment_environment == "Windows":
-        st.session_state.username = "lokal"
-    elif deployment_environment == "Streamlit":
-        st.session_state.username = username
+    # if deployment_environment == "Azure":    
+    #     st.session_state.username = read_aad_username()
+    # elif deployment_environment == "Windows":
+    #     st.session_state.username = "lokal"
+    # elif deployment_environment == "Streamlit":
+    #     st.session_state.username = username
 
     if "client" not in st.session_state:
         st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -230,10 +230,10 @@ def main():
             )
             play_audio_from_stream(spoken_response)
         
-deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
+# deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
-if deployment_environment == "Streamlit":
-    name, authentication_status, username = positive_login(main, " ")
-else:
-    if __name__ == "__main__":
-        main()
+# if deployment_environment == "Streamlit":
+#     name, authentication_status, username = positive_login(main, " ")
+# else:
+#     if __name__ == "__main__":
+#         main()
