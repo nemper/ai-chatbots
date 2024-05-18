@@ -235,5 +235,5 @@ def main():
 # if deployment_environment == "Streamlit":
 #     name, authentication_status, username = positive_login(main, " ")
 # else:
-#     if __name__ == "__main__":
-#         main()
+if __name__ == "__main__":
+    main()
