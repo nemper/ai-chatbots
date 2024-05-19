@@ -33,7 +33,7 @@ def handle_question_click(question):
 def fragment_function():
         st.session_state.pricaj = st.toggle("Da li da pričam? (levo - Ne, desno - Da)")  
     
-
+st.markdown("<style> #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;} </style>)", unsafe_allow_html=True)
 
 # Embed the CSS in your Streamlit app
 st.markdown(ui_features["aifriend_css"], unsafe_allow_html=True)
@@ -145,41 +145,45 @@ def main():
     if prompt:
         # Original processing to generate complete_prompt
         result = rag_tool_answer(prompt, phglob)
+        if result=="Do not answer to this question, just say Hvala":
+            full_response=""
+            emb_prompt_tokens=0
+            complete_prompt=""
+        else:    
+            if isinstance(result, tuple) and len(result) == 3:
+                context, scores, emb_prompt_tokens = result
+            else:
+                context, scores, emb_prompt_tokens = result, None, None
 
-        if isinstance(result, tuple) and len(result) == 3:
-            context, scores, emb_prompt_tokens = result
-        else:
-            context, scores, emb_prompt_tokens = result, None, None
-
-        complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
-        # Append only the user's original prompt to the actual conversation log
-        st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
+            complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
+            # Append only the user's original prompt to the actual conversation log
+            st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
     
-        # Display user prompt in the chat
-        with st.chat_message("user", avatar=avatar_user):
-            st.markdown(prompt)
+            # Display user prompt in the chat
+            with st.chat_message("user", avatar=avatar_user):
+                st.markdown(prompt)
         
-        # Prepare a temporary messages list for generating the assistant's response
-        temp_messages = st.session_state.messages[current_thread_id].copy()
-        temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
+            # Prepare a temporary messages list for generating the assistant's response
+            temp_messages = st.session_state.messages[current_thread_id].copy()
+            temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
     
-        # Generate and display the assistant's response using the temporary messages list
-        with st.chat_message("assistant", avatar=avatar_ai):
-            message_placeholder = st.empty()
-            full_response = ""
-            for response in client.chat.completions.create(
-                model=work_vars["names"]["openai_model"],
-                temperature=0,
-                messages=temp_messages,  # Use the temporary list with enriched context
-                stream=True,
-            ):
-                full_response += (response.choices[0].delta.content or "")
-                message_placeholder.markdown(full_response + "▌")
+            # Generate and display the assistant's response using the temporary messages list
+            with st.chat_message("assistant", avatar=avatar_ai):
+                message_placeholder = st.empty()
+                full_response = ""
+                for response in client.chat.completions.create(
+                    model=work_vars["names"]["openai_model"],
+                    temperature=0,
+                    messages=temp_messages,  # Use the temporary list with enriched context
+                    stream=True,
+                ):
+                    full_response += (response.choices[0].delta.content or "")
+                    message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
         
-        # Append assistant's response to the conversation
-        st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
-        odgovor = suggest_questions(full_response)
+            # Append assistant's response to the conversation
+            st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
+            odgovor = suggest_questions(full_response)
         try:
             questions = odgovor.split('\n')
         except:
@@ -200,7 +204,7 @@ def main():
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
             db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
-        if st.session_state.pricaj:
+        if st.session_state.pricaj and full_response !="":
             # cita odgovor
             spoken_response = client.audio.speech.create(
                 model="tts-1-hd",
