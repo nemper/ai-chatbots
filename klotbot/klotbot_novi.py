@@ -6,9 +6,7 @@ import uuid
 from audiorecorder import audiorecorder 
 from openai import OpenAI
 
-from myfunc.asistenti import read_aad_username
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import positive_login
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, suggest_questions
@@ -27,6 +25,9 @@ except:
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
 
+def handle_question_click(question):
+    """Set the selected question in the session state."""
+    st.session_state.selected_question = question
 
 @st.experimental_fragment
 def fragment_function():
@@ -44,13 +45,6 @@ def main():
     phglob=st.empty()
     if "username" not in st.session_state:
         st.session_state.username = "positive"
-    # if deployment_environment == "Azure":    
-    #     st.session_state.username = read_aad_username()
-    # elif deployment_environment == "Windows":
-    #     st.session_state.username = "lokal"
-    # elif deployment_environment == "Streamlit":
-    #     st.session_state.username = username
-
     if "client" not in st.session_state:
         st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     if "openai_model" not in st.session_state:
@@ -61,10 +55,10 @@ def main():
         st.session_state.messages = {}
     if "messages" not in st.session_state:
         st.session_state.messages = {}
-    if "app_name" not in st.session_state:
-        st.session_state.app_name = "KlotBot"
     if 'selected_question' not in st.session_state:
         st.session_state['selected_question'] = None
+    if "app_name" not in st.session_state:
+        st.session_state.app_name = "KlotBot"
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -96,9 +90,6 @@ def main():
     avatar_user = "user.webp"
     avatar_sys = "positivelogo.jpg"
    
-    #with st.sidebar:
-    #    st.info(f"Prijavljeni ste kao: {st.session_state.username}")
-
     if st.session_state.thread_id is None:
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
@@ -110,13 +101,12 @@ def main():
                     st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
         except:
             pass
-        #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+       
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:
             # If not, initialize it with the conversation from the database or as an empty list
             with ConversationDatabase() as db:
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
-            #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
         if current_thread_id in st.session_state.messages:
             # avatari primena
             for message in st.session_state.messages[current_thread_id]:
@@ -132,16 +122,15 @@ def main():
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
 
-
     col1, col2 = st.columns(2)
     with col1:
         with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
     
-            audio = audiorecorder("⏺ Snimi pitanje", "⏹ Zaustavi snimanje", "⏸ Pauza")
+            audio = audiorecorder("⏺ Snimi pitanje", "⏹ Zaustavi snimanje", "⏸ Pauza") # mozda ce biti zamenjeno ka 4o bude razumeo audio
             if len(audio) > 0:
                 audio.export("audio.wav", format="wav")    
     with col2:
-        with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
+        with st_fixed_container(mode="fixed", position="top", border=False): # pita da li da proca
             fragment_function()   
 
     prompt = st.chat_input("Kako vam mogu pomoci?")
@@ -167,7 +156,6 @@ def main():
         else:
             context, scores, emb_prompt_tokens = result, None, None
 
-        # context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
@@ -201,11 +189,6 @@ def main():
             questions = odgovor.split('\n')
         except:
             pass
-               
-        
-        def handle_question_click(question):
-            """Set the selected question in the session state."""
-            st.session_state.selected_question = question
 
         # Create buttons for each question
         try:
@@ -232,7 +215,7 @@ def main():
             play_audio_from_stream(spoken_response)
             audio_base64, samplerate = play_audio_from_stream(spoken_response)
 
-            # Generate the HTML to play the audio
+            # Generate the HTML to play the audio - ovo ce biti zamenjeno kada 4o bude sam radio audio...
             audio_html = f"""
                 <audio id="audio" autoplay style="display:none;">
                   <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
