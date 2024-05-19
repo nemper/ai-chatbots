@@ -700,6 +700,10 @@ def create_structured_prompt(user_query):
     - A list of dictionaries, each representing a part of the structured prompt, including
       the role (system or user) and the content (instructions for the AI or the user query).
     """
+    if "choose_rag" not in st.session_state:
+        with PromptDatabase() as db:
+            prompt_map = db.get_prompts_by_names(["choose_rag"],[os.getenv("CHOOSE_RAG_KLOT")])
+            st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     return [
         {"role": "system", "content": st.session_state.choose_rag},
         {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}
