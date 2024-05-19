@@ -210,7 +210,8 @@ def main():
         # Create buttons for each question
         try:
             for question in questions:
-                st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
+                if len(question)>10:
+                    st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
         except:
             pass
         
@@ -229,11 +230,21 @@ def main():
                 input=full_response,
             )
             play_audio_from_stream(spoken_response)
-        
-# deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
+            audio_base64, samplerate = play_audio_from_stream(spoken_response)
 
-# if deployment_environment == "Streamlit":
-#     name, authentication_status, username = positive_login(main, " ")
-# else:
+            # Generate the HTML to play the audio
+            audio_html = f"""
+                <audio id="audio" autoplay style="display:none;">
+                  <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                  Your browser does not support the audio element.
+                </audio>
+                <script>
+                    var audioElement = document.getElementById('audio');
+                    audioElement.play();
+                </script>
+            """
+
+            st.components.v1.html(audio_html, height=0)
+
 if __name__ == "__main__":
     main()
