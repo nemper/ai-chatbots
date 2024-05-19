@@ -2,6 +2,7 @@
 import datetime
 import html
 import io
+import base64
 import json
 import logging
 import openai
@@ -31,14 +32,14 @@ from myfunc.varvars_dicts import work_vars
 
 
 # in myfunc.various_tools.py
-try:
-    x = st.session_state.choose_rag
-except:
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG_KLOT")])
-        # prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
-        st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
-        st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
+# try:
+#     x = st.session_state.choose_rag
+# except:
+with PromptDatabase() as db:
+    prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG_KLOT")])
+    # prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
+    st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
+    st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
@@ -764,28 +765,28 @@ def transcribe_audio_file(file_path, language="en"):
 
 
 # in myfunc.various_tools.py
-def play_audio_from_stream(spoken_response):
-    """
-    Plays audio from a stream of spoken response data.
+# def play_audio_from_stream(spoken_response):
+#     """
+#     Plays audio from a stream of spoken response data.
 
-    This function takes a spoken response stream, reads its content in chunks, and plays the audio.
-    The audio data is buffered and then played using the `soundfile` and `sounddevice` libraries.
+#     This function takes a spoken response stream, reads its content in chunks, and plays the audio.
+#     The audio data is buffered and then played using the `soundfile` and `sounddevice` libraries.
     
-    Parameters:
-    - spoken_response: A stream of audio data.
+#     Parameters:
+#     - spoken_response: A stream of audio data.
 
-    Returns:
-    - None
-    """
-    buffer = io.BytesIO()
-    for chunk in spoken_response.iter_bytes(chunk_size=4096):
-        buffer.write(chunk)
-    buffer.seek(0)
+#     Returns:
+#     - None
+#     """
+#     buffer = io.BytesIO()
+#     for chunk in spoken_response.iter_bytes(chunk_size=4096):
+#         buffer.write(chunk)
+#     buffer.seek(0)
 
-    with sf.SoundFile(buffer, 'r') as sound_file:
-        data = sound_file.read(dtype='int16')
-        sd.play(data, sound_file.samplerate)
-        sd.wait()
+#     with sf.SoundFile(buffer, 'r') as sound_file:
+#         data = sound_file.read(dtype='int16')
+#         sd.play(data, sound_file.samplerate)
+#         sd.wait()
 
 
 # in myfunc.various_tools.py
@@ -823,7 +824,8 @@ def suggest_questions(prompt):
             "role": "user",
             "content": 
                 f"""You are an AI language model assistant. Your task is to generate 3 different possible questions ure will aks based on the given context.
-                By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. Provide these questions separated by newlines. 
+                By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. If the context is the question try to provide answers. 
+                Provide these questions separated by newlines, no numbering. 
                 Original question: 
                 {prompt}
             """    
@@ -835,3 +837,39 @@ def suggest_questions(prompt):
                
     odgovor =  response.choices[0].message.content
     return odgovor
+
+
+def play_audio_from_stream(spoken_response):
+    """
+    Reads audio data from a spoken response stream and returns it as a base64-encoded string.
+
+    Parameters:
+    - spoken_response: A stream of audio data.
+
+    Returns:
+    - A base64-encoded string of the audio data.
+    """
+    buffer = io.BytesIO()
+    for chunk in spoken_response.iter_bytes(chunk_size=4096):
+        buffer.write(chunk)
+    buffer.seek(0)
+
+    with sf.SoundFile(buffer, 'r') as sound_file:
+        data = sound_file.read(dtype='int16')
+        samplerate = sound_file.samplerate
+
+    # Create a new buffer to save the audio in WAV format
+    wav_buffer = io.BytesIO()
+    with sf.SoundFile(wav_buffer, 'w', samplerate=samplerate, channels=1, format='WAV') as wav_file:
+        wav_file.write(data)
+
+
+    # Encode the WAV data to base64
+    wav_buffer.seek(0)
+    audio_base64 = base64.b64encode(wav_buffer.read()).decode('utf-8')
+
+    return audio_base64, samplerate
+
+
+
+
