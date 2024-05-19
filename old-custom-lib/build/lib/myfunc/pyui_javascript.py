@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", main);
 """.strip()
 ,
 "MARGINS" : {
-    "top": "2.875rem",
+    "top": "0",
     "bottom": "0",
 }
 ,

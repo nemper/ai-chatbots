@@ -545,12 +545,12 @@ def positive_calendly(phglob):
     Returns:
     - A string response "Do not answer to this question, just say Hvala".
     """
-    with st.sidebar:
-        with phglob.container():
-            calendly_url = "https://calendly.com/nina-lalovic/30min/?embed=true"
-            iframe_html = f'<iframe src="{calendly_url}" width="320" height="820"></iframe>'
-            st.components.v1.html(iframe_html, height=820)
-            
+    # with st.sidebar:
+    #     with phglob.container():
+    calendly_url = "https://calendly.com/nina-lalovic/30min/?embed=true"
+    iframe_html = f'<iframe src="{calendly_url}" width="320" height="820"></iframe>'
+    #iframe_html = f'<iframe src="{calendly_url}"></iframe>'
+    st.components.v1.html(iframe_html, height=820)        
     return "Do not answer to this question, just say Hvala"
 
 
