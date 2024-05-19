@@ -31,9 +31,8 @@ def handle_question_click(question):
 
 @st.experimental_fragment
 def fragment_function():
-    #with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje        
         st.session_state.pricaj = st.toggle("Da li da pričam? (levo - Ne, desno - Da)")  
-        st.write('')      
+    
 
 
 # Embed the CSS in your Streamlit app
@@ -122,14 +121,11 @@ def main():
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
 
-    col1, col2 = st.columns(2)
+   
     with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
-        with col1:    
             audio = audiorecorder("⏺ Snimi pitanje", "⏹ Zaustavi snimanje", "⏸ Pauza") # mozda ce biti zamenjeno ka 4o bude razumeo audio
             if len(audio) > 0:
                 audio.export("audio.wav", format="wav")    
-        with col2:
-        #with st_fixed_container(mode="fixed", position="top", border=False): # pita da li da proca
             fragment_function()   
 
     prompt = st.chat_input("Kako vam mogu pomoći?")
