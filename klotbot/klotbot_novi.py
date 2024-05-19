@@ -33,7 +33,7 @@ def handle_question_click(question):
 def fragment_function():
         st.session_state.pricaj = st.toggle("Da li da pričam? (levo - Ne, desno - Da)")  
     
-st.markdown("<style> #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;} </style>)", unsafe_allow_html=True)
+#st.markdown("<style> #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;} </style>)", unsafe_allow_html=True)
 
 # Embed the CSS in your Streamlit app
 st.markdown(ui_features["aifriend_css"], unsafe_allow_html=True)
