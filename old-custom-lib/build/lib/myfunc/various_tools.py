@@ -551,7 +551,7 @@ def positive_calendly(phglob):
     iframe_html = f'<iframe src="{calendly_url}" width="320" height="820"></iframe>'
     #iframe_html = f'<iframe src="{calendly_url}"></iframe>'
     st.components.v1.html(iframe_html, height=820)        
-    return "Do not answer to this question, just say Hvala"
+    return "CALENDLY"
 
 
 # in myfunc.various_tools.py
@@ -827,12 +827,23 @@ def suggest_questions(prompt):
     user_message = {
             "role": "user",
             "content": 
-                f"""You are an AI language model assistant. Your task is to generate 3 different possible questions ure will aks based on the given context.
-                By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. If the context is the question try to provide answers. 
-                Provide these questions separated by newlines, no numbering. 
-                Original question: 
-                {prompt}
-            """    
+                f"""You are an AI language model assistant for a company's chatbot. Your task is to generate 3 different possible continuation sentences that a user might say based on the given context. These continuations should be in the form of questions or statements that naturally follow from the conversation.
+
+Your goal is to help guide the user through the Q&A process by predicting their next possible inputs. Ensure these continuations are from the user's perspective and relevant to the context provided.
+
+Provide these sentences separated by newlines, without numbering.
+
+Original context:
+{prompt}
+
+
+                """
+        #         f"""You are an AI language model assistant. Your task is to generate 3 different possible questions ure will aks based on the given context.
+        #         By generating multiple suggested questions, your goal is to help to guide the user through the Q&A process. If the context is the question try to provide answers. 
+        #         Provide these questions separated by newlines, no numbering. 
+        #         Original question: 
+        #         {prompt}
+        #     """    
         }
     response = client.chat.completions.create(
                     model=work_vars["names"]["openai_model"],
