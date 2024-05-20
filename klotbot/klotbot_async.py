@@ -1,4 +1,3 @@
-from msilib.schema import SFPCatalog
 import mysql
 import os
 import streamlit as st
