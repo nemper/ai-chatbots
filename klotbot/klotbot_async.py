@@ -18,7 +18,7 @@ from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, 
 from myfunc.varvars_dicts import work_vars
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container, ui_features
 
-
+api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
 processor = HybridQueryProcessor() # namespace moze i iz env
 
@@ -30,9 +30,34 @@ except:
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
 
+def suggest_questions_s(prompt): # sync version of suggested questions (async) from myfunc
+    
+    system_message = {
+            "role": "system",
+            "content": f"Use only the Serbian language"
+        }
+    user_message = {
+            "role": "user",
+            "content": 
+                f"""You are an AI language model assistant for a company's chatbot. Your task is to generate 3 different possible continuation sentences that a user might say based on the given context. These continuations should be in the form of questions or statements that naturally follow from the conversation.
 
+                    Your goal is to help guide the user through the Q&A process by predicting their next possible inputs. Ensure these continuations are from the user's perspective and relevant to the context provided.
 
-async def fetch_spoken_response(client, full_response, api_key=os.getenv("OPENAI_API_KEY")):
+                    Provide these sentences separated by newlines, without numbering.
+
+                    Original context:
+                    {prompt}
+                                    """
+                }
+    response = client.chat.completions.create(
+                    model=work_vars["names"]["openai_model"],
+                    messages=[system_message, user_message],
+                    )
+               
+    odgovor =  response.choices[0].message.content
+    return odgovor
+
+async def fetch_spoken_response(client, full_response, api_key):
     async with aiohttp.ClientSession() as session:
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -67,9 +92,14 @@ async def play_audio_from_stream(audio_data):
 
     return audio_base64, samplerate
 
-async def handle_async_tasks(client, full_response, api_key=os.getenv("OPENAI_API_KEY")):
-    # Fetch and play the spoken response
-    audio_data = await fetch_spoken_response(client, full_response, api_key)
+async def handle_async_tasks(client, full_response, api_key):
+    # Fetch spoken response and suggestions concurrently
+    audio_data, odgovor = await asyncio.gather(
+        fetch_spoken_response(client, full_response, api_key),
+        suggest_questions(full_response, api_key)
+    )
+
+    # Play the spoken response
     audio_base64, samplerate = await play_audio_from_stream(audio_data)
 
     # Generate the HTML to play the audio
@@ -84,7 +114,7 @@ async def handle_async_tasks(client, full_response, api_key=os.getenv("OPENAI_AP
                 background-color: #495058;
                 color: #f1f1f1;
                 padding: 0.25rem 0.75rem;
-                border: 1px solid rgba(241, 241, 241, 0.1);
+                border: 1px solid rgba(38, 39, 48, 0.1);
                 border-radius: 0.25rem;
                 font-size: 1rem;
                 cursor: pointer;
@@ -103,11 +133,6 @@ async def handle_async_tasks(client, full_response, api_key=os.getenv("OPENAI_AP
 
     st.components.v1.html(audio_html, height=50)
 
-# Function to process the request
-def process_request(client, full_response, odgovor, api_key=os.getenv("OPENAI_API_KEY")):
-    # Schedule async tasks
-    asyncio.run(handle_async_tasks(client, full_response, api_key))
-
     # Process questions
     try:
         questions = odgovor.split('\n')
@@ -118,6 +143,12 @@ def process_request(client, full_response, odgovor, api_key=os.getenv("OPENAI_AP
     for question in questions:
         if len(question) > 10:
             st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
+
+# Function to process the request
+def process_request(client, full_response, api_key):
+    # Schedule async tasks
+    asyncio.run(handle_async_tasks(client, full_response, api_key))
+
 
 
 
@@ -279,15 +310,29 @@ def main():
         
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
-            odgovor = suggest_questions(full_response)
+            if not st.session_state.pricaj:
+                # Process the request with sync handling - only suggested_questions
+                odgovor = suggest_questions_s(full_response)
                                 
         if st.session_state.pricaj and full_response != "":
+            
             # Process the request with async handling
-            process_request(client, full_response, odgovor)
-        
-        # Display the selected question
-        prompt = st.session_state.selected_question
-        st.session_state['selected_question'] = None
+            process_request(client, full_response, api_key)
+            
+        else:        
+            # Process the request with sync handling - only suggested_questions
+            try:
+                questions = odgovor.split('\n')
+            except:
+                questions = []
+
+            # Create buttons for each question
+            for question in questions:
+                if len(question) > 10:
+                    st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
+                # Display the selected question
+                prompt = st.session_state.selected_question
+                st.session_state['selected_question'] = None
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
