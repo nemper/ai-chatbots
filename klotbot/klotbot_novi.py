@@ -123,7 +123,7 @@ def main():
 
    
     with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
-            audio = audiorecorder("⏺ Pričaj", "⏹ Završi pitanje", "⏸ Pauza") # mozda ce biti zamenjeno ka 4o bude razumeo audio
+            audio = audiorecorder("⏺ Pitaj", "⏹ Završi pitanje", "⏸ Pauza") # mozda ce biti zamenjeno ka 4o bude razumeo audio
             if len(audio) > 0:
                 audio.export("audio.wav", format="wav")    
             fragment_function()   
