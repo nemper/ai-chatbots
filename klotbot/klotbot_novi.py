@@ -160,7 +160,7 @@ def handle_question_click(question):
 
 @st.experimental_fragment
 def fragment_function():
-        st.session_state.pricaj = st.toggle("🔊 Audio")  
+        st.session_state.pricaj = st.toggle("🔊 Zvuk")  
     
 #st.markdown("<style> #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;} </style>)", unsafe_allow_html=True)
 
@@ -255,7 +255,7 @@ def main():
     div[data-testid="stHorizontalBlock"] {
         display: flex;
         flex-direction: row;
-        width: 315px;
+        width: 310px;
         flex-wrap: nowrap;
         align-items: center;
         justify-content: flex-start;
