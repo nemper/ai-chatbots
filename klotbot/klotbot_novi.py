@@ -255,7 +255,7 @@ def main():
     div[data-testid="stHorizontalBlock"] {
         display: flex;
         flex-direction: row;
-        width: 240px;
+        width: 220px;
         flex-wrap: nowrap;
         align-items: center;
         justify-content: flex-start;
