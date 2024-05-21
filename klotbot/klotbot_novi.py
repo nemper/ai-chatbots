@@ -9,13 +9,14 @@ from openai import OpenAI
 import io
 import soundfile as sf
 import base64
+import streamlit.components.v1 as components
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, suggest_questions
 from myfunc.varvars_dicts import work_vars
-from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container, ui_features
+from myfunc.pyui_javascript import chat_placeholder_color, ui_features, st_fixed_container
 
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
@@ -159,7 +160,7 @@ def handle_question_click(question):
 
 @st.experimental_fragment
 def fragment_function():
-        st.session_state.pricaj = st.toggle("Da li da pričam?")  
+        st.session_state.pricaj = st.toggle("🔊 Audio")  
     
 #st.markdown("<style> #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;} </style>)", unsafe_allow_html=True)
 
@@ -249,13 +250,36 @@ def main():
                     with st.chat_message(message["role"], avatar=avatar_sys):
                             st.markdown(message["content"])
 
-   
-    with st_fixed_container(mode="fixed", position="top", border=False): # snima audio za pitanje
-            audio = audiorecorder("⏺ Pričaj", "⏹ Završi pitanje", "⏸ Pauza") # mozda ce biti zamenjeno ka 4o bude razumeo audio
-            if len(audio) > 0:
-                audio.export("audio.wav", format="wav")    
-            fragment_function()   
+    custom_streamlit_style = """
+    <style>
+    div[data-testid="stHorizontalBlock"] {
+        display: flex;
+        flex-direction: row;
+        width: 315px;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .horizontal-item {
+        margin-right: 5px; /* Adjust spacing as needed */
+    }
+  
+    </style>
+"""
 
+    st.markdown(custom_streamlit_style, unsafe_allow_html=True)
+
+    # Use the fixed container and apply the horizontal layout
+    with st_fixed_container(mode="fixed", position="bottom", border=False):
+        col1, col2 = st.columns([0.5, 0.5])  # Adjust the ratio as needed
+
+        with col1:
+            audio = audiorecorder("⏺ Snimi", "⏹ Stop")
+            if len(audio) > 0:
+                audio.export("audio.wav", format="wav")
+    
+        with col2:
+            fragment_function()
     prompt = st.chat_input("Kako vam mogu pomoći?")
 
     if not prompt : # stavlja transcript audia u prompt ako prompt nije unet
