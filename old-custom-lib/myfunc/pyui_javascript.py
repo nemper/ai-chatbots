@@ -7,7 +7,7 @@ from streamlit.components.v1 import html
 ui_features = {
 "FIXED_CONTAINER_CSS" : """
 :root {{
-    --background-color: #ffffff; /* Default background color */
+    --background-color: #343541; /* Default background color */
 }}
 div[data-testid="stVerticalBlockBorderWrapper"]:has(div.fixed-container-{id}):not(:has(div.not-fixed-container)) {{
     position: {mode};
