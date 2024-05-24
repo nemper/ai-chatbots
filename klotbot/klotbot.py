@@ -117,7 +117,7 @@ def main():
     if prompt := st.chat_input("Kako vam mogu pomoći?"):
     
         # Original processing to generate complete_prompt
-        context, scores, tokens = processor.process_query_results(prompt)
+        context, scores, emb_prompt_tokens = processor.process_query_results(prompt)
         complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
@@ -139,9 +139,13 @@ def main():
                 temperature=0,
                 messages=temp_messages,  # Use the temporary list with enriched context
                 stream=True,
+                stream_options={"include_usage":True},
             ):
-                full_response += (response.choices[0].delta.content or "")
-                message_placeholder.markdown(full_response + "▌")
+                try:
+                    full_response += (response.choices[0].delta.content or "")
+                    message_placeholder.markdown(full_response + "▌")
+                except:
+                    pass  
             message_placeholder.markdown(full_response)
         
         # Append assistant's response to the conversation
@@ -149,6 +153,7 @@ def main():
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+            db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens)
         
 deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 

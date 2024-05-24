@@ -328,9 +328,13 @@ def main():
                     temperature=0,
                     messages=temp_messages,  # Use the temporary list with enriched context
                     stream=True,
+                    stream_options={"include_usage":True},
                 ):
-                    full_response += (response.choices[0].delta.content or "")
-                    message_placeholder.markdown(full_response + "▌")
+                    try:
+                        full_response += (response.choices[0].delta.content or "")
+                        message_placeholder.markdown(full_response + "▌")
+                    except:
+                        pass  
             message_placeholder.markdown(full_response)
         
             # Append assistant's response to the conversation
@@ -361,9 +365,8 @@ def main():
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
-            db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
-        
-            
+            db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens)
+            # db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
 
 if __name__ == "__main__":
     main()
