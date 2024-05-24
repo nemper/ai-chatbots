@@ -63,7 +63,7 @@ mysql-connector-python==8.3.0
 networkx==3.2.1
 nltk==3.8.1
 numpy==1.26.4
-openai==1.21.2
+openai==1.30.2
 orjson==3.9.15
 packaging==23.2
 pandas==2.2.1
