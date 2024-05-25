@@ -177,18 +177,13 @@ def transkript():
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
                         with PromptDatabase() as db:
-                            try:
-                                prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
-                                st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")
-                                st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
-                                st.write("Prompt map:", prompt_map)  # Add this line to debug
-                            except Exception as e:
-                                st.write("Error fetching prompts:", str(e))
+                            prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
+                            st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")
+                            st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
 
                         system_prompt=st.session_state.text_from_audio
                         # does transcription of the audio file and then corrects the transcript
-                        transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
-                        st.write(system_prompt)             
+                        transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)            
                         with st.expander("Transkript"):
                             st.info(transcript)
                             
@@ -381,7 +376,7 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
     broj_delova = len(chunks)
     st.caption (f"Broj delova je: {broj_delova}")
     corrected_transcript = ""
-    st.write(system_prompt)
+
     # Loop through the token chunks
     for i, chunk in enumerate(chunks):
         
