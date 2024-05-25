@@ -184,7 +184,7 @@ def transkript():
                         system_prompt=st.session_state.text_from_audio
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)
-                                                
+                        st.write(system_prompt)             
                         with st.expander("Transkript"):
                             st.info(transcript)
                             
@@ -377,7 +377,7 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
     broj_delova = len(chunks)
     st.caption (f"Broj delova je: {broj_delova}")
     corrected_transcript = ""
-
+    st.write(system_prompt)
     # Loop through the token chunks
     for i, chunk in enumerate(chunks):
         
