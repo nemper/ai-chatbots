@@ -149,12 +149,21 @@ async def play_audio_from_stream(spoken_response):
     audio_base64 = base64.b64encode(buffer.read()).decode()
 
     # Create an HTML audio element with autoplay
-    audio_html =  f"""
-        <audio autoplay style="display:none;">
-            <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-            Your browser does not support the audio element.
-        </audio>
-        """
+    opcija = st.query_params.get('opcija', "desk")
+    if opcija == "mobile":
+        audio_html = f"""
+            <audio controls autoplay>
+                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            """
+    else:
+        audio_html =  f"""
+            <audio autoplay style="display:none;">
+                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            """
      # Display the HTML element in the Streamlit app
     st.markdown(audio_html, unsafe_allow_html=True)
     
@@ -223,12 +232,21 @@ def play_audio_from_stream_s(full_response):
     audio_base64 = base64.b64encode(buffer.read()).decode()
 
     # Create an HTML audio element with autoplay
-    audio_html =  f"""
-<audio autoplay style="display:none;">
-    <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-    Your browser does not support the audio element.
-</audio>
-"""
+    opcija = st.query_params.get('opcija', "desk")
+    if opcija == "mobile":
+        audio_html = f"""
+            <audio controls autoplay>
+                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            """
+    else:
+        audio_html =  f"""
+            <audio autoplay style="display:none;">
+                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            """
 
     # Display the HTML element in the Streamlit app
     st.markdown(audio_html, unsafe_allow_html=True)
