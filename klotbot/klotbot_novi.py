@@ -32,6 +32,43 @@ except:
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
 
+button_color=''
+
+if "button_color" not in st.session_state:
+    st.session_state.button_color='color2'
+
+
+def toggle_button_color():
+    if st.session_state.button_color == 'color2':
+        st.session_state.button_color = 'color1'
+        
+    else:
+        st.session_state.button_color = 'color2'
+        
+# Apply custom CSS for button styling
+st.markdown(
+    f"""
+    <style>
+    .stButton > button {{
+        background-color: {'green' if st.session_state.button_color == 'color1' else 'rgb(57, 58, 71)'};
+        color: white;
+        border: 1px solid gray;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 10px;
+        cursor: pointer;
+        padding: 0.25rem 1.25rem;
+        border-radius: 0.5rem;
+        min-height: 37px; 
+        margin: 9px;
+        line-height: 1.6;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 def suggest_questions_s(prompt): # sync version of suggested questions (async) from myfunc
     
     system_message = {
@@ -160,7 +197,7 @@ def handle_question_click(question):
 
 @st.experimental_fragment
 def fragment_function():
-        st.session_state.pricaj = st.toggle("🔊 Zvuk")  
+        st.button('Slušaj odgovor', on_click=toggle_button_color)  
     
 #st.markdown("<style> #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;} </style>)", unsafe_allow_html=True)
 
@@ -255,7 +292,7 @@ def main():
     div[data-testid="stHorizontalBlock"] {
         display: flex;
         flex-direction: row;
-        width: 220px;
+        width: 320px;
         flex-wrap: nowrap;
         align-items: center;
         justify-content: flex-start;
@@ -274,7 +311,7 @@ def main():
         col1, col2 = st.columns([0.5, 0.5])  # Adjust the ratio as needed
 
         with col1:
-            audio = audiorecorder("⏺ Snimi", "⏹ Stop")
+            audio = audiorecorder("⏺ Snimi", "⏹ Pošalji")
             if len(audio) > 0:
                 audio.export("audio.wav", format="wav")
     
@@ -352,6 +389,7 @@ def main():
                 questions = []
 
             # Create buttons for each question
+            st.write("Predložena pitanja/odgovori:")
             for question in questions:
                 if len(question) > 10:
                     st.button(question, on_click=handle_question_click, args=(question,), key=uuid.uuid4())
