@@ -127,7 +127,7 @@ async def suggest_questions(system_message, user_message, api_key):
         return odgovor
 
 # Function to fetch spoken response from API
-async def fetch_spoken_response(client, full_response, api_key):
+async def fetch_spoken_response(client, user_message, full_response, api_key):
     async with aiohttp.ClientSession() as session:
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -163,6 +163,7 @@ async def play_audio_from_stream(spoken_response):
         """
      # Display the HTML element in the Streamlit app
     st.markdown(audio_html, unsafe_allow_html=True)
+    
 # Function to handle async tasks
 async def handle_async_tasks(client, user_message, full_response, api_key):
     # Fetch spoken response and suggestions concurrently
