@@ -6,8 +6,6 @@ import os
 import io
 import base64
 import uuid
-import aiohttp
-from PIL import Image
 
 from openai import OpenAI
 

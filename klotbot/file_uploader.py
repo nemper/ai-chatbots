@@ -1,17 +1,11 @@
-﻿from math import fabs
-import streamlit as st
-
+﻿import streamlit as st
 import os
 import io
 import asyncio
 import re
-import mysql
 import uuid
 import aiohttp
 import base64
-
-import soundfile as sf
-import sounddevice as sd
 from PIL import Image
 from docx import Document
 import pandas as pd
