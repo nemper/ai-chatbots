@@ -147,7 +147,7 @@ async def fetch_spoken_response(client, full_response, api_key):
 
 # Function to play audio from stream
 async def play_audio_from_stream(spoken_response):
- 
+   
     buffer = io.BytesIO(spoken_response)
     buffer.seek(0)
     
@@ -156,15 +156,13 @@ async def play_audio_from_stream(spoken_response):
 
     # Create an HTML audio element with autoplay
     audio_html =  f"""
-<audio autoplay style="display:none;">
-    <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-    Your browser does not support the audio element.
-</audio>
-"""
-
-    # Display the HTML element in the Streamlit app
+        <audio autoplay style="display:none;">
+            <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+            Your browser does not support the audio element.
+        </audio>
+        """
+     # Display the HTML element in the Streamlit app
     st.markdown(audio_html, unsafe_allow_html=True)
-  
 # Function to handle async tasks
 async def handle_async_tasks(client, user_message, full_response, api_key):
     # Fetch spoken response and suggestions concurrently
@@ -225,7 +223,7 @@ def play_audio_from_stream_s(full_response):
 
     buffer = io.BytesIO(spoken_response_bytes)
     buffer.seek(0)
-   
+    
     # Encode the audio as base64 to embed it in HTML
     audio_base64 = base64.b64encode(buffer.read()).decode()
 
