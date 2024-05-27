@@ -141,13 +141,12 @@ async def fetch_spoken_response(client, user_message, full_response, api_key):
 
 # Function to play audio from stream
 async def play_audio_from_stream(spoken_response):
-   
     buffer = io.BytesIO(spoken_response)
     buffer.seek(0)
-    
-    # Encode the audio as base64 to embed it in HTML
     audio_base64 = base64.b64encode(buffer.read()).decode()
-
+    set_html_audio(audio_base64)
+    
+def set_html_audio(audio_base64):
     # Create an HTML audio element with autoplay
     opcija = st.query_params.get('opcija', "desk")
     if opcija == "mobile":
@@ -222,36 +221,12 @@ def play_audio_from_stream_s(full_response):
         voice="nova",
         input=full_response,
     )
-  
     spoken_response_bytes = spoken_response.read()
-
     buffer = io.BytesIO(spoken_response_bytes)
     buffer.seek(0)
-    
-    # Encode the audio as base64 to embed it in HTML
     audio_base64 = base64.b64encode(buffer.read()).decode()
-
-    # Create an HTML audio element with autoplay
-    opcija = st.query_params.get('opcija', "desk")
-    if opcija == "mobile":
-        audio_html = f"""
-            <audio controls autoplay>
-                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-                Your browser does not support the audio element.
-            </audio>
-            """
-    else:
-        audio_html =  f"""
-            <audio autoplay style="display:none;">
-                <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
-                Your browser does not support the audio element.
-            </audio>
-            """
-
-    # Display the HTML element in the Streamlit app
-    st.markdown(audio_html, unsafe_allow_html=True)
+    set_html_audio(audio_base64)
     
- 
 def suggest_questions_s(system_message, user_message): # sync version of suggested questions (async) from myfunc
     
     response = client.chat.completions.create(
