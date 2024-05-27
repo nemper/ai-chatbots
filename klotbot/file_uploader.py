@@ -211,15 +211,36 @@ def play_audio_from_stream_s(full_response):
         input=full_response,
     )
     # Read the content to get the bytes
+    #from pydub.generators import Sine
+    
+    # buffer = io.BytesIO()
+    # audio_segment.export(buffer, format="wav")
+    
     spoken_response_bytes = spoken_response.read()
 
     buffer = io.BytesIO(spoken_response_bytes)
     buffer.seek(0)
+    buffer = io.BytesIO(spoken_response_bytes)
+    buffer.seek(0)
 
-    with sf.SoundFile(buffer, 'r') as sound_file:
-        data = sound_file.read(dtype='int16')
-        sd.play(data, sound_file.samplerate)
-        sd.wait()
+    # Encode the audio as base64 to embed it in HTML
+    audio_base64 = base64.b64encode(buffer.read()).decode()
+
+    # Create an HTML audio element with autoplay
+    audio_html =  f"""
+<audio autoplay style="display:none;">
+    <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+    Your browser does not support the audio element.
+</audio>
+"""
+
+    # Display the HTML element in the Streamlit app
+    st.markdown(audio_html, unsafe_allow_html=True)
+    
+    # with sf.SoundFile(buffer, 'r') as sound_file:
+    #     data = sound_file.read(dtype='int16')
+    #     sd.play(data, sound_file.samplerate)
+    #     sd.wait()
     
 def suggest_questions_s(system_message, user_message): # sync version of suggested questions (async) from myfunc
     
