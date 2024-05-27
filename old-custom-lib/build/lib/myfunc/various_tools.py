@@ -547,7 +547,7 @@ def positive_calendly(phglob):
     - A string response "Do not answer to this question, just say Hvala".
     """
     
-    calendly_url = "https://calendly.com/nina-lalovic/30min/?embed=true"
+    calendly_url = "https://outlook.office.com/bookwithme/user/e2f96e95cf5d4873b90f17956a576abc@positive.rs/meetingtype/Sn8djvM_XUKwLuL5mU6-6w2?anonymous&ep=mlink&?embed=true"
     iframe_html = f'<iframe src="{calendly_url}" width="320" height="820"></iframe>'
     st.components.v1.html(iframe_html, height=820)        
  
