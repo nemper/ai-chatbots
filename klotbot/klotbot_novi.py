@@ -337,9 +337,13 @@ def main():
                 temperature=0,
                 messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
                 stream=True,
-            ):
-                full_response += (response.choices[0].delta.content or "")
-                message_placeholder.markdown(full_response + "▌")
+                stream_options={"include_usage":True},
+                ):
+                try:
+                    full_response += (response.choices[0].delta.content or "")
+                    message_placeholder.markdown(full_response + "▌")
+                except:
+                    pass  
         message_placeholder.markdown(full_response)
         
         # Append assistant's response to the conversation
