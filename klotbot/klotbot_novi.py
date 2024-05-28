@@ -16,8 +16,7 @@ from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.various_tools import work_vars
 
 from file_uploader import read_file, process_request, play_audio_from_stream_s, predlozeni_odgovori
-import nltk
-nltk.download('punkt')
+
 try:
     x = st.session_state.sys_ragbot
 except:
