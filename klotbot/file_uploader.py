@@ -148,7 +148,7 @@ async def play_audio_from_stream(spoken_response):
     
 def set_html_audio(audio_base64):
     # Create an HTML audio element with autoplay
-    opcija = st.query_params.get('opcija', "desk")
+    opcija = st.query_params.get('opcija', "mobile")
     if opcija == "mobile":
         audio_html = f"""
             <audio controls autoplay>
