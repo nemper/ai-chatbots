@@ -328,55 +328,59 @@ def main():
             # Prepare a temporary messages list for generating the assistant's response
             temp_messages = st.session_state.messages[current_thread_id].copy()
             temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
-    
+       
+           
+            
+        # mislim da sve ovo ide samo ako nije kalendly
+        if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
-        with st.chat_message("assistant", avatar=avatar_ai):
-            message_placeholder = st.empty()
-            full_response = ""
-            for response in client.chat.completions.create(
-                model=work_vars["names"]["openai_model"],
-                temperature=0,
-                messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
-                stream=True,
-                stream_options={"include_usage":True},
-                ):
-                try:
-                    full_response += (response.choices[0].delta.content or "")
-                    message_placeholder.markdown(full_response + "▌")
-                except:
-                    pass  
-        message_placeholder.markdown(full_response)
+            with st.chat_message("assistant", avatar=avatar_ai):
+                message_placeholder = st.empty()
+                full_response = ""
+                for response in client.chat.completions.create(
+                    model=work_vars["names"]["openai_model"],
+                    temperature=0,
+                    messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
+                    stream=True,
+                    stream_options={"include_usage":True},
+                    ):
+                    try:
+                        full_response += (response.choices[0].delta.content or "")
+                        message_placeholder.markdown(full_response + "▌")
+                    except:
+                        pass  
+            message_placeholder.markdown(full_response)
         
-        # Append assistant's response to the conversation
-        st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
-        filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ['user', 'assistant']]
-        for item in filtered_data:  # lista za download conversation
-            st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
+            # Append assistant's response to the conversation
+            st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
+            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ['user', 'assistant']]
+            for item in filtered_data:  # lista za download conversation
+                st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
         
-        # ako su oba async, ako ne onda redovno
-        if st.session_state.button_clicks and st.session_state.toggle_state:
-            process_request(client, temp_full_prompt, full_response, api_key)
-        else:
-            if st.session_state.button_clicks: # ako treba samo da cita odgovore
-                play_audio_from_stream_s(full_response)
+            # ako su oba async, ako ne onda redovno
+            if st.session_state.button_clicks and st.session_state.toggle_state:
+                process_request(client, temp_full_prompt, full_response, api_key)
+            else:
+                if st.session_state.button_clicks: # ako treba samo da cita odgovore
+                    play_audio_from_stream_s(full_response)
             
-            if st.session_state.toggle_state:  # ako treba samo da prikaze podpitanja
-                predlozeni_odgovori(temp_full_prompt)
+                if st.session_state.toggle_state:  # ako treba samo da prikaze podpitanja
+                    predlozeni_odgovori(temp_full_prompt)
      
-        with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
-            db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
-            db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens)
-          #  db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
+            with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
+                db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+                db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens)
+              #  db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
  
-        with col2:    # cuva konverzaciju u txt fajl
-            with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
-                st.download_button(
-                    "💾 Sačuvaj", 
-                    st.session_state.filtered_messages, 
-                    file_name="istorija.txt", 
-                    help = "Čuvanje zadatog prompta"
-                    )
-            
+            with col2:    # cuva konverzaciju u txt fajl
+                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
+                    st.download_button(
+                        "💾 Sačuvaj", 
+                        st.session_state.filtered_messages, 
+                        file_name="istorija.txt", 
+                        help = "Čuvanje zadatog prompta"
+                        )
+            # bukvalno dovde...ako j ecalendly    
 
 if __name__ == "__main__":
     main()
