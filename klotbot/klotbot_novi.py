@@ -11,7 +11,7 @@ from openai import OpenAI
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import initialize_session_state
-from myfunc.prompts import ConversationDatabase, PromptDatabase, get_prompts
+from myfunc.prompts import ConversationDatabase, get_prompts
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.various_tools import work_vars
@@ -43,7 +43,7 @@ default_values = {
 initialize_session_state(default_values)
 
 if st.session_state.sys_ragbot == "You are helpful assistant":
-    st.write(333)
+    st.write("Ova poruka bi trebala samo jednom da se pojavi, i to na pocetku >> ako se pojavi vise puta, nesto nije u redu sa ucitanim promptovima iz sql-a")
     get_prompts("rag_answer_reformat", "sys_ragbot")
 
 if st.session_state.thread_id not in st.session_state.messages:
