@@ -6,23 +6,30 @@ import uuid
 from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
-from myfunc.mojafunkcija import positive_login
-from myfunc.prompts import ConversationDatabase, PromptDatabase
+from myfunc.mojafunkcija import positive_login, initialize_session_state
+from myfunc.prompts import ConversationDatabase, get_prompts
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
 from myfunc.pyui_javascript import chat_placeholder_color
 
 
-client=OpenAI()
+client=OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 processor = HybridQueryProcessor() # namespace moze i iz env
 
-try:
-    x = st.session_state.sys_ragbot
-except:
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
-        st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
-        st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
+default_values = {
+    "client": client,
+    "openai_model": work_vars["names"]["openai_model"],
+    "azure_filename": "altass.csv",
+    "messages": {},
+    "app_name": "KlotBot",
+    "rag_answer_reformat" : "You are helpful assistant",
+    "sys_ragbot" : "You are helpful assistant",
+}
+initialize_session_state(default_values)
+
+if st.session_state.sys_ragbot == "You are helpful assistant":
+    get_prompts("rag_answer_reformat", "sys_ragbot")
+    
     
 def main():
     chat_placeholder_color(color="#f1f1f1")
@@ -35,18 +42,6 @@ def main():
     elif deployment_environment == "Streamlit":
         st.session_state.username = username
 
-    if "client" not in st.session_state:
-        st.session_state.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    if "openai_model" not in st.session_state:
-        st.session_state["openai_model"] = work_vars["names"]["openai_model"]
-    if "azure_filename" not in st.session_state:
-        st.session_state.azure_filename = "altass.csv"
-    if "messages" not in st.session_state:
-        st.session_state.messages = {}
-    if "messages" not in st.session_state:
-        st.session_state.messages = {}
-    if "app_name" not in st.session_state:
-        st.session_state.app_name = "KlotBot"
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:

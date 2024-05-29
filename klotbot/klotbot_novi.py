@@ -119,7 +119,6 @@ apply_background_image(avatar_bg)
 
 
 def main():
-
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
