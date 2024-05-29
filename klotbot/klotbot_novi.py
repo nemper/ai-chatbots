@@ -193,18 +193,19 @@ def main():
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
         if current_thread_id in st.session_state.messages:
             # avatari primena
+            st.write(st.session_state.messages[current_thread_id])
             for message in st.session_state.messages[current_thread_id]:
                 if message["role"] == "assistant": 
                     with st.chat_message(message["role"], avatar=avatar_ai):
-                            st.markdown(message["content"])
+                        st.markdown(message["content"])
                 elif message["role"] == "user":         
                     with st.chat_message(message["role"], avatar=avatar_user):
-                            st.markdown(message["content"])
+                        st.markdown(message["content"])
                 elif message["role"] == "system":
                     pass
                 else:         
                     with st.chat_message(message["role"], avatar=avatar_sys):
-                            st.markdown(message["content"])
+                        st.markdown(message["content"])
                             
     # Opcije
     col1, col2 = st.columns(2)
@@ -273,21 +274,22 @@ def main():
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
         elif st.session_state.image_ai:
             emb_prompt_tokens=0
+
             if st.session_state.vrsta=="tekst":
-               pre_prompt=st.session_state.image_ai
-               full_prompt = st.session_state.prompt + pre_prompt 
-               temp_full_prompt = {
+                pre_prompt=st.session_state.image_ai
+                full_prompt = st.session_state.prompt + pre_prompt 
+                temp_full_prompt = {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": full_prompt},
-               
+                
                     ]
                 }
-               complete_prompt = full_prompt  # ovo treba proveriti za img tokene
-               st.session_state.messages[current_thread_id].append(
+                complete_prompt = full_prompt  # ovo treba proveriti za img tokene
+                st.session_state.messages[current_thread_id].append(
                     {"role": "user", "content": st.session_state.prompt}
                 )
-               with st.chat_message("user", avatar=avatar_user):
+                with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
                    
             else:   
@@ -305,17 +307,13 @@ def main():
                 }
                 complete_prompt= full_prompt  # ovo treba proveriti za img tokene
                 st.session_state.messages[current_thread_id].append(
-                     {"role": "user", "content": st.session_state.prompt}
+                    {"role": "user", "content": st.session_state.prompt}
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
                   
         else:    
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
-            
-            st.session_state.messages[current_thread_id].append(
-                {"role": "user", "content": st.session_state.prompt}
-            )
         
             if isinstance(result, tuple) and len(result) == 3:
                 context, scores, emb_prompt_tokens = result
@@ -358,7 +356,7 @@ def main():
         
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
-            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ['user', 'assistant']]
+            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", 'assistant']]
             for item in filtered_data:  # lista za download conversation
                 st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
         
@@ -385,7 +383,7 @@ def main():
                         file_name="istorija.txt", 
                         help = "Čuvanje zadatog prompta"
                         )
-            # bukvalno dovde...ako j ecalendly    
+            # bukvalno dovde...ako je calendly    
 
 if __name__ == "__main__":
     main()
