@@ -14,18 +14,20 @@ from os import environ
 from PIL import Image
 from streamlit_javascript import st_javascript
 
-from myfunc.prompts import PromptDatabase
+from myfunc.mojafunkcija import initialize_session_state
+from myfunc.prompts import get_prompts
 from myfunc.varvars_dicts import work_vars
 
 # in myfunc.asistenti.py
-try:
-    x = st.session_state.text_from_audio
-except:
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
-        st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")
-        st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
+default_values = {
+    "question" : "",
+    "text_from_image": "You are a helpful assistant",
+    "text_from_audio": "You are a helpful assistant"}
 
+initialize_session_state(default_values)
+
+if st.session_state.text_from_image == "You are a helpful assistant":
+    get_prompts("text_from_image", "text_from_audio")
 
 # in myfunc.asistenti.py
 def read_aad_username():
@@ -159,7 +161,6 @@ def transkript():
         if audio_file is not None:
             st.audio(audio_file.getvalue(), format="audio/mp3")
             placeholder = st.empty()
-            st.session_state["question"] = ""
 
             with placeholder.form(key="my_jezik", clear_on_submit=False):
                 jezik = st.selectbox(
@@ -176,11 +177,6 @@ def transkript():
                 client = openai
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
-                        with PromptDatabase() as db:
-                            prompt_map = db.get_prompts_by_names(["text_from_image", "text_from_audio"], [os.getenv("TEXT_FROM_IMAGE"), os.getenv("TEXT_FROM_AUDIO")])
-                            st.session_state.text_from_image = prompt_map.get("text_from_image", "You are a helpful assistant that always responds in Serbian.")
-                            st.session_state.text_from_audio = prompt_map.get("text_from_audio", "You are a helpful assistant that always responds in Serbian.")
-
                         system_prompt=st.session_state.text_from_audio
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)            

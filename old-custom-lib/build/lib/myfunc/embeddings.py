@@ -29,8 +29,8 @@ from semantic_router.encoders import OpenAIEncoder
 from semantic_router.splitters import RollingWindowSplitter
 # from semantic_router.utils.logger import logger
 
-from myfunc.mojafunkcija import st_style, pinecone_stats
-from myfunc.prompts import PromptDatabase, SQLSearchTool
+from myfunc.mojafunkcija import st_style, pinecone_stats, initialize_session_state
+from myfunc.prompts import get_prompts, SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
 from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
 from myfunc.varvars_dicts import work_vars
@@ -46,13 +46,14 @@ from bs4 import BeautifulSoup
 
 
 # in myfunc.embeddings.py
-try:
-    x = st.session_state.contextual_compression
-except:
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["contextual_compression", "self_query"],[os.getenv("CONTEXTUAL_COMPRESSION"), os.getenv("SELF_QUERY")])
-        st.session_state.contextual_compression = prompt_map.get("contextual_compression", "You are helpful assistant").format()
-        st.session_state.self_query = prompt_map.get("self_query", "You are helpful assistant")
+default_values = {
+    "contextual_compression": "You are a helpful assistant",
+    "self_query": "You are a helpful assistant"}
+
+initialize_session_state(default_values)
+
+if st.session_state.contextual_compression == "You are a helpful assistant":
+    get_prompts("contextual_compression", "self_query")
 
 st_style()
 client=OpenAI()
