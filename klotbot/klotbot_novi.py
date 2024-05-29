@@ -10,68 +10,41 @@ import uuid
 from openai import OpenAI
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.prompts import ConversationDatabase, PromptDatabase
+from myfunc.mojafunkcija import initialize_session_state
+from myfunc.prompts import ConversationDatabase, PromptDatabase, get_prompts
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.various_tools import work_vars
 
 from file_uploader import read_file, process_request, play_audio_from_stream_s, predlozeni_odgovori
-# get_prompts(nazivi), initialize_session_state(defaults) -- defaults je dict sa default vrednostima
 
-def initss():
-    if "prozor" not in st.session_state:
-        st.session_state.prozor = st.query_params.get('prozor', "d")
-    if '_last_speech_to_text_transcript_id' not in st.session_state:
-        st.session_state._last_speech_to_text_transcript_id = 0
-    if '_last_speech_to_text_transcript' not in st.session_state:
-        st.session_state._last_speech_to_text_transcript = None
-    if 'success' not in st.session_state:
-        st.session_state.success = False
-    if 'toggle_state' not in st.session_state:
-        st.session_state.toggle_state = False
-    if 'button_clicks' not in st.session_state:
-        st.session_state.button_clicks = False
-    if 'prompt' not in st.session_state:
-        st.session_state.prompt = ''
-    if 'vrsta' not in st.session_state:
-        st.session_state.vrsta = ''
-    if 'messages' not in st.session_state:
-        st.session_state.messages = {}
-    if 'image_ai' not in st.session_state:
-        st.session_state.image_ai = False
-    if 'thread_id' not in st.session_state:
-        st.session_state.thread_id = 'ime'
-    if 'filtered_messages' not in st.session_state:
-        st.session_state.filtered_messages = ""
-    if "selected_question" not in st.session_state:
-        st.session_state.selected_question = None    
-    if "username" not in st.session_state:
-        st.session_state.username = "positive"
-    if "openai_model" not in st.session_state:
-        st.session_state["openai_model"] = work_vars["names"]["openai_model"]
-    if "azure_filename" not in st.session_state:
-        st.session_state.azure_filename = "altass.csv"
-    if "messages" not in st.session_state:
-        st.session_state.messages = {}
-    if "messages" not in st.session_state:
-        st.session_state.messages = {}
-    if 'selected_question' not in st.session_state:
-        st.session_state['selected_question'] = None
-    if "app_name" not in st.session_state:
-        st.session_state.app_name = "KlotBot"
-    if "sys_ragbot" not in st.session_state:
-        st.session_state.sys_ragbot = "You are helpful assistant"
-    if "rag_answer_reformat" not in st.session_state:
-        st.session_state.rag_answer_reformat = "You are helpful assistant"
+default_values = {
+    "prozor": st.query_params.get('prozor', "d"),
+    "_last_speech_to_text_transcript_id": 0,
+    "_last_speech_to_text_transcript": None,
+    "success": False,
+    "toggle_state": False,
+    "button_clicks": False,
+    "prompt": '',
+    "vrsta": '',
+    "messages": {},
+    "image_ai": False,
+    "thread_id": 'ime',
+    "filtered_messages": "",
+    "selected_question": None,
+    "username": "positive",
+    "openai_model": work_vars["names"]["openai_model"],
+    "azure_filename": "altass.csv",
+    "app_name": "KlotBot",
+    "sys_ragbot": "You are helpful assistant",
+    "rag_answer_reformat": "You are helpful assistant"
+}
 
-initss()
+initialize_session_state(default_values)
 
 if st.session_state.sys_ragbot == "You are helpful assistant":
     st.write(333)
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
-        st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
-        st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
+    get_prompts("rag_answer_reformat", "sys_ragbot")
 
 if st.session_state.thread_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
