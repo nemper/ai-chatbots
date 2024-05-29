@@ -4,14 +4,25 @@ import mysql.connector
 import os
 import tiktoken
 
+import streamlit as st
+
 from langchain.agents.agent_types import AgentType
 from langchain.sql_database import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseToolkit
 from langchain_openai.chat_models import ChatOpenAI
 
 from mysql.connector import Error
-
 from myfunc.varvars_dicts import work_vars
+
+
+# in myfunc.prompts.py
+def get_prompts(*prompt_names):
+    with PromptDatabase() as db:
+        env_vars = [os.getenv(name.upper()) for name in prompt_names]
+        prompt_map = db.get_prompts_by_names(list(prompt_names), env_vars)
+        
+        for name in prompt_names:
+            st.session_state[name] = prompt_map.get(name, "You are a helpful assistant")
 
 
 # in myfunc.prompts.py

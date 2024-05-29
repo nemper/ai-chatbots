@@ -568,3 +568,14 @@ def sacuvaj_dokument(content, file_name):
         mime="application/octet-stream",
         help= "Čuvanje dokumenta",
     )
+
+
+# in myfunc.mojafunkcija.py
+def initialize_session_state(defaults):
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            if callable(value):
+                # ako se dodeljuje npr. funkcija
+                st.session_state[key] = value()
+            else:
+                st.session_state[key] = value
