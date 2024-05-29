@@ -17,13 +17,6 @@ from myfunc.various_tools import work_vars
 
 from file_uploader import read_file, process_request, play_audio_from_stream_s, predlozeni_odgovori
 
-try:
-    x = st.session_state.sys_ragbot
-except:
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
-        st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
-        st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
 
 # Initial session state setup
 def initialize_session_state():
@@ -70,7 +63,20 @@ def initialize_session_state():
     if "app_name" not in st.session_state:
         st.session_state.app_name = "KlotBot"
 
-initialize_session_state()        
+    if "sys_ragbot" not in st.session_state:
+        st.session_state.sys_ragbot = "You are helpful assistant"
+    if "rag_answer_reformat" not in st.session_state:
+        st.session_state.rag_answer_reformat = "You are helpful assistant"
+
+initialize_session_state()
+
+if st.session_state.sys_ragbot == "You are helpful assistant":
+    st.write(333)
+    with PromptDatabase() as db:
+        prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
+        st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
+        st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
+
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
 processor = HybridQueryProcessor() # namespace moze i iz env
@@ -254,6 +260,7 @@ def main():
                     else:
                         st.session_state.success = True
                         st.session_state.prompt = transcript.text
+                        st.write(transcript)
    
     # Main conversation answer
     if st.session_state.prompt:
