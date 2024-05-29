@@ -193,7 +193,6 @@ def main():
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
         if current_thread_id in st.session_state.messages:
             # avatari primena
-            st.write(st.session_state.messages[current_thread_id])
             for message in st.session_state.messages[current_thread_id]:
                 if message["role"] == "assistant": 
                     with st.chat_message(message["role"], avatar=avatar_ai):
