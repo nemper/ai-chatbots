@@ -16,10 +16,9 @@ from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.various_tools import work_vars
 
 from file_uploader import read_file, process_request, play_audio_from_stream_s, predlozeni_odgovori
+# get_prompts(nazivi), initialize_session_state(defaults) -- defaults je dict sa default vrednostima
 
-
-# Initial session state setup
-def initialize_session_state():
+def initss():
     if "prozor" not in st.session_state:
         st.session_state.prozor = st.query_params.get('prozor', "d")
     if '_last_speech_to_text_transcript_id' not in st.session_state:
@@ -42,8 +41,6 @@ def initialize_session_state():
         st.session_state.image_ai = False
     if 'thread_id' not in st.session_state:
         st.session_state.thread_id = 'ime'
-    if st.session_state.thread_id not in st.session_state.messages:
-        st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
     if 'filtered_messages' not in st.session_state:
         st.session_state.filtered_messages = ""
     if "selected_question" not in st.session_state:
@@ -62,20 +59,22 @@ def initialize_session_state():
         st.session_state['selected_question'] = None
     if "app_name" not in st.session_state:
         st.session_state.app_name = "KlotBot"
-
     if "sys_ragbot" not in st.session_state:
-        st.session_state["sys_ragbot"] = "You are helpful assistant"
+        st.session_state.sys_ragbot = "You are helpful assistant"
     if "rag_answer_reformat" not in st.session_state:
-        st.session_state["rag_answer_reformat"] = "You are helpful assistant"
+        st.session_state.rag_answer_reformat = "You are helpful assistant"
 
-initialize_session_state()
+initss()
 
-if st.session_state["sys_ragbot"] == "You are helpful assistant":
+if st.session_state.sys_ragbot == "You are helpful assistant":
     st.write(333)
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
         st.session_state.rag_answer_reformat = prompt_map.get("rag_answer_reformat", "You are helpful assistant")
         st.session_state.sys_ragbot = prompt_map.get("sys_ragbot", "You are helpful assistant")
+
+if st.session_state.thread_id not in st.session_state.messages:
+    st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
 
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
