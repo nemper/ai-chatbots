@@ -13,12 +13,12 @@ from time import sleep
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
 from myfunc.asistenti import load_data_from_azure, read_aad_username, upload_data_to_azure
-from myfunc.mojafunkcija import positive_login
+from myfunc.mojafunkcija import positive_login, initialize_session_state
 from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
 
-version = "v1.1.3 asistenti lib"
+version = "29.05.2024."
 
 os.getenv("OPENAI_API_KEY")
 # asst_1YAl3U9XJTOnfYUJrStFO1nH -- ubaciti
@@ -30,6 +30,20 @@ client = openai.OpenAI()
 assistant_id = assistant_id  # printuje se u drugoj skripti, a moze jelte da se vidi i na OpenAI Playground-u
 client.beta.assistants.retrieve(assistant_id=assistant_id)
 
+default_values = {
+    "data": None,
+    "blob_service_client": BlobServiceClient.from_connection_string(os.environ.get("AZ_BLOB_API_KEY")),
+    "delete_thread_id": None,
+    "azure_filename": "assistant_data.csv",
+    "file_id_list": [],
+    "openai_model": work_vars["names"]["openai_model"],
+    "messages": [],
+    "thread_id": None,
+    "is_deleted": False,
+    "cancel_run": None,
+    "columns": ["user", "chat", "ID", "assistant", "fajlovi"],
+}
+initialize_session_state(default_values)
 
 # ovde se navode svi alati koji ce se koristiti u chatbotu
 # funkcije za obradu upita prebacene su iz myfunc zato da bi se lakse dodavali opcioni parametri u funkcije
@@ -48,7 +62,6 @@ def web_serach_process(q: str) -> str:
 
 global username
 
-
 def main():
     if "username" not in st.session_state:
         st.session_state.username = "positive"
@@ -62,16 +75,6 @@ def main():
     with st.sidebar:
         st.info(
             f"Prijavljeni ste kao: {st.session_state.username}")
-        
-    client = openai.OpenAI()
-    if "data" not in st.session_state:
-        st.session_state.data = None
-    if "blob_service_client" not in st.session_state:
-        st.session_state.blob_service_client = BlobServiceClient.from_connection_string(os.environ.get("AZ_BLOB_API_KEY"))
-    if "delete_thread_id" not in st.session_state:
-        st.session_state.delete_thread_id = None
-    if "azure_filename" not in st.session_state:
-        st.session_state.azure_filename = "assistant_data.csv"
 
     st.session_state.data = load_data_from_azure(bsc=st.session_state.blob_service_client, filename=st.session_state.azure_filename)
 
@@ -81,21 +84,6 @@ def main():
         pass
     
     threads_dict = {thread.chat: thread.ID for thread in st.session_state.data.itertuples() if st.session_state.username == thread.user and ovaj_asistent == thread.assistant and thread.ID is not st.session_state.delete_thread_id}
-
-    # Inicijalizacija session state-a
-    default_session_states = {
-        "file_id_list": [],
-        "openai_model": work_vars["names"]["openai_model"],
-        "messages": [],
-        "thread_id": None,
-        "is_deleted": False,
-        "cancel_run": None,
-        "columns": ["user", "chat", "ID", "assistant", "fajlovi"],
-        }
-    for key, value in default_session_states.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
 
     st.sidebar.header(body=f"{ovaj_asistent} asistent")
     st.sidebar.caption(f"Ver. {version}")

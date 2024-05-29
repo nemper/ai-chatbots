@@ -1,6 +1,5 @@
 import json
 import nltk     # kasnije ce se paketi importovati u funkcijama
-import openai
 import os
 import streamlit as st
 
@@ -8,6 +7,7 @@ from st_copy_to_clipboard import st_copy_to_clipboard
 from streamlit_extras.stylable_container import stylable_container
 from time import sleep
 
+from myfunc.mojafunkcija import initialize_session_state
 from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import web_search_process
@@ -21,6 +21,15 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSISTANT_ID = "asst_1YAl3U9XJTOnfYUJrStFO1nH"
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+default_values = {
+    "file_id_list": [],
+    "openai_model": work_vars["names"]["openai_model"],
+    "messages": [],
+    "thread_id": None,
+    "is_deleted": False,
+    "cancel_run": None,
+    }
+initialize_session_state(default_values)
 
 tool_descriptions = {
     "web_search_process" : """
@@ -64,7 +73,7 @@ tools = [
     }}
     ]
 
-version = "v1.0.1 asistenti lib"
+version = "29.05.2024."
 assistant_id = "asst_1YAl3U9XJTOnfYUJrStFO1nH"
 # assistant_id = os.getenv("ASSISTANT_ID")
 
@@ -85,20 +94,6 @@ def sql_search_tool(upit: str) -> str:
 
 
 def main(): 
-    # Inicijalizacija session state-a
-    default_session_states = {
-        "file_id_list": [],
-        "openai_model": work_vars["names"]["openai_model"],
-        "messages": [],
-        "thread_id": None,
-        "is_deleted": False,
-        "cancel_run": None,
-        }
-    
-    for key, value in default_session_states.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
     if st.session_state.thread_id is None:
         thread = client.beta.threads.create()
         st.session_state.thread_id = thread.id
