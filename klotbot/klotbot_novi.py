@@ -64,13 +64,13 @@ def initialize_session_state():
         st.session_state.app_name = "KlotBot"
 
     if "sys_ragbot" not in st.session_state:
-        st.session_state.sys_ragbot = "You are helpful assistant"
+        st.session_state["sys_ragbot"] = "You are helpful assistant"
     if "rag_answer_reformat" not in st.session_state:
-        st.session_state.rag_answer_reformat = "You are helpful assistant"
+        st.session_state["rag_answer_reformat"] = "You are helpful assistant"
 
 initialize_session_state()
 
-if st.session_state.sys_ragbot == "You are helpful assistant":
+if st.session_state["sys_ragbot"] == "You are helpful assistant":
     st.write(333)
     with PromptDatabase() as db:
         prompt_map = db.get_prompts_by_names(["rag_answer_reformat", "sys_ragbot"],[os.getenv("RAG_ANSWER_REFORMAT"), os.getenv("SYS_RAGBOT")])
