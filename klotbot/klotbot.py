@@ -148,7 +148,7 @@ def main():
 
         with ConversationDatabase() as db:
             db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
-            db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens)
+            db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens, stt_tokens=0, tts_tokens=0)
         
 deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
 
