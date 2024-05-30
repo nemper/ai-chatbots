@@ -1,16 +1,17 @@
-﻿import streamlit as st
-import os
-import io
+﻿import aiohttp
 import asyncio
-import re
-import uuid
-import aiohttp
 import base64
-from PIL import Image
-from docx import Document
+import io
+import os
 import pandas as pd
 import PyPDF2
+import re
+import streamlit as st
+import uuid
+
+from docx import Document
 from openai import OpenAI
+from PIL import Image
 
 from myfunc.various_tools import work_vars
 

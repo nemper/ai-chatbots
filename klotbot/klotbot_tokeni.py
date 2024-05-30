@@ -4,9 +4,10 @@ import streamlit as st
 import uuid
 
 from openai import OpenAI
+
+from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
-from myfunc.prompts import ConversationDatabase, PromptDatabase
 
 try:
     with PromptDatabase() as db:

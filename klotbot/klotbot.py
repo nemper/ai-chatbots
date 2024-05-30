@@ -6,11 +6,11 @@ import uuid
 from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
-from myfunc.mojafunkcija import positive_login, initialize_session_state
+from myfunc.mojafunkcija import initialize_session_state, positive_login
 from myfunc.prompts import ConversationDatabase, get_prompts
+from myfunc.pyui_javascript import chat_placeholder_color
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.varvars_dicts import work_vars
-from myfunc.pyui_javascript import chat_placeholder_color
 
 
 client=OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

@@ -1,23 +1,21 @@
-import streamlit as st
-from streamlit_mic_recorder import mic_recorder
-
+import base64
+import io
 import mysql
 import os
-import io
-import base64
+import streamlit as st
 import uuid
 
+from file_uploader import play_audio_from_stream_s, predlozeni_odgovori, process_request, read_file
 from openai import OpenAI
 from pydub import AudioSegment
+from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import initialize_session_state
 from myfunc.prompts import ConversationDatabase, get_prompts
-from myfunc.retrievers import HybridQueryProcessor
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
+from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import work_vars
-
-from file_uploader import read_file, process_request, play_audio_from_stream_s, predlozeni_odgovori
 
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),

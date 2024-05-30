@@ -3,15 +3,15 @@ import os
 import streamlit as st
 import uuid
 
-from audiorecorder import audiorecorder 
+from audiorecorder import audiorecorder
 from openai import OpenAI
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.prompts import ConversationDatabase, PromptDatabase
-from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream
-from myfunc.varvars_dicts import work_vars
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container, ui_features
+from myfunc.retrievers import HybridQueryProcessor
+from myfunc.various_tools import play_audio_from_stream, transcribe_audio_file
+from myfunc.varvars_dicts import work_vars
 
 
 client=OpenAI()

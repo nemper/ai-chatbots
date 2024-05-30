@@ -1,22 +1,22 @@
-import mysql
-import os
-import streamlit as st
-import uuid
 import aiohttp
 import asyncio
-from audiorecorder import audiorecorder 
-from openai import OpenAI
-import io
-import soundfile as sf
 import base64
-import streamlit.components.v1 as components
+import io
+import mysql
+import os
+import soundfile as sf
+import streamlit as st
+import uuid
+
+from audiorecorder import audiorecorder
+from openai import OpenAI
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.prompts import ConversationDatabase, PromptDatabase
+from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container, ui_features
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import transcribe_audio_file, play_audio_from_stream, suggest_questions
+from myfunc.various_tools import play_audio_from_stream, suggest_questions, transcribe_audio_file
 from myfunc.varvars_dicts import work_vars
-from myfunc.pyui_javascript import chat_placeholder_color, ui_features, st_fixed_container
 
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
