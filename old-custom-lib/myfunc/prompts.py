@@ -751,15 +751,15 @@ class ConversationDatabase:
         self.conn.close()
 
     # Novi verzija (direktno iz OpenAI) za upisivanje potrosnje tokena u mysql tabelu - u odnosu na ovu odmah ispod
-    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens):
+    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
         """
         Adds a new record to the database with the provided details.
         """
         sql = """
-        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, model_name)
+        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         VALUES (%s, %s, %s, %s, %s)
         """
-        values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, model_name)
+        values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         self.cursor.execute(sql, values)
         self.conn.commit()
 

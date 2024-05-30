@@ -27,20 +27,19 @@ from uuid import uuid4
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
-from myfunc.mojafunkcija import st_style
-from myfunc.prompts import PromptDatabase
+from myfunc.mojafunkcija import st_style, initialize_session_state
+from myfunc.prompts import get_prompts
 from myfunc.varvars_dicts import work_vars
 
-
 # in myfunc.various_tools.py
-# try:
-#     x = st.session_state.choose_rag
-# except:
-with PromptDatabase() as db:
-    prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG_KLOT")])
-    # prompt_map = db.get_prompts_by_names(["hyde_rag", "choose_rag"],[os.getenv("HYDE_RAG"), os.getenv("CHOOSE_RAG")])
-    st.session_state.hyde_rag = prompt_map.get("hyde_rag", "You are helpful assistant")
-    st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
+default_values = {
+    "hyde_rag": "You are a helpful assistant",
+    "choose_rag": "You are a helpful assistant",
+}
+initialize_session_state(default_values)
+
+if st.session_state.hyde_rag == "You are a helpful assistant":
+    get_prompts("hyde_rag", "choose_rag")
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
@@ -700,10 +699,6 @@ def create_structured_prompt(user_query):
     - A list of dictionaries, each representing a part of the structured prompt, including
       the role (system or user) and the content (instructions for the AI or the user query).
     """
-    if "choose_rag" not in st.session_state:
-        with PromptDatabase() as db:
-            prompt_map = db.get_prompts_by_names(["choose_rag"],[os.getenv("CHOOSE_RAG_KLOT")])
-            st.session_state.choose_rag = prompt_map.get("choose_rag", "You are helpful assistant")
     return [
         {"role": "system", "content": st.session_state.choose_rag},
         {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}
