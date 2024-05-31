@@ -837,11 +837,11 @@ class ConversationDatabase:
         result = self.cursor.fetchone()
         if result:
             return {
-                "total_embedding_tokens": result[0],
-                "total_prompt_tokens": result[1],
-                "total_completion_tokens": result[2],
-                "total_stt_tokens": result[3],
-                "total_tts_tokens": result[4]
+                "total_embedding_tokens": int(result[0]),
+                "total_prompt_tokens": int(result[1]),
+                "total_completion_tokens": int(result[2]),
+                "total_stt_tokens": int(result[3]),
+                "total_tts_tokens": int(result[4]),
             }
         else:
             return None
