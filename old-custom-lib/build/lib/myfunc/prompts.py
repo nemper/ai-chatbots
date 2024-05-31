@@ -811,6 +811,40 @@ class ConversationDatabase:
         elif type(messages) == str:
             num_tokens += len(encoding.encode(messages))
         return num_tokens
+    
+    def extract_token_sums_between_dates(self, start_date, end_date):
+        """
+        Extracts the summed token values between two given dates from the chatbot_token_log table.
+        
+        Parameters:
+        - start_date: The start date in 'YYYY-MM-DD HH:MM:SS' format.
+        - end_date: The end date in 'YYYY-MM-DD HH:MM:SS' format.
+
+        Returns:
+        - A dictionary containing the summed values for each token type.
+        """
+        sql = """
+        SELECT 
+            SUM(embedding_tokens) as total_embedding_tokens, 
+            SUM(prompt_tokens) as total_prompt_tokens, 
+            SUM(completion_tokens) as total_completion_tokens, 
+            SUM(stt_tokens) as total_stt_tokens, 
+            SUM(tts_tokens) as total_tts_tokens 
+        FROM chatbot_token_log 
+        WHERE timestamp BETWEEN %s AND %s
+        """
+        self.cursor.execute(sql, (start_date, end_date))
+        result = self.cursor.fetchone()
+        if result:
+            return {
+                "total_embedding_tokens": result[0],
+                "total_prompt_tokens": result[1],
+                "total_completion_tokens": result[2],
+                "total_stt_tokens": result[3],
+                "total_tts_tokens": result[4]
+            }
+        else:
+            return None
 
 
 
