@@ -7,7 +7,7 @@ import tiktoken
 import streamlit as st
 
 from langchain.agents.agent_types import AgentType
-from langchain.sql_database import SQLDatabase
+from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseToolkit
 from langchain_openai.chat_models import ChatOpenAI
 
