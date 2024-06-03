@@ -24,7 +24,7 @@ from tqdm.auto import tqdm
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
 from myfunc.mojafunkcija import st_style, initialize_session_state

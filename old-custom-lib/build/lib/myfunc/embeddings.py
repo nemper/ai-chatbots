@@ -15,8 +15,8 @@ from tqdm.auto import tqdm
 from uuid import uuid4
 import pandas as pd
 from langchain.chains import GraphQAChain
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.indexes.graph import NetworkxEntityGraph
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.prompts import PromptTemplate
 from langchain.retrievers.multi_query import MultiQueryRetriever
