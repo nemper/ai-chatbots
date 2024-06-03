@@ -96,29 +96,17 @@ class DocumentConverter:
         html_splitter = HTMLHeaderTextSplitter(headers_to_split_on=self.headers_to_split_on)
         return html_splitter.split_text(html_string)
     
-    
+
     def conv_csv(self, file_path):
-        # Read the CSV file into a Pandas DataFrame
         df = pd.read_csv(file_path)
-        
-        # Create a list to hold document objects
         documents = []
-        
-        # Iterate through the DataFrame rows and create a Document object for each row
         for _, row in df.iterrows():
-            content = f"{row['name']} by {row['author']} priced at {row['price']} published in {row['year']} with {row['quantity']} in stock."
-            metadata = {
-                "book_id": row['id'],
-                "book_name": row['name'],
-                "book_author": row['author'],
-                "book_published_year": row['year'],
-                "book_price": row['price'],
-                "book_quantity": row['quantity']
-            }
+            content = " ".join([f"{col}: {row[col]}" for col in df.columns])
+            metadata = {col: row[col] for col in df.columns}
             documents.append(Document(page_content=content, metadata=metadata))
-        
         return documents
     
+        
     def conv_pdf(self, doc_path):  
         loader = PDFMinerPDFasHTMLLoader(doc_path)
         data = loader.load()[0]   # entire PDF is loaded as a single Document
@@ -376,52 +364,31 @@ def heading_chunks(uploaded_file):
    
     return json_string
 
-
-##### csv start
-
 def csv_chunks(uploaded_file):
     '''
     Ulaz je fajl iz st.upload_file
     Izlaz je JSON string za embedding
     '''
-    # Instantiate the DocumentConverter class
     converter = DocumentConverter()
 
     current_date = datetime.now()
     date_string = current_date.strftime('%Y%m%d')
     structured_data = []
 
-    # Handling file name and extension
-    _, ext = os.path.splitext(uploaded_file.name)
-    st.spinner("Sacekajte ... ")
+    with st.spinner("Sacekajte ..."):
+        documents = converter.conv_csv(uploaded_file.name)
     
-    document = converter.conv_csv(uploaded_file.name)
-    
-    i = 0
-    for doc in document:
-        i += 1
-        # ovde definisati kako da pokupi book_ 
+    for doc in documents:
         content = doc.page_content
-        book_id = doc.metadata.get('book_id', "")
-        book_name = doc.metadata.get('book_name', "")
-        book_author = doc.metadata.get('book_author', "")
-        book_published_year = doc.metadata.get('book_published_year', "")
-        book_price = doc.metadata.get('book_price', "")
-        book_quantity = doc.metadata.get('book_quantity', "")
-        
+        metadata = doc.metadata
+    
         output_dict = {
             "id": str(uuid4()),
-            "chunk": i,
+            "chunk": 1,
             "text": content,
-            "book_id": book_id,
-            "book_name": book_name,
-            "book_author": book_author,
-            "book_published_year": book_published_year,
-            "book_price": book_price,
-            "book_quantity": book_quantity,
-            
-            "source": uploaded_file.name,
+            "source": uploaded_file.name,  # Only include the file name
             "date": int(date_string),
+            **metadata
         }
         structured_data.append(output_dict)
 
@@ -433,15 +400,7 @@ def csv_chunks(uploaded_file):
         + "]"
     )
 
-   
     return json_string
-
-
-
-##### csv end
-
-
-
 
 def dl_json(dokum, json_string):
     napisano = st.info(
