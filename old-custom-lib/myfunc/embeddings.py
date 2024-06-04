@@ -369,38 +369,37 @@ def csv_chunks(uploaded_file):
     Ulaz je fajl iz st.upload_file
     Izlaz je JSON string za embedding
     '''
-    converter = DocumentConverter()
-
-    current_date = datetime.now()
-    date_string = current_date.strftime('%Y%m%d')
-    structured_data = []
-
-    with st.spinner("Sacekajte ..."):
+    
+    with st.spinner(f"Radim CSV"): 
+        converter = DocumentConverter()
+        current_date = datetime.now()
+        date_string = current_date.strftime('%Y%m%d')
+        structured_data = []
         documents = converter.conv_csv(uploaded_file.name)
     
-    for doc in documents:
-        content = doc.page_content
-        metadata = doc.metadata
+        for doc in documents:
+            content = doc.page_content
+            metadata = doc.metadata
     
-        output_dict = {
-            "id": str(uuid4()),
-            "chunk": 1,
-            "text": content,
-            "source": uploaded_file.name,  # Only include the file name
-            "date": int(date_string),
-            **metadata
-        }
-        structured_data.append(output_dict)
+            output_dict = {
+                "id": str(uuid4()),
+                "chunk": 1,
+                "text": content,
+                "source": uploaded_file.name,  # Only include the file name
+                "date": int(date_string),
+                **metadata
+            }
+            structured_data.append(output_dict)
 
-    json_string = (
-        "["
-        + ",\n".join(
-            json.dumps(d, ensure_ascii=False) for d in structured_data
+        json_string = (
+            "["
+            + ",\n".join(
+                json.dumps(d, ensure_ascii=False) for d in structured_data
+            )
+            + "]"
         )
-        + "]"
-    )
 
-    return json_string
+        return json_string
 
 def dl_json(dokum, json_string):
     napisano = st.info(
@@ -562,15 +561,15 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
     json_string = None
     if semantic == "Standard":
         json_string = standard_chunks(dokum, chunk_size, chunk_overlap)
-    elif semantic in ["Heading", "Semantic"] and st.button(f"Pripremi {semantic}"):
+    elif semantic in ["Heading", "Semantic", "CSV"] and st.button(f"Pripremi {semantic}"):
         with st.spinner(f"Radim {semantic}"):
             if semantic == "Heading":
                 json_string = heading_chunks(dokum)
             elif semantic == "Semantic":
                 data = pinecone_utility.read_uploaded_file(dokum)
                 json_string = semantic_chunks(data, dokum.name)
-    elif semantic == "CSV":
-        json_string = csv_chunks(dokum)
+            elif semantic == "CSV": 
+                json_string = csv_chunks(dokum)
 
     if json_string is not None:
         file_name = os.path.splitext(dokum.name)[0] + ".json"
@@ -583,7 +582,6 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
         
         )
        
-
 
 # in myfunc.embeddings.py
 def do_embeddings(dokum, tip, api_key, host, index_name, index):
