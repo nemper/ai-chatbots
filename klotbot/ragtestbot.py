@@ -7,7 +7,7 @@ import io
 import ast
 
 from langchain_openai import ChatOpenAI
-from langchain.indexes.graph import NetworkxEntityGraph
+from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
 from langchain.chains import GraphQAChain
 
 from myfunc.mojafunkcija import show_logo
