@@ -44,7 +44,7 @@ default_values = {
 initialize_session_state(default_values)
 
 if st.session_state.sys_ragbot == "You are helpful assistant":
-    st.write("Ova poruka bi trebala samo jednom da se pojavi, i to na pocetku >> ako se pojavi vise puta, nesto nije u redu sa ucitanim promptovima iz sql-a")
+#    st.write("Ova poruka bi trebala samo jednom da se pojavi, i to na pocetku >> ako se pojavi vise puta, nesto nije u redu sa ucitanim promptovima iz sql-a")
     get_prompts("rag_answer_reformat", "sys_ragbot")
 
 if st.session_state.thread_id not in st.session_state.messages:
