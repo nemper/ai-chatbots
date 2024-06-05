@@ -1,4 +1,4 @@
-.txt
+*.txt
 !requirements.txt
 *.json
 *.exe
