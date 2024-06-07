@@ -14,7 +14,7 @@ import streamlit as st
 import sys
 import aiohttp
 
-from audiosegment import AudioSegment
+#from audiosegment import AudioSegment
 from bs4 import BeautifulSoup
 from io import StringIO
 from openai import OpenAI
@@ -782,8 +782,8 @@ def record_audio(duration=5, samplerate=16000, file_path='output.mp3'):
     myrecording = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
     sd.wait()  # Wait until recording is finished
     # Convert the NumPy array to an audio segment
-    audio_segment = AudioSegment(myrecording.tobytes(), frame_rate=samplerate, sample_width=myrecording.dtype.itemsize, channels=1)
-    audio_segment.export(file_path, format="mp3")
+    #audio_segment = AudioSegment(myrecording.tobytes(), frame_rate=samplerate, sample_width=myrecording.dtype.itemsize, channels=1)
+    #audio_segment.export(file_path, format="mp3")
     return file_path
 
 
