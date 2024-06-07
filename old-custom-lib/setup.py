@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.58",
+    version="2.0.58a",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
@@ -21,6 +21,7 @@ setup(
         'networkx==3.3',
         'openai==1.32.0',
         'pandas==2.2.2',
+        'pdfkit==1.0.0',
         'pillow==10.3.0',
         'pinecone==4.0.0',
         'pinecone-text==0.9.0',
@@ -34,6 +35,7 @@ setup(
         'sounddevice==0.4.7',
         'soundfile==0.12.1',
         'streamlit==1.35.0',
+        'streamlit-authenticator-0.3.2',
         'streamlit-javascript==0.1.5',
         'tiktoken==0.7.0',
         'tqdm==4.66.4',
