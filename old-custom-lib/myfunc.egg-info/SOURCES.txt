@@ -12,4 +12,5 @@ myfunc/varvars_dicts.py
 myfunc.egg-info/PKG-INFO
 myfunc.egg-info/SOURCES.txt
 myfunc.egg-info/dependency_links.txt
+myfunc.egg-info/requires.txt
 myfunc.egg-info/top_level.txt
