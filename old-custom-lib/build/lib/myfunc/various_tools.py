@@ -14,7 +14,6 @@ import streamlit as st
 import sys
 import aiohttp
 
-#from audiosegment import AudioSegment
 from bs4 import BeautifulSoup
 from io import StringIO
 from openai import OpenAI
@@ -761,31 +760,6 @@ def transcribe_audio_file(file_path, language="en"):
             response_format="text"
         )
     return transcript
-
-
-# in myfunc.various_tools.py
-def record_audio(duration=5, samplerate=16000, file_path='output.mp3'):
-    """
-    Records audio for a specified duration and saves it to a file.
-
-    This function records audio using the specified sample rate and duration. The recorded audio
-    is then converted to an MP3 file and saved at the specified file path.
-    
-    Parameters:
-    - duration: The duration of the audio recording in seconds (default is 5 seconds).
-    - samplerate: The sample rate for the audio recording in Hz (default is 16000 Hz).
-    - file_path: The file path where the recorded audio will be saved (default is 'output.mp3').
-
-    Returns:
-    - The file path of the saved audio recording as a string.
-    """
-    myrecording = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
-    sd.wait()  # Wait until recording is finished
-    # Convert the NumPy array to an audio segment
-    #audio_segment = AudioSegment(myrecording.tobytes(), frame_rate=samplerate, sample_width=myrecording.dtype.itemsize, channels=1)
-    #audio_segment.export(file_path, format="mp3")
-    return file_path
-
 
 # in myfunc.various_tools.py
 

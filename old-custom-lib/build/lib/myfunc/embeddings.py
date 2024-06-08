@@ -7,6 +7,7 @@ import os
 import streamlit as st
 
 from io import StringIO
+import io
 from openai import OpenAI
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
@@ -165,7 +166,10 @@ class DocumentConverter:
         return semantic_snippets
 
 def standard_chunks(dokum,chunk_size, chunk_overlap):
-    
+    _, ext = os.path.splitext(dokum.name)
+    if ext == ".json" or ext == ".JSON":
+        st.error(".json is not supported.")
+        return
     with st.form(key="my_form_prepare", clear_on_submit=False):
             text_delimiter = st.text_input(
                 "Unesite delimiter: ",
@@ -369,7 +373,12 @@ def csv_chunks(uploaded_file):
     Ulaz je fajl iz st.upload_file
     Izlaz je JSON string za embedding
     '''
-    
+    _, ext = os.path.splitext(uploaded_file.name)
+    if ext == ".csv" or ext == ".CSV":
+        pass
+    else:
+        st.error("Only .csv is supported.")
+        return 
     with st.spinner(f"Radim CSV"): 
         converter = DocumentConverter()
         current_date = datetime.now()
@@ -557,7 +566,8 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
         horizontal=True,
         help="Način pripreme JSON fajla za embeding",
     )
-
+    with io.open(dokum.name, "wb") as file:
+            file.write(dokum.getbuffer())
     json_string = None
     if semantic == "Standard":
         json_string = standard_chunks(dokum, chunk_size, chunk_overlap)
