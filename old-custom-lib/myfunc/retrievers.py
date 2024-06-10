@@ -110,11 +110,9 @@ class HybridQueryProcessor:
         """
         
         text = text.replace("\n", " ")
-        prompt_tokens = client.embeddings.create(input=[text], model=model).usage.prompt_tokens
         result = client.embeddings.create(input=[text], model=model).data[0].embedding
        
-        return result, prompt_tokens
-
+        return result
 
     def hybrid_score_norm(self, dense, sparse):
         """
@@ -133,7 +131,7 @@ class HybridQueryProcessor:
     
     def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
         # Get embedding and unpack results
-        dense, prompt_tokens = self.get_embedding(text=upit)
+        dense = self.get_embedding(text=upit)
 
         # Use those results in another function call
         hdense, hsparse = self.hybrid_score_norm(
@@ -169,14 +167,14 @@ class HybridQueryProcessor:
             if context:
                 results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
         
-        return results, prompt_tokens  # Also return prompt_tokens
+        return results
        
     def process_query_results(self, upit, dict=False):
         """
         Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
         Additionally, returns a list of scores for items that meet the score threshold.
         """
-        tematika, prompt_tokens = self.hybrid_query(upit)  # Also retrieve prompt_tokens
+        tematika = self.hybrid_query(upit)
         if not dict:
             uk_teme = ""
             score_list = []
@@ -185,9 +183,9 @@ class HybridQueryProcessor:
                     uk_teme += item["page_content"] + "\n\n"
                     score_list.append(item["score"])
             
-            return uk_teme, score_list, prompt_tokens  # Return prompt_tokens along with other results
+            return uk_teme, score_list
         else:
-            return tematika, [], prompt_tokens
+            return tematika, []
 
     def process_query_parent_results(self, upit):
         """
@@ -200,7 +198,7 @@ class HybridQueryProcessor:
         Returns:
             tuple: Formatted string for chat prompt, source name, and chunk number.
         """
-        tematika, prompt_tokens = self.hybrid_query(upit)
+        tematika = self.hybrid_query(upit)
 
         # Check if there are any matches
         if not tematika:
@@ -212,7 +210,7 @@ class HybridQueryProcessor:
         top_chunk = top_result.get('chunk')
         top_source = top_result.get('source')
 
-        return top_context, top_source, top_chunk, prompt_tokens
+        return top_context, top_source, top_chunk
 
      
     def search_by_source(self, upit, source_result, top_k=5, filter=None):
@@ -229,10 +227,10 @@ class HybridQueryProcessor:
         filter_criteria['source'] = source_result
         top_k = top_k or self.top_k
         
-        doc_result, prompt_tokens = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
         result = "\n\n".join(document['page_content'] for document in doc_result)
     
-        return result, prompt_tokens
+        return result
         
        
     def search_by_chunk(self, upit, source_result, chunk, razmak=3, top_k=20, filter=None):
@@ -259,7 +257,7 @@ class HybridQueryProcessor:
         }
         
         
-        doc_result, prompt_tokens = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
 
         # Sort the doc_result based on the 'chunk' value
         sorted_doc_result = sorted(doc_result, key=lambda document: document.get('chunk', float('inf')))
@@ -267,7 +265,7 @@ class HybridQueryProcessor:
         # Generate the result string
         result = " ".join(document.get('page_content', '') for document in sorted_doc_result)
     
-        return result, prompt_tokens
+        return result
 
 
 # in myfunc.retrievers.py

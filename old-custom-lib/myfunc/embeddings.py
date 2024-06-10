@@ -799,7 +799,7 @@ def rag_tool_answer(prompt, phglob):
 
     if  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="embedding-za-sajt")
-        context, scores, tokens = processor.process_query_results(prompt)
+        context, scores = processor.process_query_results(prompt)
         # st.info("Score po chunku:")
         # st.write(scores)
         
@@ -920,7 +920,4 @@ def rag_tool_answer(prompt, phglob):
         except:
             context = "No text found in the webpage. Please check if the URL is correct."
     
-    if st.session_state.rag_tool != "Hybrid":
-        return context
-    else:
-        return context, scores, tokens
+    return context
