@@ -1,4 +1,3 @@
-import aiohttp
 import base64
 import io
 import mysql
@@ -6,15 +5,16 @@ import os
 import streamlit as st
 import uuid
 
-from file_uploader import play_audio_from_stream_s, predlozeni_odgovori, process_request, read_file
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
+from myfunc.mojafunkcija import read_file
 from myfunc.prompts import ConversationDatabase, PromptDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import work_vars
+from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
+from myfunc.varvars_dicts import work_vars
 
 try:
     x = st.session_state.sys_ragbot
