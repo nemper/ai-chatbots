@@ -1,9 +1,11 @@
 # in myfunc.mojafunkcija.py
+import base64
 import io
 import markdown
 import os
 import pandas as pd
 import pdfkit
+import PyPDF2
 import re
 import streamlit as st
 import streamlit_authenticator as stauth
@@ -19,6 +21,7 @@ from email.mime.image import MIMEImage
 from html2docx import html2docx
 from io import StringIO
 from openai import APIConnectionError, APIError, RateLimitError
+from PIL import Image
 from smtplib import SMTP
 from yaml.loader import SafeLoader
 
@@ -601,3 +604,89 @@ def check_openai_errors(main_function):
     except Exception as e:
         # Handle other exceptions
         print(f"Neočekivana Greška : {str(e)} pokušajte malo kasnije.")
+
+
+# in myfunc.mojafunkcija.py
+def read_docx(file):
+                doc = Document(file)
+                full_text = []
+                for para in doc.paragraphs:
+                    full_text.append(para.text)
+                text_data = '\n'.join(full_text)
+                st.write(text_data)
+                return text_data
+
+
+# in myfunc.mojafunkcija.py
+def read_txt(file):
+    txt_data = file.getvalue().decode("utf-8")
+    with st.expander("Prikaži tekst"):
+        st.write(txt_data)
+    return 
+
+
+# in myfunc.mojafunkcija.py
+def read_csv(file):
+    csv_data = pd.read_csv(file)
+    with st.expander("Prikaži CSV podatke"):
+        st.write(csv_data)
+    csv_content = csv_data.to_string()
+    return csv_content
+
+
+# in myfunc.mojafunkcija.py
+def read_pdf(file):
+    pdf_reader = PyPDF2.PdfReader(file)
+    num_pages = len(pdf_reader.pages)
+    text_content = ""
+
+    for page in range(num_pages):
+        page_obj = pdf_reader.pages[page]
+        text_content += page_obj.extract_text()
+
+    # Remove bullet points and fix space issues
+    text_content = text_content.replace("•", "")
+    text_content = re.sub(r"(?<=\b\w) (?=\w\b)", "", text_content)
+    with st.expander("Prikaži tekst"):
+        st.write(text_content)
+    return text_content
+
+
+# in myfunc.mojafunkcija.py
+def read_image(file):
+    base64_image = base64.b64encode(file.getvalue()).decode('utf-8')
+    image_bytes = base64.b64decode(base64_image)
+    image = Image.open(io.BytesIO(image_bytes))
+    with st.expander("Prikaži sliku"):
+        st.image(image, width=150)
+    return f"data:image/jpeg;base64,{base64_image}"
+
+
+# in myfunc.mojafunkcija.py
+def read_file():
+    uploaded_file = st.file_uploader("🗀 Odaberite dokument", key="dokument_", help="Odabir dokumenta")
+    if uploaded_file is not None:
+        if uploaded_file.name.endswith(".docx"):
+            # Read the DOCX file and convert it to a string
+            docx_text = read_docx(uploaded_file)
+            return docx_text, "tekst"
+        elif uploaded_file.name.endswith((".txt", ".me", ".py", ".json", "yaml")):
+            # Read the TXT file and convert it to a string
+            txt_text = read_txt(uploaded_file)
+            return txt_text, "tekst"
+        elif uploaded_file.name.endswith(".csv"):
+            # Read the CSV file and convert it to a pandas DataFrame
+            csv_df = read_csv(uploaded_file)
+            return csv_df, "tekst"
+        elif uploaded_file.name.endswith(".pdf"):
+            # Read the PDF file and convert it to a string
+            pdf_text = read_pdf(uploaded_file)
+            return pdf_text, "tekst"
+        elif uploaded_file.name.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            # Read the image file and convert it to a string
+            image_data = read_image(uploaded_file)
+            return image_data, "slika"
+        else:
+            st.error("❌ Greška! Odabrani dokument nije podržan.")
+            return False, False 
+    return False, False
