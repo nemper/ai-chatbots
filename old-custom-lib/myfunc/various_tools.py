@@ -32,7 +32,7 @@ from myfunc.mojafunkcija import st_style, initialize_session_state
 from myfunc.prompts import get_prompts
 from myfunc.varvars_dicts import work_vars
 
-@st.cache
+@st.cache_data
 def cached_get_prompts(*prompt_names):
     return get_prompts(*prompt_names)
 
