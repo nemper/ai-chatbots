@@ -691,6 +691,7 @@ def create_structured_prompt(user_query):
     - A list of dictionaries, each representing a part of the structured prompt, including
       the role (system or user) and the content (instructions for the AI or the user query).
     """
+    
     return [
         {"role": "system", "content": mprompts["choose_rag"]},
         {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}
