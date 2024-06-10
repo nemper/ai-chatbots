@@ -11,7 +11,7 @@ from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
 from langchain.chains import GraphQAChain
 
 from myfunc.mojafunkcija import show_logo
-from myfunc.embeddings import rag_tool_answer, MultiQueryDocumentRetriever, CohereReranker, PineconeRetriever, ContextRetriever, LongContextHandler
+from myfunc.embeddings import MultiQueryDocumentRetriever, CohereReranker, PineconeRetriever, ContextRetriever, LongContextHandler
 from myfunc.prompts import PromptDatabase, SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, SelfQueryPositive
 from myfunc.various_tools import hyde_rag
@@ -74,13 +74,15 @@ def positive_calendly(phglob):
             st.components.v1.html(iframe_html, height=820)
             
     return "Do not answer to this question, just say Hvala"
-    
+
+
+# MOZDA JE VREME DA SE IZBACI OVAJ, I KORISTITI IZ MYFUNC?
 def rag_tool_answer(prompt):
     context = " "
   
     if  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(alpha=st.session_state.alpha, score=st.session_state.score, namespace="laguna")
-        context, scores, tokens = processor.process_query_results(prompt)
+        context, scores = processor.process_query_results(prompt)
         st.info("Score po chunku:")
         st.write(scores)
         

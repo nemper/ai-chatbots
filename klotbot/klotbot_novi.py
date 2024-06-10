@@ -35,8 +35,6 @@ default_values = {
     "openai_model": work_vars["names"]["openai_model"],
     "azure_filename": "altass.csv",
     "app_name": "KlotBot",
-    "stt_duration": 0,
-    "tts_length": 0,
     "sys_ragbot": "You are helpful assistant",
     "rag_answer_reformat": "You are helpful assistant"
 }
@@ -114,11 +112,6 @@ def custom_streamlit_style():
 def callback():
     if st.session_state.my_recorder_output:
         return st.session_state.my_recorder_output['bytes']
-
-def get_audio_duration(audio_bytes):
-    audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="webm")
-    duration = len(audio) / 1000  # Convert milliseconds to seconds
-    return duration
 
 custom_streamlit_style()
 apply_background_image(avatar_bg)
@@ -219,8 +212,6 @@ def main():
         if audio is not None:
             id = audio['id']
             if id > st.session_state._last_speech_to_text_transcript_id:
-                st.session_state.stt_duration = round(get_audio_duration(audio['bytes']))
-
                 st.session_state._last_speech_to_text_transcript_id = id
                 audio_bio = io.BytesIO(audio['bytes'])
                 audio_bio.name = 'audio.webm'
@@ -235,23 +226,24 @@ def main():
                         )
                     except RateLimitError as e:
                                 if 'insufficient_quota' in str(e):
-                                        st.error("Potrošili ste sve tokene, kontaktirajte Positive za dalja uputstva")
+                                    st.error("Potrošili ste sve tokene, kontaktirajte Positive za dalja uputstva")
                                     # You can add additional handling here, like notifying the user or logging the error
                                 else:
                                     st.error(f"Greška {str(e)}")
                     
                     except APIError as e:
-                      #Handle API error here, e.g. retry or log
-                      st.error(f"Greška u API-ju: {e} pokušajte malo kasnije.")
-          
+                        #Handle API error here, e.g. retry or log
+                        st.error(f"Greška u API-ju: {e} pokušajte malo kasnije.")
+                        
                     except APIConnectionError as e:
-                      #Handle connection error here
-                      st.error(f"Ne mogu da se povežem sa OpenAI API-jem: {e} pokušajte malo kasnije.")
+                        #Handle connection error here
+                        st.error(f"Ne mogu da se povežem sa OpenAI API-jem: {e} pokušajte malo kasnije.")
           
                     except Exception as e:
                                 # Handle other exceptions
                         st.error(f"Neocekivana Greška : {str(e)} pokušajte malo kasnije.")
                         err += 1
+                        
                     else:
                         st.session_state.success = True
                         st.session_state.prompt = transcript.text
@@ -264,11 +256,9 @@ def main():
             if result=="CALENDLY":
                 full_prompt=""
                 full_response=""
-                emb_prompt_tokens=0
                 complete_prompt=""
                 temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
             elif st.session_state.image_ai:
-                emb_prompt_tokens=0
 
                 if st.session_state.vrsta=="tekst":
                     pre_prompt=st.session_state.image_ai
@@ -363,21 +353,14 @@ def main():
                     process_request(client, temp_full_prompt, full_response, api_key)
                 else:
                     if st.session_state.button_clicks: # ako treba samo da cita odgovore
-                        st.session_state.tts_length = play_audio_from_stream_s(full_response)
+                        play_audio_from_stream_s(full_response)
             
                     if st.session_state.toggle_state:  # ako treba samo da prikaze podpitanja
                         predlozeni_odgovori(temp_full_prompt)
      
                 with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
                     db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
-                    #db.add_token_record_openai(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, prompt_tokens=response.usage.prompt_tokens, completion_tokens=response.usage.completion_tokens, stt_tokens=st.session_state.stt_duration, tts_tokens=st.session_state.tts_length)
-                    if st.session_state.stt_duration != 0:
-                        st.session_state.stt_duration = 0
-                    if st.session_state.tts_length != 0:
-                        st.session_state.tts_length = 0
 
-                  #  db.add_token_record(app_id='klotbot', model_name=st.session_state["openai_model"], embedding_tokens=emb_prompt_tokens, complete_prompt=complete_prompt, full_response=full_response, messages=st.session_state.messages[current_thread_id])
- 
                 with col2:    # cuva konverzaciju u txt fajl
                     with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
                         st.download_button(

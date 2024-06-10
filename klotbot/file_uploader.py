@@ -227,7 +227,6 @@ def play_audio_from_stream_s(full_response):
     buffer.seek(0)
     audio_base64 = base64.b64encode(buffer.read()).decode()
     set_html_audio(audio_base64)
-    return len(full_response)
     
 def suggest_questions_s(system_message, user_message): # sync version of suggested questions (async) from myfunc
     
