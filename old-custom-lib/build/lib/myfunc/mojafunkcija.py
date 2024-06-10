@@ -18,6 +18,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from html2docx import html2docx
 from io import StringIO
+from openai import APIConnectionError, APIError, RateLimitError
 from smtplib import SMTP
 from yaml.loader import SafeLoader
 
@@ -579,3 +580,24 @@ def initialize_session_state(defaults):
                 st.session_state[key] = value()
             else:
                 st.session_state[key] = value
+
+
+# in myfunc.mojafunkcija.py
+def check_rate_limits(main_function):
+    try:
+        main_function()
+    except RateLimitError as e:
+        if 'insufficient_quota' in str(e):
+            print("Potrošili ste sve tokene, kontaktirajte Positive za dalja uputstva")
+            # Additional handling, like notifying the user or logging the error
+        else:
+            print(f"Greška {str(e)}")
+    except APIConnectionError as e:
+        # Handle connection error here
+        print(f"Ne mogu da se povežem sa OpenAI API-jem: {e} pokušajte malo kasnije.")
+    except APIError as e:
+        # Handle API error here, e.g. retry or log
+        print(f"Greška u API-ju: {e} pokušajte malo kasnije.")
+    except Exception as e:
+        # Handle other exceptions
+        print(f"Neočekivana Greška : {str(e)} pokušajte malo kasnije.")
