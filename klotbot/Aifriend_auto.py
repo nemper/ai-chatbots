@@ -8,7 +8,7 @@ import io
 import sounddevice as sd
 import soundfile as sf
 from myfunc.mojafunkcija import initialize_session_state
-from myfunc.various_tools import work_vars
+from myfunc.varvars_dicts import work_vars
 from streamlit_mic_recorder import mic_recorder
 import uuid
 
