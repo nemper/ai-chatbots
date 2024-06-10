@@ -14,16 +14,6 @@ from mysql.connector import Error
 
 
 # in myfunc.prompts.py
-def get_prompts(*prompt_names):
-    with PromptDatabase() as db:
-        env_vars = [os.getenv(name.upper()) for name in prompt_names]
-        prompt_map = db.get_prompts_by_names(list(prompt_names), env_vars)
-        
-        for name in prompt_names:
-            st.session_state[name] = prompt_map.get(name, "You are a helpful assistant")
-
-
-# in myfunc.prompts.py
 class PromptDatabase:
     """
     A class to interact with a MySQL database for storing and retrieving prompt templates.

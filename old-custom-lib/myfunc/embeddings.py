@@ -5,9 +5,12 @@ import json
 import logging
 import os
 import streamlit as st
-
-from io import StringIO
 import io
+import re
+
+from datetime import datetime
+from bs4 import BeautifulSoup
+
 from openai import OpenAI
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
@@ -15,6 +18,7 @@ from time import sleep
 from tqdm.auto import tqdm
 from uuid import uuid4
 import pandas as pd
+
 from langchain.chains import GraphQAChain
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
@@ -41,9 +45,6 @@ import pypandoc
 from langchain_text_splitters import HTMLHeaderTextSplitter
 from langchain_community.document_loaders import PDFMinerPDFasHTMLLoader
 from langchain.docstore.document import Document
-import re
-from datetime import datetime
-from bs4 import BeautifulSoup
 
 mprompts = work_prompts()
 
@@ -598,7 +599,7 @@ def do_embeddings(dokum, tip, api_key, host, index_name, index):
             label="Submit", help="Pokreće kreiranje Pinecone Indeksa"
         )
         if submit_b2 and dokum and namespace:
-            stringio = StringIO(dokum.getvalue().decode("utf-8"))
+            stringio = io.StringIO(dokum.getvalue().decode("utf-8"))
 
             # Directly load the JSON data from file content
             data = json.load(stringio)

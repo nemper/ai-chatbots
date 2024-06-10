@@ -32,7 +32,7 @@ from myfunc.mojafunkcija import st_style
 from myfunc.varvars_dicts import work_prompts, work_vars
 
 mprompts = work_prompts()
-st.write("AAA", mprompts)
+
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
 st_style()
