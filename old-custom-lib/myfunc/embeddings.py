@@ -798,7 +798,7 @@ def rag_tool_answer(prompt, phglob):
     # SelfQuery Tool Configuration
     elif  st.session_state.rag_tool == "SelfQuery":
         # Example configuration for SelfQuery
-        uvod = mprompts["self_query"]
+        uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
         

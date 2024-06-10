@@ -26,7 +26,7 @@ def work_prompts():
 
         # embeddings.py
         "contextual_compression": default_prompt ,
-        "self_query": default_prompt ,
+        "rag_self_query": default_prompt ,
         
         # various_tools.py
         "hyde_rag": default_prompt ,
