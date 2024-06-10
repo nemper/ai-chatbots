@@ -32,6 +32,10 @@ from myfunc.mojafunkcija import st_style, initialize_session_state
 from myfunc.prompts import get_prompts
 from myfunc.varvars_dicts import work_vars
 
+@st.cache
+def cached_get_prompts(*prompt_names):
+    return get_prompts(*prompt_names)
+
 # in myfunc.various_tools.py
 default_values = {
     "hyde_rag": "You are a helpful assistant",
@@ -40,7 +44,7 @@ default_values = {
 initialize_session_state(default_values)
 
 if st.session_state.hyde_rag == "You are a helpful assistant":
-    get_prompts("hyde_rag", "choose_rag")
+    cached_get_prompts("hyde_rag", "choose_rag")
     
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
