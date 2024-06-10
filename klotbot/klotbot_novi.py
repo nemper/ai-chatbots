@@ -39,8 +39,7 @@ default_values = {
 }
 
 initialize_session_state(default_values)
-    
-print(st.session_state)
+
 if st.session_state.thread_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
 
@@ -349,5 +348,6 @@ def main():
 
 if __name__ == "__main__":
     check_openai_errors(main())
+    print("AAAAA", mprompts)
 
 
