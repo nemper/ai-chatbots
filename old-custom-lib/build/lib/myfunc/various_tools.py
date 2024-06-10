@@ -28,24 +28,11 @@ from uuid import uuid4
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
-from myfunc.mojafunkcija import st_style, initialize_session_state
-from myfunc.prompts import get_prompts
-from myfunc.varvars_dicts import work_vars
+from myfunc.mojafunkcija import st_style
+from myfunc.varvars_dicts import work_prompts, work_vars
 
-# in myfunc.various_tools.py
-default_values = {
-    "hyde_rag": "You are a helpful assistant",
-    "choose_rag": "You are a helpful assistant",
-}
-initialize_session_state(default_values)
-
-@st.cache_data
-def cached_get_prompts(*prompt_names):
-    return get_prompts(*prompt_names)
-
-if st.session_state.hyde_rag == "You are a helpful assistant":
-    cached_get_prompts("hyde_rag", "choose_rag")
-    
+mprompts = work_prompts()
+st.write("AAA", mprompts)
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
 st_style()
@@ -677,7 +664,7 @@ def hyde_rag(prompt):
         model= work_vars["names"]["openai_model"],
         temperature=0.5,
         messages=[
-            {"role": "system", "content": st.session_state.hyde_rag},
+            {"role": "system", "content": mprompts["hyde_rag"]},
             {"role": "user", "content": prompt}
             ]
         )
@@ -705,7 +692,7 @@ def create_structured_prompt(user_query):
       the role (system or user) and the content (instructions for the AI or the user query).
     """
     return [
-        {"role": "system", "content": st.session_state.choose_rag},
+        {"role": "system", "content": mprompts["choose_rag"]},
         {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}
     ]
 

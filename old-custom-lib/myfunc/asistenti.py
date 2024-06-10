@@ -14,20 +14,10 @@ from os import environ
 from PIL import Image
 from streamlit_javascript import st_javascript
 
-from myfunc.mojafunkcija import initialize_session_state
-from myfunc.prompts import get_prompts
-from myfunc.varvars_dicts import work_vars
+from myfunc.varvars_dicts import work_prompts, work_vars
 
-# in myfunc.asistenti.py
-default_values = {
-    "question" : "",
-    "text_from_image": "You are a helpful assistant",
-    "text_from_audio": "You are a helpful assistant"}
+mprompts = work_prompts()
 
-initialize_session_state(default_values)
-
-if st.session_state.text_from_image == "You are a helpful assistant":
-    get_prompts("text_from_image", "text_from_audio")
 
 # in myfunc.asistenti.py
 def read_aad_username():
@@ -177,7 +167,7 @@ def transkript():
                 client = openai
                 if submit_button:
                     with st.spinner("Sačekajte trenutak..."):
-                        system_prompt=st.session_state.text_from_audio
+                        system_prompt=mprompts["text_from_audio"]
                         # does transcription of the audio file and then corrects the transcript
                         transcript = generate_corrected_transcript(client, system_prompt, audio_file, jezik)            
                         with st.expander("Transkript"):
@@ -215,10 +205,9 @@ def read_local_image():
         # Display the image using st.image
         st.image(image, width=150)
         placeholder = st.empty()
-        # st.session_state["question"] = ""
 
         with placeholder.form(key="my_image", clear_on_submit=False):
-            default_text = st.session_state.text_from_image
+            default_text = mprompts["text_from_image"]
             upit = st.text_area("Unesite uputstvo ", default_text)  
             submit_button = st.form_submit_button(label="Submit")
             
@@ -284,7 +273,6 @@ def read_url_image():
     st.info("Čita sa slike sa URL")
     content = ""
     
-    # st.session_state["question"] = ""
     #with placeholder.form(key="my_image_url_name", clear_on_submit=False):
     img_url = st.text_input("Unesite URL slike ")
     #submit_btt = st.form_submit_button(label="Submit")
@@ -294,7 +282,7 @@ def read_url_image():
         placeholder = st.empty()    
     #if submit_btt:        
         with placeholder.form(key="my_image_url", clear_on_submit=False):
-            default_text = st.session_state.text_from_image
+            default_text = mprompts["text_from_image"]
         
             upit = st.text_area("Unesite uputstvo ", default_text)
             submit_button = st.form_submit_button(label="Submit")

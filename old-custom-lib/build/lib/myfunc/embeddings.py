@@ -30,11 +30,11 @@ from semantic_router.encoders import OpenAIEncoder
 from semantic_router.splitters import RollingWindowSplitter
 # from semantic_router.utils.logger import logger
 
-from myfunc.mojafunkcija import st_style, pinecone_stats, initialize_session_state
-from myfunc.prompts import get_prompts, SQLSearchTool
+from myfunc.mojafunkcija import st_style, pinecone_stats
+from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
 from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
-from myfunc.varvars_dicts import work_vars
+from myfunc.varvars_dicts import work_prompts, work_vars
 
 import markdown
 import pypandoc
@@ -45,16 +45,7 @@ import re
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-
-# in myfunc.embeddings.py
-default_values = {
-    "contextual_compression": "You are a helpful assistant",
-    "self_query": "You are a helpful assistant"}
-
-initialize_session_state(default_values)
-
-if st.session_state.contextual_compression == "You are a helpful assistant":
-    get_prompts("contextual_compression", "self_query")
+mprompts = work_prompts()
 
 st_style()
 client=OpenAI()
@@ -772,7 +763,7 @@ class ContextRetriever:
         format_instructions = output_parser.get_format_instructions()
         
         self.prompt = PromptTemplate(
-            template=st.session_state.contextual_compression,
+            template=mprompts["contextual_compression"],
             input_variables=["documents"],
             partial_variables={"format_instructions": format_instructions},
         )
@@ -806,7 +797,7 @@ def rag_tool_answer(prompt, phglob):
     # SelfQuery Tool Configuration
     elif  st.session_state.rag_tool == "SelfQuery":
         # Example configuration for SelfQuery
-        uvod = st.session_state.self_query
+        uvod = mprompts["self_query"]
         prompt = uvod + prompt
         context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
         
