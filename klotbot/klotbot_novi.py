@@ -6,16 +6,15 @@ import streamlit as st
 import uuid
 
 from file_uploader import play_audio_from_stream_s, predlozeni_odgovori, process_request, read_file
-from openai import OpenAI, RateLimitError, APIConnectionError, APIError
-from pydub import AudioSegment
+from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state
+from myfunc.mojafunkcija import initialize_session_state, check_openai_errors
 from myfunc.prompts import ConversationDatabase, get_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import work_vars
+from myfunc.varvars_dicts import work_vars
 
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
@@ -224,24 +223,8 @@ def main():
                             file=audio_bio,
                             language="sr"
                         )
-                    except RateLimitError as e:
-                                if 'insufficient_quota' in str(e):
-                                    st.error("Potrošili ste sve tokene, kontaktirajte Positive za dalja uputstva")
-                                    # You can add additional handling here, like notifying the user or logging the error
-                                else:
-                                    st.error(f"Greška {str(e)}")
-                    
-                    except APIError as e:
-                        #Handle API error here, e.g. retry or log
-                        st.error(f"Greška u API-ju: {e} pokušajte malo kasnije.")
-                        
-                    except APIConnectionError as e:
-                        #Handle connection error here
-                        st.error(f"Ne mogu da se povežem sa OpenAI API-jem: {e} pokušajte malo kasnije.")
-          
                     except Exception as e:
-                                # Handle other exceptions
-                        st.error(f"Neocekivana Greška : {str(e)} pokušajte malo kasnije.")
+                        st.error(f"Neočekivana Greška : {str(e)} pokušajte malo kasnije.")
                         err += 1
                         
                     else:
@@ -250,147 +233,124 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        try:
-            # Original processing to generate complete_prompt
-            result = rag_tool_answer(st.session_state.prompt, phglob)
-            if result=="CALENDLY":
-                full_prompt=""
-                full_response=""
-                complete_prompt=""
-                temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
-            elif st.session_state.image_ai:
+        # Original processing to generate complete_prompt
+        result = rag_tool_answer(st.session_state.prompt, phglob)
 
-                if st.session_state.vrsta=="tekst":
-                    pre_prompt=st.session_state.image_ai
-                    full_prompt = st.session_state.prompt + pre_prompt 
-                    temp_full_prompt = {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": full_prompt},
-                
-                        ]
-                    }
-                    complete_prompt = full_prompt  # ovo treba proveriti za img tokene
-                    st.session_state.messages[current_thread_id].append(
-                        {"role": "user", "content": st.session_state.prompt}
-                    )
-                    with st.chat_message("user", avatar=avatar_user):
-                        st.markdown(st.session_state.prompt)
-                   
-                else:   
-                    pre_prompt = """Describe the uploaded image in detail, focusing on the key elements such as objects, colors, sizes, 
-                                    positions, actions, and any notable characteristics or interactions. Provide a clear and vivid description 
-                                    that captures the essence and context of the image. """
-                    full_prompt = pre_prompt + st.session_state.prompt
+        if result=="CALENDLY":
+            full_prompt=""
+            full_response=""
+            complete_prompt=""
+            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
+        elif st.session_state.image_ai:
 
-                    temp_full_prompt = {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": full_prompt},
-                            {"type": "image_url", "image_url": {"url": st.session_state.image_ai}}
-                        ]
-                    }
-                    complete_prompt= full_prompt  # ovo treba proveriti za img tokene
-                    st.session_state.messages[current_thread_id].append(
-                        {"role": "user", "content": st.session_state.prompt}
-                    )
-                    with st.chat_message("user", avatar=avatar_user):
-                        st.markdown(st.session_state.prompt)
-                  
-            else:    
-                temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
-        
-                if isinstance(result, tuple) and len(result) == 3:
-                    context, scores, emb_prompt_tokens = result
-                else:
-                    context, scores, emb_prompt_tokens = result, None, None
-
-                complete_prompt = st.session_state.rag_answer_reformat.format(prompt=st.session_state.prompt, context=context)
-                # Append only the user's original prompt to the actual conversation log
-                st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
-    
-                # Display user prompt in the chat
+            if st.session_state.vrsta=="tekst":
+                pre_prompt=st.session_state.image_ai
+                full_prompt = st.session_state.prompt + pre_prompt 
+                temp_full_prompt = {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": full_prompt},
+            
+                    ]
+                }
+                complete_prompt = full_prompt  # ovo treba proveriti za img tokene
+                st.session_state.messages[current_thread_id].append(
+                    {"role": "user", "content": st.session_state.prompt}
+                )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-        
-                # Prepare a temporary messages list for generating the assistant's response
-                temp_messages = st.session_state.messages[current_thread_id].copy()
-                temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
-       
-           
-            
-            # mislim da sve ovo ide samo ako nije kalendly
-            if result!="CALENDLY":    
-            # Generate and display the assistant's response using the temporary messages list
-                with st.chat_message("assistant", avatar=avatar_ai):
-               
-                        message_placeholder = st.empty()
-                        full_response = ""
-                        for response in client.chat.completions.create(
-                            model=work_vars["names"]["openai_model"],
-                            temperature=0,
-                            messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
-                            stream=True,
-                            stream_options={"include_usage":True},
-                            ):
-                            try:
-                                full_response += (response.choices[0].delta.content or "")
-                                message_placeholder.markdown(full_response + "▌")
-                            except Exception as e:
-                                    pass
                 
-    
-                message_placeholder.markdown(full_response)
-        
-                # Append assistant's response to the conversation
-                st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
-                filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", 'assistant']]
-                for item in filtered_data:  # lista za download conversation
-                    st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
-        
-                # ako su oba async, ako ne onda redovno
-                if st.session_state.button_clicks and st.session_state.toggle_state:
-                    process_request(client, temp_full_prompt, full_response, api_key)
-                else:
-                    if st.session_state.button_clicks: # ako treba samo da cita odgovore
-                        play_audio_from_stream_s(full_response)
-            
-                    if st.session_state.toggle_state:  # ako treba samo da prikaze podpitanja
-                        predlozeni_odgovori(temp_full_prompt)
-     
-                with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
-                    db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+            else:   
+                pre_prompt = """Describe the uploaded image in detail, focusing on the key elements such as objects, colors, sizes, 
+                                positions, actions, and any notable characteristics or interactions. Provide a clear and vivid description 
+                                that captures the essence and context of the image. """
+                full_prompt = pre_prompt + st.session_state.prompt
 
-                with col2:    # cuva konverzaciju u txt fajl
-                    with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
-                        st.download_button(
-                            "💾 Sačuvaj", 
-                            st.session_state.filtered_messages, 
-                            file_name="istorija.txt", 
-                            help = "Čuvanje zadatog prompta"
-                            )
-            # bukvalno dovde...ako je calendly    
-        except RateLimitError as e:
-                    if 'insufficient_quota' in str(e):
-                            st.error("Potrošili ste sve tokene, kontaktirajte Positive za dalja uputstva")
-                        # You can add additional handling here, like notifying the user or logging the error
-                    else:
-                        st.error(f"Greška {str(e)}")
-                    
-        except APIError as e:
-          #Handle API error here, e.g. retry or log
-          st.error(f"Greška u API-ju: {e} pokušajte malo kasnije.")
-          
-        except APIConnectionError as e:
-          #Handle connection error here
-          st.error(f"Ne mogu da se povežem sa OpenAI API-jem: {e} pokušajte malo kasnije.")
-          
-        except Exception as e:
-                    # Handle other exceptions
-                    st.error(f"Neocekivana Greška : {str(e)} pokušajte malo kasnije.")
+                temp_full_prompt = {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": full_prompt},
+                        {"type": "image_url", "image_url": {"url": st.session_state.image_ai}}
+                    ]
+                }
+                complete_prompt= full_prompt  # ovo treba proveriti za img tokene
+                st.session_state.messages[current_thread_id].append(
+                    {"role": "user", "content": st.session_state.prompt}
+                )
+                with st.chat_message("user", avatar=avatar_user):
+                    st.markdown(st.session_state.prompt)
+                
+        else:    
+            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
+    
+            context = result
+            complete_prompt = st.session_state.rag_answer_reformat.format(prompt=st.session_state.prompt, context=context)
+            # Append only the user's original prompt to the actual conversation log
+            st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
+
+            # Display user prompt in the chat
+            with st.chat_message("user", avatar=avatar_user):
+                st.markdown(st.session_state.prompt)
+    
+            # Prepare a temporary messages list for generating the assistant's response
+            temp_messages = st.session_state.messages[current_thread_id].copy()
+            temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
+    
+        
+        
+        # mislim da sve ovo ide samo ako nije kalendly
+        if result!="CALENDLY":    
+        # Generate and display the assistant's response using the temporary messages list
+            with st.chat_message("assistant", avatar=avatar_ai):
+            
+                    message_placeholder = st.empty()
+                    full_response = ""
+                    for response in client.chat.completions.create(
+                        model=work_vars["names"]["openai_model"],
+                        temperature=0,
+                        messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
+                        stream=True,
+                        stream_options={"include_usage":True},
+                        ):
+                        try:
+                            full_response += (response.choices[0].delta.content or "")
+                            message_placeholder.markdown(full_response + "▌")
+                        except Exception as e:
+                                pass
+            
+
+            message_placeholder.markdown(full_response)
+    
+            # Append assistant's response to the conversation
+            st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
+            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", 'assistant']]
+            for item in filtered_data:  # lista za download conversation
+                st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
+    
+            # ako su oba async, ako ne onda redovno
+            if st.session_state.button_clicks and st.session_state.toggle_state:
+                process_request(client, temp_full_prompt, full_response, api_key)
+            else:
+                if st.session_state.button_clicks: # ako treba samo da cita odgovore
+                    play_audio_from_stream_s(full_response)
+        
+                if st.session_state.toggle_state:  # ako treba samo da prikaze podpitanja
+                    predlozeni_odgovori(temp_full_prompt)
+    
+            with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
+                db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+
+            with col2:    # cuva konverzaciju u txt fajl
+                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
+                    st.download_button(
+                        "💾 Sačuvaj", 
+                        st.session_state.filtered_messages, 
+                        file_name="istorija.txt", 
+                        help = "Čuvanje zadatog prompta"
+                        )
 
 
 if __name__ == "__main__":
-    main()
+    check_openai_errors(main())
 
 
