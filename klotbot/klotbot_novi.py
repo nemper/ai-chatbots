@@ -16,7 +16,6 @@ from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
 from myfunc.varvars_dicts import work_vars
 
-print("AA", st.session_state)
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
@@ -44,7 +43,8 @@ initialize_session_state(default_values)
 if st.session_state.sys_ragbot == "You are helpful assistant":
 #    st.write("Ova poruka bi trebala samo jednom da se pojavi, i to na pocetku >> ako se pojavi vise puta, nesto nije u redu sa ucitanim promptovima iz sql-a")
     get_prompts("rag_answer_reformat", "sys_ragbot")
-
+    
+print(st.session_state)
 if st.session_state.thread_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
 
