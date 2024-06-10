@@ -583,7 +583,7 @@ def initialize_session_state(defaults):
 
 
 # in myfunc.mojafunkcija.py
-def check_rate_limits(main_function):
+def check_openai_errors(main_function):
     try:
         main_function()
     except RateLimitError as e:
