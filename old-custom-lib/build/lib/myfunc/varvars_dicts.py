@@ -53,8 +53,6 @@ def work_prompts():
         "conclusion_summary": default_prompt,
 
         # pravnik
-        "short_summary_begin": default_prompt,
-        "short_summary_end": default_prompt,
         "new_law_email": default_prompt,
         }
 
