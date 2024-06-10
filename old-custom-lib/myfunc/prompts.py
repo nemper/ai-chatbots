@@ -11,7 +11,6 @@ from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseTool
 from langchain_openai.chat_models import ChatOpenAI
 
 from mysql.connector import Error
-from myfunc.varvars_dicts import work_vars
 
 
 # in myfunc.prompts.py
@@ -818,7 +817,7 @@ class SQLSearchTool:
             db_uri = os.getenv("DB_URI")
         self.db = SQLDatabase.from_uri(db_uri)
 
-        llm = ChatOpenAI(model=work_vars["names"]["openai_model"], temperature=0)
+        llm = ChatOpenAI(model="gpt-4o", temperature=0)
         toolkit = SQLDatabaseToolkit(
             db=self.db, llm=llm
         )
