@@ -5,17 +5,18 @@ import os
 import streamlit as st
 import uuid
 
-from file_uploader import play_audio_from_stream_s, predlozeni_odgovori, process_request, read_file
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state, check_openai_errors
+from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_file
 from myfunc.prompts import ConversationDatabase, get_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
+from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
 from myfunc.varvars_dicts import work_vars
 
+print("AA", st.session_state)
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
