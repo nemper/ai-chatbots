@@ -202,7 +202,8 @@ def main():
                     
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
-    
+    if st.session_state.image_ai:
+                        st.info(f"Vaš dokument je ucitan ({st.session_state.vrsta}), postavite pitanje")
     if st.session_state.selected_question != None:
         st.session_state.prompt = st.session_state['selected_question']
         st.session_state['selected_question'] = None
@@ -280,7 +281,7 @@ def main():
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-                
+               
         else:    
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
     
