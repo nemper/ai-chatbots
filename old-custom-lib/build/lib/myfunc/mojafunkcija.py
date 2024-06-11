@@ -608,13 +608,13 @@ def check_openai_errors(main_function):
 
 # in myfunc.mojafunkcija.py
 def read_docx(file):
-                doc = Document(file)
-                full_text = []
-                for para in doc.paragraphs:
-                    full_text.append(para.text)
-                text_data = '\n'.join(full_text)
-                st.write(text_data)
-                return text_data
+    doc = Document(file)
+    full_text = []
+    for para in doc.paragraphs:
+        full_text.append(para.text)
+    text_data = '\n'.join(full_text)
+    st.write(text_data)
+    return text_data
 
 
 # in myfunc.mojafunkcija.py
