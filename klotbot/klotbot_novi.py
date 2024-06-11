@@ -9,7 +9,8 @@ from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_file
+from myfunc.mojafunkcija import initialize_session_state, check_openai_errors
+# read_file
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
@@ -27,8 +28,9 @@ default_values = {
     "button_clicks": False,
     "prompt": '',
     "vrsta": '',
+    "temp_vrsta": '',
     "messages": {},
-    "image_ai": False,
+    "image_ai": None,
     "thread_id": 'ime',
     "filtered_messages": "",
     "selected_question": None,
@@ -36,6 +38,8 @@ default_values = {
     "openai_model": work_vars["names"]["openai_model"],
     "azure_filename": "altass.csv",
     "app_name": "KlotBot",
+    "upload_key": 0,
+    "temp_iai": None,
 }
 
 initialize_session_state(default_values)
@@ -116,6 +120,101 @@ def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
 
+############################################################################################################
+
+import pandas as pd
+from docx import Document
+from PIL import Image
+import PyPDF2
+import re
+
+# in myfunc.mojafunkcija.py
+def read_docx(file):
+    doc = Document(file)
+    full_text = []
+    for para in doc.paragraphs:
+        full_text.append(para.text)
+    text_data = '\n'.join(full_text)
+    st.write(text_data)
+    return text_data
+
+
+# in myfunc.mojafunkcija.py
+def read_txt(file):
+    txt_data = file.getvalue().decode("utf-8")
+    with st.expander("Prikaži tekst"):
+        st.write(txt_data)
+    return 
+
+
+# in myfunc.mojafunkcija.py
+def read_csv(file):
+    csv_data = pd.read_csv(file)
+    with st.expander("Prikaži CSV podatke"):
+        st.write(csv_data)
+    csv_content = csv_data.to_string()
+    return csv_content
+
+
+# in myfunc.mojafunkcija.py
+def read_pdf(file):
+    pdf_reader = PyPDF2.PdfReader(file)
+    num_pages = len(pdf_reader.pages)
+    text_content = ""
+
+    for page in range(num_pages):
+        page_obj = pdf_reader.pages[page]
+        text_content += page_obj.extract_text()
+
+    # Remove bullet points and fix space issues
+    text_content = text_content.replace("•", "")
+    text_content = re.sub(r"(?<=\b\w) (?=\w\b)", "", text_content)
+    with st.expander("Prikaži tekst"):
+        st.write(text_content)
+    return text_content
+
+
+# in myfunc.mojafunkcija.py
+def read_image(file):
+    base64_image = base64.b64encode(file.getvalue()).decode('utf-8')
+    image_bytes = base64.b64decode(base64_image)
+    image = Image.open(io.BytesIO(image_bytes))
+    with st.expander("Prikaži sliku"):
+        st.image(image, width=150)
+    return f"data:image/jpeg;base64,{base64_image}"
+
+
+# in myfunc.mojafunkcija.py
+def read_file():
+    uploaded_file = st.file_uploader("🗀 Odaberite dokument", key="dokument_" + str(st.session_state.upload_key), help="Odabir dokumenta")
+    if uploaded_file is not None:
+        st.session_state.upload_key += 1
+        if uploaded_file.name.endswith(".docx"):
+            # Read the DOCX file and convert it to a string
+            docx_text = read_docx(uploaded_file)
+            return docx_text, "tekst"
+        elif uploaded_file.name.endswith((".txt", ".me", ".py", ".json", "yaml")):
+            # Read the TXT file and convert it to a string
+            txt_text = read_txt(uploaded_file)
+            return txt_text, "tekst"
+        elif uploaded_file.name.endswith(".csv"):
+            # Read the CSV file and convert it to a pandas DataFrame
+            csv_df = read_csv(uploaded_file)
+            return csv_df, "tekst"
+        elif uploaded_file.name.endswith(".pdf"):
+            # Read the PDF file and convert it to a string
+            pdf_text = read_pdf(uploaded_file)
+            return pdf_text, "tekst"
+        elif uploaded_file.name.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            # Read the image file and convert it to a string
+            image_data = read_image(uploaded_file)
+            return image_data, "slika"
+        else:
+            st.error("❌ Greška! Odabrani dokument nije podržan.")
+            return False, False 
+    return False, False
+
+############################################################################################################
 
 def main():
     if "thread_id" not in st.session_state:
@@ -183,27 +282,30 @@ def main():
     # Use the fixed container and apply the horizontal layout
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):
             with st.popover("Više opcija", help = "Snimanje pitanja, Slušanje odgovora, Priloži sliku"):
-                    # prica
-                    audio = mic_recorder(
-                        key='my_recorder',
-                        callback=callback,
-                        start_prompt="🎤 Počni snimanje pitanja",
-                        stop_prompt="⏹ Završi snimanje i pošalji ",
-                        just_once=False,
-                        use_container_width=False,
-                        format="webm",
-                    )
-                    #predlozi
-                    st.session_state.toggle_state = st.toggle('✎ Predlozi pitanja/odgovora', key='toggle_button_predlog', help = "Predlažze sledeće pitanje")
-                    # govor
-                    st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
-                    # slika    
-                    st.session_state.image_ai, st.session_state.vrsta = read_file()
-                    
+                # prica
+                audio = mic_recorder(
+                    key='my_recorder',
+                    callback=callback,
+                    start_prompt="🎤 Počni snimanje pitanja",
+                    stop_prompt="⏹ Završi snimanje i pošalji ",
+                    just_once=False,
+                    use_container_width=False,
+                    format="webm",
+                )
+                #predlozi
+                st.session_state.toggle_state = st.toggle('✎ Predlozi pitanja/odgovora', key='toggle_button_predlog', help = "Predlažze sledeće pitanje")
+                # govor
+                st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
+                # slika  
+                st.session_state.image_ai, st.session_state.vrsta = read_file()
+                if st.session_state.image_ai:
+                    st.session_state.temp_iai = st.session_state.image_ai
+                    st.session_state.temp_vrsta = st.session_state.vrsta
+
+          
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
-    if st.session_state.image_ai:
-                        st.info(f"Vaš dokument je ucitan ({st.session_state.vrsta}), postavite pitanje")
+
     if st.session_state.selected_question != None:
         st.session_state.prompt = st.session_state['selected_question']
         st.session_state['selected_question'] = None
@@ -243,15 +345,16 @@ def main():
             full_response=""
             complete_prompt=""
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
-        elif st.session_state.image_ai:
 
-            if st.session_state.vrsta=="tekst":
-                pre_prompt=st.session_state.image_ai
+        elif st.session_state.temp_iai:
+            st.info(f"Vaš dokument je učitan ({st.session_state.temp_vrsta}), postavite pitanje")
+            if st.session_state.temp_vrsta=="tekst":
+                pre_prompt=st.session_state.temp_iai
                 full_prompt = st.session_state.prompt + pre_prompt 
                 temp_full_prompt = {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": full_prompt},
+                        {"type": "text", "text": "UPLOADED FILE CONTENT CONTAINED >>" + full_prompt},
             
                     ]
                 }
@@ -261,7 +364,6 @@ def main():
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-                
             else:   
                 pre_prompt = """Describe the uploaded image in detail, focusing on the key elements such as objects, colors, sizes, 
                                 positions, actions, and any notable characteristics or interactions. Provide a clear and vivid description 
@@ -272,7 +374,7 @@ def main():
                     "role": "user",
                     "content": [
                         {"type": "text", "text": full_prompt},
-                        {"type": "image_url", "image_url": {"url": st.session_state.image_ai}}
+                        {"type": "image_url", "image_url": {"url": st.session_state.temp_iai}}
                     ]
                 }
                 complete_prompt= full_prompt  # ovo treba proveriti za img tokene
@@ -281,7 +383,7 @@ def main():
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-               
+            
         else:    
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
     
@@ -294,11 +396,17 @@ def main():
             with st.chat_message("user", avatar=avatar_user):
                 st.markdown(st.session_state.prompt)
     
+            # OVO SE NE KORISTI - PA SAMIM TIM NI complete_prompt
             # Prepare a temporary messages list for generating the assistant's response
             temp_messages = st.session_state.messages[current_thread_id].copy()
             temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
-    
         
+        if st.session_state.temp_iai is not None and st.session_state.temp_iai in temp_full_prompt["content"][0]["text"]:
+            st.session_state.temp_iai = None
+            st.session_state.temp_vrsta = ""
+
+        print(temp_full_prompt)
+    
         
         # mislim da sve ovo ide samo ako nije kalendly
         if result!="CALENDLY":    
@@ -346,14 +454,14 @@ def main():
             with col2:    # cuva konverzaciju u txt fajl
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
                     st.download_button(
-                        "⤓ Sačuvaj", 
+                        "⤓", 
                         st.session_state.filtered_messages, 
                         file_name="istorija.txt", 
                         help = "Čuvanje zadatog prompta"
                         )
             with col3:
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
-                    st.button("🔄 Resetuj konverzaciju", on_click=reset_memory)
+                    st.button("🗑", on_click=reset_memory)
 
 
 if __name__ == "__main__":
