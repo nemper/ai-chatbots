@@ -343,7 +343,6 @@ def main():
         if result=="CALENDLY":
             full_prompt=""
             full_response=""
-            complete_prompt=""
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
 
         elif st.session_state.temp_iai:
@@ -358,7 +357,6 @@ def main():
             
                     ]
                 }
-                complete_prompt = full_prompt  # ovo treba proveriti za img tokene
                 st.session_state.messages[current_thread_id].append(
                     {"role": "user", "content": st.session_state.prompt}
                 )
@@ -377,7 +375,6 @@ def main():
                         {"type": "image_url", "image_url": {"url": st.session_state.temp_iai}}
                     ]
                 }
-                complete_prompt= full_prompt  # ovo treba proveriti za img tokene
                 st.session_state.messages[current_thread_id].append(
                     {"role": "user", "content": st.session_state.prompt}
                 )
@@ -387,27 +384,23 @@ def main():
         else:    
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
     
-            context = result
-            complete_prompt = mprompts["rag_answer_reformat"].format(prompt=st.session_state.prompt, context=context)
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
 
             # Display user prompt in the chat
             with st.chat_message("user", avatar=avatar_user):
                 st.markdown(st.session_state.prompt)
-    
-            # OVO SE NE KORISTI - PA SAMIM TIM NI complete_prompt
-            # Prepare a temporary messages list for generating the assistant's response
-            temp_messages = st.session_state.messages[current_thread_id].copy()
-            temp_messages[-1] = {"role": "user", "content": complete_prompt}  # Replace last message with enriched context
+
         
         if st.session_state.temp_iai is not None and st.session_state.temp_iai in temp_full_prompt["content"][0]["text"]:
             st.session_state.temp_iai = None
             st.session_state.temp_vrsta = ""
 
-        print(temp_full_prompt)
-    
-        
+            temp_full_prompt = {
+                'role': 'user',
+                'content': temp_full_prompt['content'][0]['text']
+            }
+        print(current_thread_id)
         # mislim da sve ovo ide samo ako nije kalendly
         if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
