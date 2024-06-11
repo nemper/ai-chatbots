@@ -112,6 +112,11 @@ custom_streamlit_style()
 apply_background_image(avatar_bg)
 
 
+def reset_memory():
+    st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
+    st.session_state.filtered_messages = ""
+
+
 def main():
     if "thread_id" not in st.session_state:
         def get_thread_ids():
@@ -173,7 +178,7 @@ def main():
                         st.markdown(message["content"])
                             
     # Opcije
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
     # Use the fixed container and apply the horizontal layout
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):
@@ -320,6 +325,7 @@ def main():
     
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
+            st.session_state.filtered_messages = ""
             filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", 'assistant']]
             for item in filtered_data:  # lista za download conversation
                 st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
@@ -338,13 +344,16 @@ def main():
                 db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
 
             with col2:    # cuva konverzaciju u txt fajl
-                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
+                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
                     st.download_button(
                         "⤓ Sačuvaj", 
                         st.session_state.filtered_messages, 
                         file_name="istorija.txt", 
                         help = "Čuvanje zadatog prompta"
                         )
+            with col3:
+                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
+                    st.button("🔄 Resetuj konverzaciju", on_click=reset_memory)
 
 
 if __name__ == "__main__":
