@@ -7,12 +7,12 @@ from openai import OpenAI
 
 from myfunc.asistenti import read_aad_username
 from myfunc.mojafunkcija import initialize_session_state, positive_login
-from myfunc.prompts import ConversationDatabase, get_prompts
+from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color
 from myfunc.retrievers import HybridQueryProcessor
-from myfunc.varvars_dicts import work_vars
+from myfunc.varvars_dicts import work_prompts, work_vars
 
-
+mprompts = work_prompts()
 client=OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 processor = HybridQueryProcessor() # namespace moze i iz env
 
@@ -22,13 +22,8 @@ default_values = {
     "azure_filename": "altass.csv",
     "messages": {},
     "app_name": "KlotBot",
-    "rag_answer_reformat" : "You are helpful assistant",
-    "sys_ragbot" : "You are helpful assistant",
 }
 initialize_session_state(default_values)
-
-if st.session_state.sys_ragbot == "You are helpful assistant":
-    get_prompts("rag_answer_reformat", "sys_ragbot")
     
     
 def main():
@@ -48,7 +43,7 @@ def main():
                 return db.list_threads(st.session_state.app_name, st.session_state.username)
         new_thread_id = str(uuid.uuid4())
         thread_name = f"Thread_{new_thread_id}"
-        conversation_data = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        conversation_data = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
         if thread_name not in get_thread_ids():
             with ConversationDatabase() as db:
                 try:
@@ -65,7 +60,7 @@ def main():
         if "Thread_" in st.session_state.thread_id:
             contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
             if not contains_system_role:
-                st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+                st.session_state.messages[thread_name].append({'role': 'system', 'content': mprompts["sys_ragbot"]})
     except:
         pass
     
@@ -84,16 +79,16 @@ def main():
             if "Thread_" in st.session_state.thread_id:
                 contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
                 if not contains_system_role:
-                    st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+                    st.session_state.messages[thread_name].append({'role': 'system', 'content': mprompts["sys_ragbot"]})
         except:
             pass
-        #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
         # Check if there's an existing conversation in the session state
         if current_thread_id not in st.session_state.messages:
             # If not, initialize it with the conversation from the database or as an empty list
             with ConversationDatabase() as db:
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
-            #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+            #st.session_state.messages[current_thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
         if current_thread_id in st.session_state.messages:
             # avatari primena
             for message in st.session_state.messages[current_thread_id]:
@@ -113,7 +108,7 @@ def main():
     
         # Original processing to generate complete_prompt
         context, scores = processor.process_query_results(prompt)
-        complete_prompt = st.session_state.rag_answer_reformat.format(prompt=prompt, context=context)
+        complete_prompt = mprompts["rag_answer_reformat"].format(prompt=prompt, context=context)
         # Append only the user's original prompt to the actual conversation log
         st.session_state.messages[current_thread_id].append({"role": "user", "content": prompt})
     

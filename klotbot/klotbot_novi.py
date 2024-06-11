@@ -10,11 +10,13 @@ from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_file
-from myfunc.prompts import ConversationDatabase, get_prompts
+from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
-from myfunc.varvars_dicts import work_vars
+from myfunc.varvars_dicts import work_prompts, work_vars
+
+mprompts = work_prompts()
 
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
@@ -34,19 +36,12 @@ default_values = {
     "openai_model": work_vars["names"]["openai_model"],
     "azure_filename": "altass.csv",
     "app_name": "KlotBot",
-    "sys_ragbot": "You are helpful assistant",
-    "rag_answer_reformat": "You are helpful assistant"
 }
 
 initialize_session_state(default_values)
 
-if st.session_state.sys_ragbot == "You are helpful assistant":
-#    st.write("Ova poruka bi trebala samo jednom da se pojavi, i to na pocetku >> ako se pojavi vise puta, nesto nije u redu sa ucitanim promptovima iz sql-a")
-    get_prompts("rag_answer_reformat", "sys_ragbot")
-    
-print(st.session_state)
 if st.session_state.thread_id not in st.session_state.messages:
-    st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+    st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
 
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
@@ -124,7 +119,7 @@ def main():
                 return db.list_threads(st.session_state.app_name, st.session_state.username)
         new_thread_id = str(uuid.uuid4())
         thread_name = f"Thread_{new_thread_id}"
-        conversation_data = [{'role': 'system', 'content': st.session_state.sys_ragbot}]
+        conversation_data = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
         if thread_name not in get_thread_ids():
             with ConversationDatabase() as db:
                 try:
@@ -141,7 +136,7 @@ def main():
         if "Thread_" in st.session_state.thread_id:
             contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
             if not contains_system_role:
-                st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+                st.session_state.messages[thread_name].append({'role': 'system', 'content': mprompts["sys_ragbot"]})
     except:
         pass
     
@@ -153,7 +148,7 @@ def main():
             if "Thread_" in st.session_state.thread_id:
                 contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
                 if not contains_system_role:
-                    st.session_state.messages[thread_name].append({'role': 'system', 'content': st.session_state.sys_ragbot})
+                    st.session_state.messages[thread_name].append({'role': 'system', 'content': mprompts["sys_ragbot"]})
         except:
             pass
        
@@ -286,7 +281,7 @@ def main():
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
     
             context = result
-            complete_prompt = st.session_state.rag_answer_reformat.format(prompt=st.session_state.prompt, context=context)
+            complete_prompt = mprompts["rag_answer_reformat"].format(prompt=st.session_state.prompt, context=context)
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
 

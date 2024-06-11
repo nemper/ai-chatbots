@@ -12,24 +12,13 @@ from langchain.chains import GraphQAChain
 
 from myfunc.mojafunkcija import show_logo
 from myfunc.embeddings import MultiQueryDocumentRetriever, CohereReranker, PineconeRetriever, ContextRetriever, LongContextHandler
-from myfunc.prompts import PromptDatabase, SQLSearchTool
+from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, SelfQueryPositive
 from myfunc.various_tools import hyde_rag
-from myfunc.varvars_dicts import work_vars
+from myfunc.varvars_dicts import work_prompts, work_vars
 
-try:
-    x = st.session_state.sys_ragbot
-except:
-    with PromptDatabase() as db:
-        prompt_map = db.get_prompts_by_names(["rag_self_query", "sys_ragbot"],[os.getenv("RAG_SELF_QUERY"), os.getenv("SYS_RAGBOT")])
-        st.session_state.rag_self_query = prompt_map.get("rag_self_query", "You are helpful assistant that always writes in Serbian.")
-        st.session_state.sys_ragbot = "You are helpful assistant that always writes in Serbian."
+mprompts = work_prompts()
 
-    
-# os.environ["LANGCHAIN_TRACING_V2"] = "true"
-# os.environ["LANGCHAIN_PROJECT"] = f"RAG Test Bot"
-# os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-# os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
 with st.sidebar:
     global phglob
     phglob=st.empty()
@@ -89,7 +78,7 @@ def rag_tool_answer(prompt):
     # SelfQuery Tool Configuration
     elif  st.session_state.rag_tool == "SelfQuery":
         # Example configuration for SelfQuery
-        prompt = st.session_state.rag_self_query + prompt
+        prompt = mprompts["rag_self_query"] + prompt
         context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
         
     # SQL Tool Configuration
@@ -258,7 +247,7 @@ if "thread_id" not in st.session_state:
 current_thread_id = st.session_state["thread_id"]
 if current_thread_id not in st.session_state.messages:
     st.session_state.messages[current_thread_id] = []
-    st.session_state.messages[current_thread_id].append({"role": "system", "content": st.session_state.sys_ragbot})
+    st.session_state.messages[current_thread_id].append({"role": "system", "content": mprompts["sys_ragbot"]})
 
 
 
@@ -326,7 +315,7 @@ with st.sidebar:
         new_thread_id = find_next_thread_id()
         st.session_state["thread_id"] = new_thread_id
         st.session_state.messages[new_thread_id] = []
-        st.session_state.messages[current_thread_id].append({"role": "system", "content": st.session_state.sys_ragbot})
+        st.session_state.messages[current_thread_id].append({"role": "system", "content": mprompts["sys_ragbot"]})
         st.success(f'New conversation started with Thread ID: {new_thread_id}')
         
 
