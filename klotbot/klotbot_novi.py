@@ -340,7 +340,7 @@ def main():
             with col2:    # cuva konverzaciju u txt fajl
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):                
                     st.download_button(
-                        "💾 Sačuvaj", 
+                        "⤓ Sačuvaj", 
                         st.session_state.filtered_messages, 
                         file_name="istorija.txt", 
                         help = "Čuvanje zadatog prompta"
