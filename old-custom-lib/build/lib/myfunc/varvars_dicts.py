@@ -35,7 +35,6 @@ def work_prompts():
         # klotbot
         "sys_ragbot": default_prompt,
         "rag_answer_reformat": default_prompt,
-        "rag_self_query": default_prompt,
 
         # upitnik
         "gap_ba_expert" : default_prompt,
