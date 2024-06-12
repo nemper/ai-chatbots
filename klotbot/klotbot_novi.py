@@ -95,9 +95,9 @@ def custom_streamlit_style():
             margin-right: 5px; /* Adjust spacing as needed */
         }
         /* Mobile styles */
-        @media (max-width: 768px) {
+        @media (max-width: 640px) {
             div[data-testid="stHorizontalBlock"] {
-                width: 200px; /* Fixed width for mobile */
+                width: 160px; /* Fixed width for mobile */
             }
         }
         </style>
@@ -345,7 +345,7 @@ def main():
             with col3:
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
                     st.button("🗑 Obriši", on_click=reset_memory)
-
+            
 
 if __name__ == "__main__":
     check_openai_errors(main)
