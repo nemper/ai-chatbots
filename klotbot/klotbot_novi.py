@@ -9,8 +9,7 @@ from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state, check_openai_errors
-# read_file
+from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_file
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
@@ -28,7 +27,6 @@ default_values = {
     "button_clicks": False,
     "prompt": '',
     "vrsta": '',
-    "temp_vrsta": '',
     "messages": {},
     "image_ai": None,
     "thread_id": 'ime',
@@ -39,7 +37,6 @@ default_values = {
     "azure_filename": "altass.csv",
     "app_name": "KlotBot",
     "upload_key": 0,
-    "temp_iai": None,
 }
 
 initialize_session_state(default_values)
@@ -120,101 +117,6 @@ def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
 
-############################################################################################################
-
-import pandas as pd
-from docx import Document
-from PIL import Image
-import PyPDF2
-import re
-
-# in myfunc.mojafunkcija.py
-def read_docx(file):
-    doc = Document(file)
-    full_text = []
-    for para in doc.paragraphs:
-        full_text.append(para.text)
-    text_data = '\n'.join(full_text)
-    st.write(text_data)
-    return text_data
-
-
-# in myfunc.mojafunkcija.py
-def read_txt(file):
-    txt_data = file.getvalue().decode("utf-8")
-    with st.expander("Prikaži tekst"):
-        st.write(txt_data)
-    return 
-
-
-# in myfunc.mojafunkcija.py
-def read_csv(file):
-    csv_data = pd.read_csv(file)
-    with st.expander("Prikaži CSV podatke"):
-        st.write(csv_data)
-    csv_content = csv_data.to_string()
-    return csv_content
-
-
-# in myfunc.mojafunkcija.py
-def read_pdf(file):
-    pdf_reader = PyPDF2.PdfReader(file)
-    num_pages = len(pdf_reader.pages)
-    text_content = ""
-
-    for page in range(num_pages):
-        page_obj = pdf_reader.pages[page]
-        text_content += page_obj.extract_text()
-
-    # Remove bullet points and fix space issues
-    text_content = text_content.replace("•", "")
-    text_content = re.sub(r"(?<=\b\w) (?=\w\b)", "", text_content)
-    with st.expander("Prikaži tekst"):
-        st.write(text_content)
-    return text_content
-
-
-# in myfunc.mojafunkcija.py
-def read_image(file):
-    base64_image = base64.b64encode(file.getvalue()).decode('utf-8')
-    image_bytes = base64.b64decode(base64_image)
-    image = Image.open(io.BytesIO(image_bytes))
-    with st.expander("Prikaži sliku"):
-        st.image(image, width=150)
-    return f"data:image/jpeg;base64,{base64_image}"
-
-
-# in myfunc.mojafunkcija.py
-def read_file():
-    uploaded_file = st.file_uploader("🗀 Odaberite dokument", key="dokument_" + str(st.session_state.upload_key), help="Odabir dokumenta")
-    if uploaded_file is not None:
-        st.session_state.upload_key += 1
-        if uploaded_file.name.endswith(".docx"):
-            # Read the DOCX file and convert it to a string
-            docx_text = read_docx(uploaded_file)
-            return docx_text, "tekst"
-        elif uploaded_file.name.endswith((".txt", ".me", ".py", ".json", "yaml")):
-            # Read the TXT file and convert it to a string
-            txt_text = read_txt(uploaded_file)
-            return txt_text, "tekst"
-        elif uploaded_file.name.endswith(".csv"):
-            # Read the CSV file and convert it to a pandas DataFrame
-            csv_df = read_csv(uploaded_file)
-            return csv_df, "tekst"
-        elif uploaded_file.name.endswith(".pdf"):
-            # Read the PDF file and convert it to a string
-            pdf_text = read_pdf(uploaded_file)
-            return pdf_text, "tekst"
-        elif uploaded_file.name.endswith((".jpg", ".jpeg", ".png", ".webp")):
-            # Read the image file and convert it to a string
-            image_data = read_image(uploaded_file)
-            return image_data, "slika"
-        else:
-            st.error("❌ Greška! Odabrani dokument nije podržan.")
-            return False, False 
-    return False, False
-
-############################################################################################################
 
 def main():
     if "thread_id" not in st.session_state:
@@ -298,11 +200,7 @@ def main():
                 st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
                 # slika  
                 st.session_state.image_ai, st.session_state.vrsta = read_file()
-                if st.session_state.image_ai:
-                    st.session_state.temp_iai = st.session_state.image_ai
-                    st.session_state.temp_vrsta = st.session_state.vrsta
 
-          
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
 
@@ -345,15 +243,14 @@ def main():
             full_response=""
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
 
-        elif st.session_state.temp_iai:
-            st.info(f"Vaš dokument je učitan ({st.session_state.temp_vrsta}), postavite pitanje")
-            if st.session_state.temp_vrsta=="tekst":
-                pre_prompt=st.session_state.temp_iai
+        elif st.session_state.image_ai:
+            if st.session_state.vrsta=="tekst":
+                pre_prompt=st.session_state.image_ai
                 full_prompt = st.session_state.prompt + pre_prompt 
                 temp_full_prompt = {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "UPLOADED FILE CONTENT CONTAINED >>" + full_prompt},
+                        {"type": "text", "text": full_prompt},
             
                     ]
                 }
@@ -372,7 +269,7 @@ def main():
                     "role": "user",
                     "content": [
                         {"type": "text", "text": full_prompt},
-                        {"type": "image_url", "image_url": {"url": st.session_state.temp_iai}}
+                        {"type": "image_url", "image_url": {"url": st.session_state.image_ai}}
                     ]
                 }
                 st.session_state.messages[current_thread_id].append(
@@ -392,15 +289,6 @@ def main():
                 st.markdown(st.session_state.prompt)
 
         
-        if st.session_state.temp_iai is not None and st.session_state.temp_iai in temp_full_prompt["content"][0]["text"]:
-            st.session_state.temp_iai = None
-            st.session_state.temp_vrsta = ""
-
-            temp_full_prompt = {
-                'role': 'user',
-                'content': temp_full_prompt['content'][0]['text']
-            }
-        print(current_thread_id)
         # mislim da sve ovo ide samo ako nije kalendly
         if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
@@ -423,7 +311,7 @@ def main():
             
 
             message_placeholder.markdown(full_response)
-    
+
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
             st.session_state.filtered_messages = ""
@@ -441,6 +329,8 @@ def main():
                 if st.session_state.toggle_state:  # ako treba samo da prikaze podpitanja
                     predlozeni_odgovori(temp_full_prompt)
     
+            if st.session_state.vrsta:
+                st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
             with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
                 db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
 
