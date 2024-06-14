@@ -690,3 +690,18 @@ def read_file():
             st.error("❌ Greška! Odabrani dokument nije podržan.")
             return False, False 
     return False, False
+
+
+# in myfunc.mojafunkcija.py
+def read_files():
+    uploaded_files = st.file_uploader("Choose file", accept_multiple_files=True)
+    documents = {}
+    for file in uploaded_files:
+        filename = file.name
+        if filename.endswith('.txt') or filename.endswith('.js') or filename.endswith('.py') or filename.endswith('.md'):
+            documents[filename] = read_txt(file)
+        elif filename.endswith('.docx'):
+            documents[filename] = read_docx(file)
+        elif filename.endswith('.pdf'):
+            documents[filename] = read_pdf(file)
+    return documents
