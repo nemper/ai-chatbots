@@ -664,7 +664,7 @@ def read_image(file):
 
 # in myfunc.mojafunkcija.py
 def read_imgs():
-    uploaded_file = st.file_uploader("🗀 Odaberite dokument", key="dokument_", help="Odabir dokumenta")
+    uploaded_file = st.file_uploader("Choose image", help="Odabir dokumenta")
     if uploaded_file is not None:
         if uploaded_file.name.endswith((".jpg", ".jpeg", ".png", ".webp")):
             # Read the image file and convert it to a string
@@ -678,7 +678,7 @@ def read_imgs():
 
 # in myfunc.mojafunkcija.py
 def read_txts():
-    uploaded_files = st.file_uploader("Choose file", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Choose file(s)", accept_multiple_files=True)
     documents = {}
     if uploaded_files is not None:
         for file in uploaded_files:
@@ -694,5 +694,9 @@ def read_txts():
             else:
                 st.error("❌ Greška! Mora slika!")
                 return False, False
-        return documents, True
+        pairs = []
+        for key, value in st.session_state.image_ai.items():
+            pairs.append(f"{key}: \n{value}")
+            
+        return '\n\n'.join(pairs), True
     return False, False
