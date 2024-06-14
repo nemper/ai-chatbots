@@ -245,11 +245,7 @@ def main():
 
         elif st.session_state.image_ai:
             if st.session_state.vrsta:
-                pairs = []
-                for key, value in st.session_state.image_ai.items():
-                    pairs.append(f"{key}: \n{value}")
-                pre_prompt=result = '\n\n'.join(pairs)
-                full_prompt = st.session_state.prompt + pre_prompt 
+                full_prompt = st.session_state.prompt + st.session_state.image_ai
                 temp_full_prompt = {
                     "role": "user",
                     "content": [
