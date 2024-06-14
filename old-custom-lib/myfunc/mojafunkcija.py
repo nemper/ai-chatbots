@@ -695,7 +695,7 @@ def read_txts():
                 st.error("❌ Greška! Mora slika!")
                 return False, False
         pairs = []
-        for key, value in st.session_state.image_ai.items():
+        for key, value in documents:
             pairs.append(f"{key}: \n{value}")
             
         return '\n\n'.join(pairs), True
