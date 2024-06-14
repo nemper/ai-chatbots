@@ -9,7 +9,7 @@ from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_file
+from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_txts, read_imgs
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
@@ -26,7 +26,7 @@ default_values = {
     "toggle_state": False,
     "button_clicks": False,
     "prompt": '',
-    "vrsta": '',
+    "vrsta": 'tekst',
     "messages": {},
     "image_ai": None,
     "thread_id": 'ime',
@@ -199,7 +199,7 @@ def main():
                 # govor
                 st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
                 # slika  
-                st.session_state.image_ai, st.session_state.vrsta = read_file()
+                st.session_state.image_ai = read_txts()
 
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
@@ -245,7 +245,10 @@ def main():
 
         elif st.session_state.image_ai:
             if st.session_state.vrsta=="tekst":
-                pre_prompt=st.session_state.image_ai
+                pairs = []
+                for key, value in st.session_state.image_ai.items():
+                    pairs.append(f"{key}: \n{value}")
+                pre_prompt=result = '\n\n'.join(pairs)
                 full_prompt = st.session_state.prompt + pre_prompt 
                 temp_full_prompt = {
                     "role": "user",
