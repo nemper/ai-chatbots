@@ -663,45 +663,36 @@ def read_image(file):
 
 
 # in myfunc.mojafunkcija.py
-def read_file():
+def read_imgs():
     uploaded_file = st.file_uploader("🗀 Odaberite dokument", key="dokument_", help="Odabir dokumenta")
     if uploaded_file is not None:
-        if uploaded_file.name.endswith(".docx"):
-            # Read the DOCX file and convert it to a string
-            docx_text = read_docx(uploaded_file)
-            return docx_text, "tekst"
-        elif uploaded_file.name.endswith((".txt", ".me", ".py", ".json", "yaml")):
-            # Read the TXT file and convert it to a string
-            txt_text = read_txt(uploaded_file)
-            return txt_text, "tekst"
-        elif uploaded_file.name.endswith(".csv"):
-            # Read the CSV file and convert it to a pandas DataFrame
-            csv_df = read_csv(uploaded_file)
-            return csv_df, "tekst"
-        elif uploaded_file.name.endswith(".pdf"):
-            # Read the PDF file and convert it to a string
-            pdf_text = read_pdf(uploaded_file)
-            return pdf_text, "tekst"
-        elif uploaded_file.name.endswith((".jpg", ".jpeg", ".png", ".webp")):
+        if uploaded_file.name.endswith((".jpg", ".jpeg", ".png", ".webp")):
             # Read the image file and convert it to a string
             image_data = read_image(uploaded_file)
-            return image_data, "slika"
+            return image_data, True
         else:
-            st.error("❌ Greška! Odabrani dokument nije podržan.")
+            st.error("❌ Greška! Mora slika!")
             return False, False 
     return False, False
 
 
 # in myfunc.mojafunkcija.py
-def read_files():
+def read_txts():
     uploaded_files = st.file_uploader("Choose file", accept_multiple_files=True)
     documents = {}
-    for file in uploaded_files:
-        filename = file.name
-        if filename.endswith('.txt') or filename.endswith('.js') or filename.endswith('.py') or filename.endswith('.md'):
-            documents[filename] = read_txt(file)
-        elif filename.endswith('.docx'):
-            documents[filename] = read_docx(file)
-        elif filename.endswith('.pdf'):
-            documents[filename] = read_pdf(file)
-    return documents
+    if uploaded_files is not None:
+        for file in uploaded_files:
+            filename = file.name
+            if filename.endswith('.txt') or filename.endswith('.js') or filename.endswith('.py') or filename.endswith('.md'):
+                documents[filename] = read_txt(file)
+            elif filename.endswith('.docx'):
+                documents[filename] = read_docx(file)
+            elif filename.endswith('.pdf'):
+                documents[filename] = read_pdf(file)
+            elif filename.name.endswith(".csv"):
+                documents[filename] = read_csv(file)
+            else:
+                st.error("❌ Greška! Mora slika!")
+                return False, False
+        return documents, True
+    return False, False
