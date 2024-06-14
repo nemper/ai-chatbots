@@ -695,8 +695,8 @@ def read_txts():
                 st.error("❌ Greška! Mora slika!")
                 return False, False
         pairs = []
-        for key, value in documents:
+        for key, value in documents.items():
             pairs.append(f"{key}: \n{value}")
-            
+
         return '\n\n'.join(pairs), True
     return False, False
