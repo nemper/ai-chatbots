@@ -26,7 +26,7 @@ default_values = {
     "toggle_state": False,
     "button_clicks": False,
     "prompt": '',
-    "vrsta": 'tekst',
+    "vrsta": False,
     "messages": {},
     "image_ai": None,
     "thread_id": 'ime',
@@ -199,7 +199,7 @@ def main():
                 # govor
                 st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
                 # slika  
-                st.session_state.image_ai = read_txts()
+                st.session_state.image_ai, st.session_state.vrsta = read_txts()
 
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
@@ -244,7 +244,7 @@ def main():
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
 
         elif st.session_state.image_ai:
-            if st.session_state.vrsta=="tekst":
+            if st.session_state.vrsta:
                 pairs = []
                 for key, value in st.session_state.image_ai.items():
                     pairs.append(f"{key}: \n{value}")
@@ -262,7 +262,7 @@ def main():
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-            else:   
+            if 3>5:   
                 pre_prompt = """Describe the uploaded image in detail, focusing on the key elements such as objects, colors, sizes, 
                                 positions, actions, and any notable characteristics or interactions. Provide a clear and vivid description 
                                 that captures the essence and context of the image. """
