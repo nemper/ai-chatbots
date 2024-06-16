@@ -682,7 +682,7 @@ def read_imgs():
 def read_txts():
     uploaded_files = st.file_uploader("Choose file(s)", accept_multiple_files=True)
     documents = {}
-    if uploaded_files is not None:
+    if uploaded_files:
         for file in uploaded_files:
             filename = file.name
             if filename.endswith('.txt') or filename.endswith('.js') or filename.endswith('.py') or filename.endswith('.md'):
