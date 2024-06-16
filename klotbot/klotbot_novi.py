@@ -9,7 +9,7 @@ from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_txts, read_imgs
+from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_txts, read_imgs, copy_to_clipboard
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
@@ -310,7 +310,7 @@ def main():
             
 
             message_placeholder.markdown(full_response)
-
+            copy_to_clipboard(full_response)
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
             st.session_state.filtered_messages = ""
@@ -339,7 +339,7 @@ def main():
                         "⤓ Preuzmi", 
                         st.session_state.filtered_messages, 
                         file_name="istorija.txt", 
-                        help = "Čuvanje zadatog prompta"
+                        help = "Čuvanje istorije ovog razgovora"
                         )
             with col3:
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
