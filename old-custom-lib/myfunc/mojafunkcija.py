@@ -2,6 +2,7 @@
 import base64
 import io
 import markdown
+import html
 import os
 import pandas as pd
 import pdfkit
@@ -9,6 +10,7 @@ import PyPDF2
 import re
 import streamlit as st
 import streamlit_authenticator as stauth
+import streamlit.components.v1 as components
 import tiktoken
 import yaml
 
@@ -700,3 +702,52 @@ def read_txts():
 
         return '\n\n'.join(pairs), True
     return False, False
+
+def copy_to_clipboard(message):
+    sanitized_message = html.escape(message)  # Escape the message to handle special HTML characters
+    # Create an HTML button with embedded JavaScript for clipboard functionality and custom CSS
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            #copyButton {{
+                background-color: #454654;  /* Dark gray background */
+                color: #f1f1f1;            /* Our white text color */
+                border: none;           /* No border */
+                border-radius: 8px;     /* Rounded corners */
+                cursor: pointer;        /* Pointer cursor on hover */
+                outline: none;          /* No focus outline */
+                font-size: 20px;        /* Size */
+            }}
+            #textArea {{
+                opacity: 0; 
+                position: absolute; 
+                pointer-events: none;
+            }}
+        </style>
+    </head>
+    <body>
+    <textarea id="textArea">{sanitized_message}</textarea>
+    <textarea id="textArea" style="opacity: 0; position: absolute; pointer-events: none;">{sanitized_message}</textarea>
+    <button id="copyButton" onclick='copyTextToClipboard()'>📄</button>
+    <script>
+    function copyTextToClipboard() {{
+        var textArea = document.getElementById("textArea");
+        var copyButton = document.getElementById("copyButton");
+        textArea.style.opacity = 1;
+        textArea.select();
+        try {{
+            var successful = document.execCommand('copy');
+            var msg = successful ? '✔️' : '❌';
+            copyButton.innerText = msg;
+        }} catch (err) {{
+            copyButton.innerText = 'Failed!';
+        }}
+        textArea.style.opacity = 0;
+        setTimeout(function() {{ copyButton.innerText = "📄"; }}, 3000);  // Change back after 3 seconds
+    }}
+    </script>
+    </body>
+    </html>
+    """
+    components.html(html_content, height=50)
