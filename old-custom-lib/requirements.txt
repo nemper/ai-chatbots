@@ -23,7 +23,6 @@ PyPDF2==3.0.1
 PyYAML==6.0.1
 requests==2.32.3
 streamlit-authenticator==0.3.2
-import streamlit.components.v1 as components
 semantic-router==0.0.46
 setuptools==70.0.0
 sounddevice==0.4.7
