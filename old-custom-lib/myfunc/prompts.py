@@ -839,27 +839,27 @@ class SQLSearchTool:
         
         return response
 
-def get_prompts_contain_in_name(self, promptname):
-    """
-    Fetches the details of prompt records where the PromptName contains the given string.
+    def get_prompts_contain_in_name(self, promptname):
+        """
+        Fetches the details of prompt records where the PromptName contains the given string.
 
-    :param promptname: The string to search for in the prompt names.
-    :return: A list of dictionaries with the details of the matching prompt records, or an empty list if none are found.
-    """
-    query = """
-    SELECT PromptName, PromptString, Comment
-    FROM PromptStrings
-    WHERE PromptName LIKE %s
-    """
-    try:
-        # Adding wildcards to search for the string anywhere in the PromptName
-        self.cursor.execute(query, ('%' + promptname + '%',))
-        results = self.cursor.fetchall()
-        if results:
-            # Return a list of dictionaries with the details of the matching records
-            return [{"PromptName": result[0], "PromptString": result[1], "Comment": result[2]} for result in results]
-        else:
+        :param promptname: The string to search for in the prompt names.
+        :return: A list of dictionaries with the details of the matching prompt records, or an empty list if none are found.
+        """
+        query = """
+        SELECT PromptName, PromptString, Comment
+        FROM PromptStrings
+        WHERE PromptName LIKE %s
+        """
+        try:
+            # Adding wildcards to search for the string anywhere in the PromptName
+            self.cursor.execute(query, ('%' + promptname + '%',))
+            results = self.cursor.fetchall()
+            if results:
+                # Return a list of dictionaries with the details of the matching records
+                return [{"PromptName": result[0], "PromptString": result[1], "Comment": result[2]} for result in results]
+            else:
+                return []
+        except Error as e:
+            print(f"Error occurred: {e}")
             return []
-    except Error as e:
-        print(f"Error occurred: {e}")
-        return []
