@@ -53,6 +53,12 @@ def work_prompts():
 
         # pravnik
         "new_law_email": default_prompt,
+        
+        # blogger
+        "sys_blogger": default_prompt,
+        "blog_template_1": default_prompt,
+        "blog_template_2": default_prompt,
+        "blog_template_3": default_prompt,
         }
 
     prompt_names = list(all_prompts.keys())
