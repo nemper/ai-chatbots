@@ -9,7 +9,7 @@ from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import initialize_session_state, check_openai_errors, read_txts, read_imgs, copy_to_clipboard
+from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, read_imgs, copy_to_clipboard
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
@@ -345,6 +345,13 @@ def main():
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
                     st.button("🗑 Obriši", on_click=reset_memory)
             
-
-if __name__ == "__main__":
+def main_warp_for_st():
     check_openai_errors(main)
+
+deployment_environment = os.environ.get("DEPLOYMENT_ENVIRONMENT")
+ 
+if deployment_environment == "Streamlit":
+    name, authentication_status, username = positive_login(main, " ")
+else: 
+    if __name__ == "__main__":
+        check_openai_errors(main)
