@@ -24,7 +24,7 @@ pipeline = [
 {
     '$vectorSearch': {
       'index': 'vector_index', 
-      'path': 'embeddings', 
+      'path': 'embedding', 
       'queryVector': qv,
       'numCandidates': 100, 
       'limit': 5
@@ -32,8 +32,9 @@ pipeline = [
   }, {
     '$project': {
       '_id': 0, 
-      'text': 1,
-      'source': 1
+      'description': 1,
+      'title': 1,
+      'category': 1
     }
   }
 ]
@@ -41,14 +42,14 @@ pipeline = [
 result = client["vektordb"]["vektor"].aggregate(pipeline)
 answer = ""
 for i in result:
-    answer += i.get('text') + "\n"
+    answer += "The Book title is " +  i.get('title') + " and it is about:  "  + i.get('description') + "\n"
 
 # ask LLM to summarize the results
 if answer !="":
   response = openaiclient.chat.completions.create(
               model="gpt-4o",
               temperature=0,
-              messages=[{"role": "user", "content": f"""Please summarize this: {answer}"""}])
+              messages=[{"role": "user", "content": f"""Please describe this book: {answer}"""}])
 
   odgovor = response.choices[0].message.content
   print(odgovor)
