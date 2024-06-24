@@ -18,3 +18,4 @@ slnx.sqlite
 *.vs
 *.pyc
 *.html
+/venv
