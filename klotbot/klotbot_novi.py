@@ -278,7 +278,11 @@ def main():
                     st.markdown(st.session_state.prompt)
             
         else:    
-            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt + " " + result}]}
+            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""Using the following context:
+                                                              {result}
+                                                              answer the question: 
+                                                              {st.session_state.prompt} :
+                                                                 """}]}
     
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
