@@ -237,7 +237,7 @@ def main():
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
         result = rag_tool_answer(st.session_state.prompt, phglob)
-
+        
         if result=="CALENDLY":
             full_prompt=""
             full_response=""
@@ -278,7 +278,7 @@ def main():
                     st.markdown(st.session_state.prompt)
             
         else:    
-            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
+            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt + " " + result}]}
     
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
@@ -292,7 +292,7 @@ def main():
         if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
             with st.chat_message("assistant", avatar=avatar_ai):
-            
+                    
                     message_placeholder = st.empty()
                     full_response = ""
                     for response in client.chat.completions.create(
