@@ -3,13 +3,9 @@ import json
 import mysql.connector
 import os
 
-import streamlit as st
-
-from langchain.agents.agent_types import AgentType
-from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseToolkit
-from langchain_openai.chat_models import ChatOpenAI
-
+from langchain_community.utilities.sql_database import SQLDatabase
+from langchain_community.agent_toolkits import create_sql_agent
+from langchain_openai import ChatOpenAI
 from mysql.connector import Error
 
 
@@ -816,6 +812,7 @@ class ConversationDatabase:
 # in myfunc.prompts.py
 class SQLSearchTool:
     """
+    VER. 27.06.24
     A tool to search an SQL database using natural language queries.
     This class uses the LangChain library to create an SQL agent that
     interprets natural language and executes corresponding SQL queries.
@@ -827,41 +824,20 @@ class SQLSearchTool:
 
         :param db_uri: The database URI. If None, it reads from the DB_URI environment variable.
         """
-
-        if db_uri is None:
-            db_uri = os.getenv("DB_URI")
+        db_uri = os.getenv("DB_URI")
         self.db = SQLDatabase.from_uri(db_uri)
+        self.llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        self.agent_executor = create_sql_agent(llm=self.llm, db=self.db, agent_type="openai-tools", verbose=True)
 
-        llm = ChatOpenAI(model="gpt-4o", temperature=0)
-        toolkit = SQLDatabaseToolkit(
-            db=self.db, llm=llm
-        )
-
-        self.agent_executor = create_sql_agent(
-            llm=llm,
-            toolkit=toolkit,
-            verbose=True,
-            agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            
-        )
-
-    def search(self, query, queries=10):
+    
+    def search(self, query):
         """
         Execute a search using a natural language query.
 
         :param query: The natural language query.
-        :param queries: The number of results to return (default 10).
         :return: The response from the agent executor.
         """
-        with PromptDatabase() as db:
-            prompt_map = db.get_prompts_by_names(["sql_search_method"],[os.getenv("SQL_SEARCH_METHOD")])
-            sql_search_method = prompt_map.get('sql_search_method', 'You are helpful assistant that always writes in Serbian.').format(query=query, queries=queries)
-        try:
-            response = self.agent_executor.invoke({sql_search_method})["output"]
-        except Exception as e:
-            
-            response = f"Ne mogu da odgovorim na pitanje, molim vas korigujte zahtev. Opis greske je \n {e}"
-        
-        return response
+        result = self.agent_executor.invoke(query)
+        return result['output']
 
     
