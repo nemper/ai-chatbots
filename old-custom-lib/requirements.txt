@@ -12,7 +12,7 @@ Markdown==3.6
 matplotlib==3.9.0
 mysql-connector-python==8.4.0
 networkx==3.3
-openai==1.32.0
+openai==1.35.7
 pandas==2.2.2
 pillow==10.3.0
 pinecone==4.0.0

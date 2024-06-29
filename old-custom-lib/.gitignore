@@ -13,11 +13,7 @@ slnx.sqlite
 *.JSONL
 *./vs
 .vs
-/myfunc/__pycache__/prompts.cpython-311.pyc
-/myfunc/__pycache__/pyui_javascript.cpython-311.pyc
 /venv
 /myenv
 /myfunc.egg-info
-/myfunc/__pycache__/prompts.cpython-312.pyc
-/myfunc/__pycache__/pyui_javascript.cpython-312.pyc
 

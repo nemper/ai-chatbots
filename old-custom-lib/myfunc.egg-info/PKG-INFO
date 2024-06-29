@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: myfunc
-Version: 2.0.66b0
+Version: 2.0.66rc0
 Requires-Dist: aiohttp==3.9.5
 Requires-Dist: azure-core==1.30.2
 Requires-Dist: azure-storage-blob==12.20.0
@@ -15,7 +15,7 @@ Requires-Dist: Markdown==3.6
 Requires-Dist: matplotlib==3.9.0
 Requires-Dist: mysql-connector-python==8.4.0
 Requires-Dist: networkx==3.3
-Requires-Dist: openai==1.32.0
+Requires-Dist: openai==1.35.7
 Requires-Dist: pandas==2.2.2
 Requires-Dist: pdfkit==1.0.0
 Requires-Dist: pillow==10.3.0
