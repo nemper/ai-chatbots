@@ -538,7 +538,7 @@ def positive_calendly(phglob):
     - A string response "Do not answer to this question, just say Hvala".
     """
             
-    calendly_url = "https://outlook.office365.com/book/Chatbot@positive.rs/"
+    calendly_url = "https://outlook.office365.com/owa/calendar/Salespodrka@positive.rs/bookings/"
     iframe_html = f'<iframe src="{calendly_url}" style="width: 500px; height: 550px;" ></iframe>'
     st.components.v1.html(iframe_html, height=600, scrolling=True)        
  
