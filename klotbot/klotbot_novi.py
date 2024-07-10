@@ -235,7 +235,7 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
-        result = rag_tool_answer(st.session_state.prompt, phglob, os.getenv("NAMESPACE"))
+        result = rag_tool_answer(st.session_state.prompt, phglob)
         
         if result=="CALENDLY":
             full_prompt=""
