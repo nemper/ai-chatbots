@@ -785,12 +785,12 @@ class ContextRetriever:
         
 
 # in myfunc.embeddings.py
-def rag_tool_answer(prompt, phglob):
+def rag_tool_answer(prompt, phglob, namespace):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
     if  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(namespace="embedding-za-sajt")
+        processor = HybridQueryProcessor(namespace=namespace)
         context, scores = processor.process_query_results(prompt)
         # st.info("Score po chunku:")
         # st.write(scores)
