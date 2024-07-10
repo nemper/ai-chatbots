@@ -9,10 +9,9 @@ from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
-from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, read_imgs, copy_to_clipboard
+from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
-from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
 from myfunc.varvars_dicts import work_prompts, work_vars
 
@@ -43,11 +42,10 @@ initialize_session_state(default_values)
 
 if st.session_state.thread_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
-st.write(mprompts["sys_ragbot"])
-st.write(os.getenv("NAMESPACE"))
+
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
-processor = HybridQueryProcessor() # namespace moze i iz env
+
 # Set chat input placeholder color
 chat_placeholder_color("#f1f1f1")
 avatar_bg="botbg.png" 
@@ -237,7 +235,7 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
-        result = rag_tool_answer(st.session_state.prompt, phglob)
+        result = rag_tool_answer(st.session_state.prompt, phglob, os.getenv("NAMESPACE"))
         
         if result=="CALENDLY":
             full_prompt=""
