@@ -86,6 +86,7 @@ class HybridQueryProcessor:
         self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
         self.index = None
         self.host = os.getenv("PINECONE_HOST")
+        self.check_namespace = True if self.namespace in ["brosureiuputstva", "servis", "casopis"] else False
         self.init_pinecone()
 
     def init_pinecone(self):
@@ -160,12 +161,18 @@ class HybridQueryProcessor:
             context = metadata.get('context', '')
             chunk = metadata.get('chunk')
             source = metadata.get('source')
+            if self.check_namespace:
+                filename = metadata.get('filename')
+                url = metadata.get('url')
             try:
                 score = match.get('score', 0)
             except:
                 score = metadata.get('score', 0)
             if context:
                 results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
+                if self.check_namespace:
+                    results[-1]["filename"] = filename
+                    results[-1]["url"] = url
         
         return results
        
@@ -182,6 +189,9 @@ class HybridQueryProcessor:
                 if item["score"] > self.score:
                     uk_teme += item["page_content"] + "\n\n"
                     score_list.append(item["score"])
+                    if self.check_namespace:
+                        uk_teme += f"Filename: {item['filename']}\n"
+                        uk_teme += f"URL: {item['url']}\n\n"
             
             return uk_teme, score_list
         else:
