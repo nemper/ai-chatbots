@@ -43,7 +43,8 @@ initialize_session_state(default_values)
 
 if st.session_state.thread_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
-
+st.write(mprompts["sys_ragbot"])
+st.write(os.getenv("NAMESPACE"))
 api_key=os.getenv("OPENAI_API_KEY")
 client=OpenAI()
 processor = HybridQueryProcessor() # namespace moze i iz env
