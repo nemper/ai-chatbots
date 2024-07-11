@@ -13,6 +13,8 @@ from json import loads as json_loads
 from os import environ
 from PIL import Image
 from streamlit_javascript import st_javascript
+import glob
+from pydub import AudioSegment
 
 from myfunc.varvars_dicts import work_prompts, work_vars
 
