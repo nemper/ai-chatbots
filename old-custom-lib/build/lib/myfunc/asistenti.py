@@ -116,6 +116,7 @@ def audio_izlaz(content):
 
 
 # in myfunc.asistenti.py
+# in myfunc.asistenti.py
 def priprema():
     """ Prepare the data for the assistant. """    
     
@@ -139,10 +140,9 @@ def transkript():
     
     # Read OpenAI API key from env
     with st.sidebar:  # App start
-        st.info("Konvertujte MP3 u TXT")
+        st.info("Konvertujte audio/video u TXT")
         audio_file = st.file_uploader(
-            "Max 25Mb",
-            type="mp3",
+            "Odaberite audio/video fajl",
             key="audio_",
             help="Odabir dokumenta",
         )
@@ -180,6 +180,7 @@ def transkript():
                     file_name="transcript.txt",
                     help="Odabir dokumenta",
                 )
+                delete_mp3_files(".")
 
 
 # in myfunc.asistenti.py
@@ -330,6 +331,59 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
             jezik (str): The language of the audio file.
         """    
     client= openai
+        
+
+    def convert_to_mp3(file_path, output_path):
+        # Load the audio file
+        audio = AudioSegment.from_file(file_path)
+        # Set parameters: mono, 16000Hz
+        audio = audio.set_channels(1).set_frame_rate(16000)
+        # Export as mp3
+        audio.export(output_path, format="mp3", bitrate="128k")
+
+    def transcribe_audio(file_path, jezik):
+        with open(file_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+            model="whisper-1", 
+            file=audio_file, 
+            language=jezik,
+            response_format="text"
+            )
+        return transcript
+            
+
+    def split_mp3_file(input_path, output_directory, max_file_size_mb=20, max_duration_minutes=45, jezik=jezik):
+        # Load the mp3 file
+        audio = AudioSegment.from_file(input_path, format="mp3")
+        
+        # Calculate the duration limit for the file size (in seconds)
+        max_file_size_bytes = max_file_size_mb * 1024 * 1024
+        bitrate_kbps = 128  # Assuming a bitrate of 128 kbps
+        
+        max_duration_seconds_file_size = (max_file_size_bytes * 8) / (bitrate_kbps * 1000)
+        
+        # Duration limit in seconds
+        max_duration_seconds_time = max_duration_minutes * 60
+        
+        # Use the smaller of the two duration limits
+        max_duration_seconds = min(max_duration_seconds_file_size, max_duration_seconds_time)
+        
+        # Split the audio file
+        parts = []
+        for i in range(0, len(audio), int(max_duration_seconds * 1000)):
+            part = audio[i:i + int(max_duration_seconds * 1000)]
+            parts.append(part)
+        
+        # Export each part and transcribe
+        all_transcripts = []
+        for idx, part in enumerate(parts):
+            part_path = os.path.join(output_directory, f"{os.path.splitext(os.path.basename(input_path))[0]}_part{idx + 1}.mp3")
+            part.export(part_path, format="mp3", bitrate="128k")
+            st.caption(f"Kreiram transkript {part_path}")
+            transcript = transcribe_audio(part_path, jezik)
+            all_transcripts.append(transcript)
+        combined_transcript = " ".join(all_transcripts)
+        return combined_transcript
     
     def chunk_transcript(transkript, token_limit):
         words = transkript.split()
@@ -347,14 +401,9 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
 
         return chunks
 
-
-    def transcribe(client, audio_file, jezik):
-        client=openai
-        
-        return client.audio.transcriptions.create(model="whisper-1", file=audio_file, language=jezik, response_format="text")
+    convert_to_mp3(audio_file, "output.mp3")
+    transcript = split_mp3_file("output.mp3", ".", jezik=jezik)
     
-    
-    transcript = transcribe(client, audio_file, jezik)
     st.caption("delim u delove po 1000 reci")
     chunks = chunk_transcript(transcript, 1000)
     broj_delova = len(chunks)
@@ -374,3 +423,15 @@ def generate_corrected_transcript(client, system_prompt, audio_file, jezik):
         corrected_transcript += " " + response.choices[0].message.content.strip()
 
     return corrected_transcript
+
+def delete_mp3_files(directory):
+    mp3_files = glob.glob(os.path.join(directory, "*.mp3"))
+    for mp3_file in mp3_files:
+        try:
+            os.remove(mp3_file)
+        except Exception as e:
+            st.info(f"Error deleting {mp3_file}: {e}")
+
+
+
+

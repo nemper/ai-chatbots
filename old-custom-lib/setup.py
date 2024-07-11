@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.67c",
+    version="2.0.68",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
@@ -25,6 +25,7 @@ setup(
         'pillow==10.3.0',
         'pinecone==4.0.0',
         'pinecone-text==0.9.0',
+        'pydub==0.25.1',
         'pypandoc==1.13',
         'python-docx==1.1.2',
         'PyPDF2==3.0.1',
