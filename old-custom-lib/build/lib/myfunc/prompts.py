@@ -623,8 +623,14 @@ class ConversationDatabase2:
         self.cursor = None
 
     def __enter__(self):
-        conn_str = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={self.host};DATABASE={self.database};UID={self.user};PWD={self.password}'
-        self.conn = pyodbc.connect(conn_str)
+        self.conn = pyodbc.connect(
+            driver='{ODBC Driver 18 for SQL Server}',
+            server=self.host,
+            database=self.database,
+            uid=self.user,
+            pwd=self.password,
+            TrustServerCertificate='yes'
+        )
         self.cursor = self.conn.cursor()
         return self
 
