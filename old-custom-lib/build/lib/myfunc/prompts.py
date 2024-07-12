@@ -2,6 +2,7 @@
 import json
 import mysql.connector
 import os
+import pyodbc
 
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
@@ -608,6 +609,7 @@ class PromptDatabase:
             return []
 
 
+# in myfunc.prompts.py
 class ConversationDatabase2:
     """
     A class to interact with a MSSQL database for storing and retrieving conversation data.
