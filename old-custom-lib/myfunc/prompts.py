@@ -629,7 +629,7 @@ class ConversationDatabase2:
             database=self.database,
             uid=self.user,
             pwd=self.password,
-            TrustServerCertificate='no'
+            TrustServerCertificate='yes'
         )
         self.cursor = self.conn.cursor()
         return self
