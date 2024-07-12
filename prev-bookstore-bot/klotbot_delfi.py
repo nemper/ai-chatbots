@@ -233,7 +233,7 @@ def rag_tool_answer(prompt, phglob):
         """
         context = "Reci da je odgovor: GRAFOVI"
 
-    return context
+    return context, st.session_state.rag_tool
 
 
 def main():
@@ -354,8 +354,10 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
-        result = rag_tool_answer(st.session_state.prompt, phglob)
-        
+        result, alat = rag_tool_answer(st.session_state.prompt, phglob)
+        st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
+        st.write("Odgovor direktno iz alata: ", result)
+
         if result=="CALENDLY":
             full_prompt=""
             full_response=""
