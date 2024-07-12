@@ -606,7 +606,194 @@ class PromptDatabase:
         except Error as e:
             print(f"Error occurred: {e}")
             return []
+
+
+class ConversationDatabase2:
+    """
+    A class to interact with a MSSQL database for storing and retrieving conversation data.
+    """
+    def __init__(self, host=None, user=None, password=None, database=None):
+        self.host = host if host is not None else os.getenv('DB_HOST')
+        self.user = user if user is not None else os.getenv('DB_USER')
+        self.password = password if password is not None else os.getenv('DB_PASSWORD')
+        self.database = database if database is not None else os.getenv('DB_NAME')
+        self.conn = None
+        self.cursor = None
+
+    def __enter__(self):
+        conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={self.host};DATABASE={self.database};UID={self.user};PWD={self.password}'
+        self.conn = pyodbc.connect(conn_str)
+        self.cursor = self.conn.cursor()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.conn is not None:
+            self.conn.close()
+        if exc_type or exc_val or exc_tb:
+            pass
     
+    
+    def create_sql_table(self):
+        """
+        Creates a table for storing conversations if it doesn't already exist.
+        """
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            app_name VARCHAR(255) NOT NULL,
+            user_name VARCHAR(255) NOT NULL,
+            thread_id VARCHAR(255) NOT NULL,
+            conversation LONGTEXT NOT NULL
+        )
+        ''')
+        # print("Table created if new.")
+    
+    def add_sql_record(self, app_name, user_name, thread_id, conversation):
+        """
+        Adds a new record to the conversations table.
+        
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier.
+        - conversation: The conversation data as a list of dictionaries.
+        """
+        conversation_json = json.dumps(conversation)
+        self.cursor.execute('''
+        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
+        VALUES (%s, %s, %s, %s)
+        ''', (app_name, user_name, thread_id, conversation_json))
+        self.conn.commit()
+        # print("New record added.")
+    
+    def query_sql_record(self, app_name, user_name, thread_id):
+        """
+        Modified to return the conversation record.
+        """
+        self.cursor.execute('''
+        SELECT conversation FROM conversations 
+        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        ''', (app_name, user_name, thread_id))
+        result = self.cursor.fetchone()
+        if result:
+            return json.loads(result[0])
+        else:
+            return None
+    
+    def delete_sql_record(self, app_name, user_name, thread_id):
+        """
+        Deletes a conversation record based on app name, user name, and thread id.
+        
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier.
+        """
+        delete_sql = '''
+        DELETE FROM conversations
+        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        '''
+        self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
+        self.conn.commit()
+        # print("Conversation thread deleted.")
+    
+    def list_threads(self, app_name, user_name):
+        """
+        Lists all thread IDs for a given app name and user name.
+    
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+
+        Returns:
+        - A list of thread IDs associated with the given app name and user name.
+        """
+        self.cursor.execute('''
+        SELECT DISTINCT thread_id FROM conversations
+        WHERE app_name = %s AND user_name = %s
+        ''', (app_name, user_name))
+        threads = self.cursor.fetchall()
+        return [thread[0] for thread in threads]  # Adjust based on your schema if needed
+  
+    def update_sql_record(self, app_name, user_name, thread_id, new_conversation):
+        """
+        Replaces the existing conversation data with new conversation data for a specific record in the conversations table.
+
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier.
+        - new_conversation: The new conversation data to replace as a list of dictionaries.
+        """
+
+        # Convert the new conversation to JSON format
+        new_conversation_json = json.dumps(new_conversation)
+
+        # Update the record with the new conversation
+        self.cursor.execute('''
+        UPDATE conversations
+        SET conversation = %s
+        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        ''', (new_conversation_json, app_name, user_name, thread_id))
+        self.conn.commit()
+        # print("Record updated with new conversation.")
+
+    def close(self):
+        """
+        Closes the database connection.
+        """
+        self.conn.close()
+
+    # DEPRECATED OD 2.0.59c - KORISTIMO OPENAI PROJECTS - SKROZ SAM IZBRISAO JOS STARIJI PRISTUP (DVE METODE) KOJI JE BIO ODMAH ISPOD
+    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
+        """
+        Adds a new record to the database with the provided details.
+        """
+        sql = """
+        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
+        self.cursor.execute(sql, values)
+        self.conn.commit()
+    
+    # ISTO od 2.0.59c
+    def extract_token_sums_between_dates(self, start_date, end_date):
+        """
+        Extracts the summed token values between two given dates from the chatbot_token_log table.
+        
+        Parameters:
+        - start_date: The start date in 'YYYY-MM-DD HH:MM:SS' format.
+        - end_date: The end date in 'YYYY-MM-DD HH:MM:SS' format.
+
+        Returns:
+        - A dictionary containing the summed values for each token type.
+        """
+        sql = """
+        SELECT 
+            SUM(embedding_tokens) as total_embedding_tokens, 
+            SUM(prompt_tokens) as total_prompt_tokens, 
+            SUM(completion_tokens) as total_completion_tokens, 
+            SUM(stt_tokens) as total_stt_tokens, 
+            SUM(tts_tokens) as total_tts_tokens 
+        FROM chatbot_token_log 
+        WHERE timestamp BETWEEN %s AND %s
+        """
+        self.cursor.execute(sql, (start_date, end_date))
+        result = self.cursor.fetchone()
+        if result:
+            return {
+                "total_embedding_tokens": int(result[0]),
+                "total_prompt_tokens": int(result[1]),
+                "total_completion_tokens": int(result[2]),
+                "total_stt_tokens": int(result[3]),
+                "total_tts_tokens": int(result[4]),
+            }
+        else:
+            return None
+
 
 # in myfunc.prompts.py
 class ConversationDatabase:
