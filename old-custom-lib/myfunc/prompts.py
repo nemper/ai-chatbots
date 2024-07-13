@@ -646,17 +646,18 @@ class ConversationDatabase2:
         """
         Creates a table for storing conversations if it doesn't already exist.
         """
-        create_table_sql = '''
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INT IDENTITY(1,1) PRIMARY KEY,  -- Use IDENTITY instead of AUTO_INCREMENT for SQL Server
+        check_table_sql = '''
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='conversations' AND xtype='U')
+        CREATE TABLE conversations (
+            id INT IDENTITY(1,1) PRIMARY KEY,
             app_name VARCHAR(255) NOT NULL,
             user_name VARCHAR(255) NOT NULL,
             thread_id VARCHAR(255) NOT NULL,
-            conversation NVARCHAR(MAX) NOT NULL  -- Use NVARCHAR(MAX) for long text in SQL Server
+            conversation NVARCHAR(MAX) NOT NULL
         )
         '''
-        print(f"Executing SQL: {create_table_sql}")
-        self.cursor.execute(create_table_sql)
+        print(f"Executing SQL: {check_table_sql}")
+        self.cursor.execute(check_table_sql)
         self.conn.commit()
     
     def add_sql_record(self, app_name, user_name, thread_id, conversation):
