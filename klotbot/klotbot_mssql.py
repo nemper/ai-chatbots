@@ -27,10 +27,16 @@ initialize_session_state(default_values)
 
 
 # Authentication: SQL Server Authentication
+_ = """
 mssql_database = os.getenv("MSSQL_DB")
 mssql_host = os.getenv("MSSQL_HOST")
 mssql_username = os.getenv("MSSQL_USER")
 mssql_password = os.getenv("MSSQL_PASS")
+"""
+mssql_database = "PositiveAI"
+mssql_host = "pendulum.positive.rs, 12001"
+mssql_username = "razvoj"
+mssql_password = r"ILmg0t'E4zi\6O>U7i<o"
 
 def main():
     chat_placeholder_color(color="#f1f1f1")
