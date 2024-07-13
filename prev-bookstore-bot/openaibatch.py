@@ -3,6 +3,11 @@ from openai import OpenAI
 client = OpenAI()
 
 
+lista = client.batches.list(limit=10)
+for list in lista:
+    print(f"{list.status}, {list.request_counts.completed} of {list.request_counts.total} {list.metadata['description']}, batch: {list.id}, input: {list.input_file_id}, output: {list.output_file_id}")
+    
+
 # #out_file = "batch_50.jsonl"
 # #out_file = "delfi_drugi.jsonl"
 # #out_file = "delfi_treci.jsonl"
@@ -31,30 +36,39 @@ client = OpenAI()
 # )
 
 
-# # Check status of the batch job
+# # # Check status of the batch job
 # batch_job = "batch_VbTM5MQ3UokQon9HZYUXZgyf"
+# status = client.batches.retrieve(batch_job)
+# print(f"do sada uradjeno {status.status}: {status.request_counts.completed} of {status.request_counts.total}")
+# batch_job = "batch_trkqSnrSAVchcxeAtaMfdurX"
+# status = client.batches.retrieve(batch_job)
+# print(f"do sada uradjeno {status.status}: {status.request_counts.completed} of {status.request_counts.total}")
+# batch_job = "batch_KMwqJQ6xIjzCPGHENw7OuX3A"
+# status = client.batches.retrieve(batch_job)
+# print(f"do sada uradjeno {status.status}: {status.request_counts.completed} of {status.request_counts.total}")
+# batch_job = "batch_YXJmqN5ebNxsNB2yNIlopNVw"
 # status = client.batches.retrieve(batch_job)
 # print(f"do sada uradjeno {status.status}: {status.request_counts.completed} of {status.request_counts.total}")
 
 
-# Retrieve the file content from the API - UNETI PRAVE ID !!!!!!!!!!!!!!!!!
-#file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
-file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
-#file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
-#file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
+# # Retrieve the file content from the API - UNETI PRAVE ID !!!!!!!!!!!!!!!!!
+# #file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
+# file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
+# #file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
+# #file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
 
-file_response = client.files.content(file_id)
+# file_response = client.files.content(file_id)
 
-# Open the file for writing in JSONL format
-#jsonl_file_path = 'response_data_prvi.jsonl'
-jsonl_file_path = 'response_data_drugi.jsonl'
-#jsonl_file_path = 'response_data_treci.jsonl'
-#jsonl_file_path = 'response_data_cetvrti.jsonl'
+# # Open the file for writing in JSONL format
+# #jsonl_file_path = 'response_data_prvi.jsonl'
+# jsonl_file_path = 'response_data_drugi.jsonl'
+# #jsonl_file_path = 'response_data_treci.jsonl'
+# #jsonl_file_path = 'response_data_cetvrti.jsonl'
 
-with open(jsonl_file_path, 'w', encoding='utf-8') as f:
-    # Assuming each line in the response is a JSON object
-    for line in file_response.text.splitlines():
-        json_line = json.loads(line)
-        f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+# with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+#     # Assuming each line in the response is a JSON object
+#     for line in file_response.text.splitlines():
+#         json_line = json.loads(line)
+#         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
 
-print(f"File content has been saved to '{jsonl_file_path}'")
+# print(f"File content has been saved to '{jsonl_file_path}'")
