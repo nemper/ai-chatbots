@@ -660,6 +660,28 @@ class ConversationDatabase2:
         self.cursor.execute(check_table_sql)
         self.conn.commit()
     
+    def create_token_log_table(self):
+        """
+        Creates a table for storing token logs if it doesn't already exist.
+        """
+        check_table_sql = '''
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='chatbot_token_log' AND xtype='U')
+        CREATE TABLE chatbot_token_log (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            app_id VARCHAR(255) NOT NULL,
+            embedding_tokens INT NOT NULL,
+            prompt_tokens INT NOT NULL,
+            completion_tokens INT NOT NULL,
+            stt_tokens INT NOT NULL,
+            tts_tokens INT NOT NULL,
+            model_name VARCHAR(255) NOT NULL,
+            timestamp DATETIME DEFAULT GETDATE()
+        )
+        '''
+        print(f"Executing SQL: {check_table_sql}")
+        self.cursor.execute(check_table_sql)
+        self.conn.commit()
+
     def add_sql_record(self, app_name, user_name, thread_id, conversation):
         """
         Adds a new record to the conversations table.

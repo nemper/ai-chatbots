@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.72a",
+    version="2.0.72b",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
