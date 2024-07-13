@@ -642,21 +642,22 @@ class ConversationDatabase2:
         if exc_type or exc_val or exc_tb:
             pass
     
-    
     def create_sql_table(self):
         """
         Creates a table for storing conversations if it doesn't already exist.
         """
-        self.cursor.execute('''
+        create_table_sql = '''
         CREATE TABLE IF NOT EXISTS conversations (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id INT IDENTITY(1,1) PRIMARY KEY,  -- Use IDENTITY instead of AUTO_INCREMENT for SQL Server
             app_name VARCHAR(255) NOT NULL,
             user_name VARCHAR(255) NOT NULL,
             thread_id VARCHAR(255) NOT NULL,
-            conversation LONGTEXT NOT NULL
+            conversation NVARCHAR(MAX) NOT NULL  -- Use NVARCHAR(MAX) for long text in SQL Server
         )
-        ''')
-        # print("Table created if new.")
+        '''
+        print(f"Executing SQL: {create_table_sql}")
+        self.cursor.execute(create_table_sql)
+        self.conn.commit()
     
     def add_sql_record(self, app_name, user_name, thread_id, conversation):
         """
@@ -669,21 +670,24 @@ class ConversationDatabase2:
         - conversation: The conversation data as a list of dictionaries.
         """
         conversation_json = json.dumps(conversation)
-        self.cursor.execute('''
+        insert_sql = '''
         INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
         VALUES (?, ?, ?, ?)
-        ''', (app_name, user_name, thread_id, conversation_json))
+        '''
+        print(f"Executing SQL: {insert_sql} with params: {(app_name, user_name, thread_id, conversation_json)}")
+        self.cursor.execute(insert_sql, (app_name, user_name, thread_id, conversation_json))
         self.conn.commit()
-        # print("New record added.")
     
     def query_sql_record(self, app_name, user_name, thread_id):
         """
         Modified to return the conversation record.
         """
-        self.cursor.execute('''
+        query_sql = '''
         SELECT conversation FROM conversations 
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
-        ''', (app_name, user_name, thread_id))
+        '''
+        print(f"Executing SQL: {query_sql} with params: {(app_name, user_name, thread_id)}")
+        self.cursor.execute(query_sql, (app_name, user_name, thread_id))
         result = self.cursor.fetchone()
         if result:
             return json.loads(result[0])
@@ -703,9 +707,9 @@ class ConversationDatabase2:
         DELETE FROM conversations
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
         '''
+        print(f"Executing SQL: {delete_sql} with params: {(app_name, user_name, thread_id)}")
         self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
         self.conn.commit()
-        # print("Conversation thread deleted.")
     
     def list_threads(self, app_name, user_name):
         """
@@ -718,10 +722,12 @@ class ConversationDatabase2:
         Returns:
         - A list of thread IDs associated with the given app name and user name.
         """
-        self.cursor.execute('''
+        list_threads_sql = '''
         SELECT DISTINCT thread_id FROM conversations
         WHERE app_name = ? AND user_name = ?
-        ''', (app_name, user_name))
+        '''
+        print(f"Executing SQL: {list_threads_sql} with params: {(app_name, user_name)}")
+        self.cursor.execute(list_threads_sql, (app_name, user_name))
         threads = self.cursor.fetchall()
         return [thread[0] for thread in threads]  # Adjust based on your schema if needed
   
@@ -740,13 +746,14 @@ class ConversationDatabase2:
         new_conversation_json = json.dumps(new_conversation)
 
         # Update the record with the new conversation
-        self.cursor.execute('''
+        update_sql = '''
         UPDATE conversations
         SET conversation = ?
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
-        ''', (new_conversation_json, app_name, user_name, thread_id))
+        '''
+        print(f"Executing SQL: {update_sql} with params: {(new_conversation_json, app_name, user_name, thread_id)}")
+        self.cursor.execute(update_sql, (new_conversation_json, app_name, user_name, thread_id))
         self.conn.commit()
-        # print("Record updated with new conversation.")
 
     def close(self):
         """
@@ -754,20 +761,19 @@ class ConversationDatabase2:
         """
         self.conn.close()
 
-    # DEPRECATED OD 2.0.59c - KORISTIMO OPENAI PROJECTS - SKROZ SAM IZBRISAO JOS STARIJI PRISTUP (DVE METODE) KOJI JE BIO ODMAH ISPOD
     def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
         """
         Adds a new record to the database with the provided details.
         """
-        sql = """
+        insert_sql = """
         INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        self.cursor.execute(sql, values)
+        print(f"Executing SQL: {insert_sql} with params: {values}")
+        self.cursor.execute(insert_sql, values)
         self.conn.commit()
     
-    # ISTO od 2.0.59c
     def extract_token_sums_between_dates(self, start_date, end_date):
         """
         Extracts the summed token values between two given dates from the chatbot_token_log table.
@@ -779,7 +785,7 @@ class ConversationDatabase2:
         Returns:
         - A dictionary containing the summed values for each token type.
         """
-        sql = """
+        query_sql = """
         SELECT 
             SUM(embedding_tokens) as total_embedding_tokens, 
             SUM(prompt_tokens) as total_prompt_tokens, 
@@ -789,7 +795,8 @@ class ConversationDatabase2:
         FROM chatbot_token_log 
         WHERE timestamp BETWEEN ? AND ?
         """
-        self.cursor.execute(sql, (start_date, end_date))
+        print(f"Executing SQL: {query_sql} with params: {(start_date, end_date)}")
+        self.cursor.execute(query_sql, (start_date, end_date))
         result = self.cursor.fetchone()
         if result:
             return {
@@ -801,6 +808,7 @@ class ConversationDatabase2:
             }
         else:
             return None
+
 
 
 # in myfunc.prompts.py
