@@ -2,15 +2,14 @@ import json
 from openai import OpenAI
 client = OpenAI()
 
-
-lista = client.batches.list(limit=10)
-for list in lista:
-    print(f"{list.status}, {list.request_counts.completed} of {list.request_counts.total} {list.metadata['description']}, batch: {list.id}, input: {list.input_file_id}, output: {list.output_file_id}")
+# lista = client.batches.list(limit=10)
+# for list in lista:
+#     print(f"{list.status}, {list.request_counts.completed} of {list.request_counts.total} {list.metadata['description']}, batch: {list.id}, input: {list.input_file_id}, output: {list.output_file_id}")
     
-
-# #out_file = "batch_50.jsonl"
-# #out_file = "delfi_drugi.jsonl"
-# #out_file = "delfi_treci.jsonl"
+#out_file = "resized.jsonl"
+# out_file = "batch_50.jsonl"
+# out_file = "delfi_drugi.jsonl"
+# out_file = "delfi_treci.jsonl"
 # out_file = "delfi_cetvrti.jsonl"
 
 # # upload batch file
@@ -21,10 +20,11 @@ for list in lista:
 
 
 
-# # submit job
-# #batch_input_file_id = "file-MYG8CPN1clawFC6fyxmEYQ6T"
-# #batch_input_file_id = "file-ZUjFvy99X3ICUOh1ue1Cz35Z"
-# batch_input_file_id = "file-5o8SaKhdVgA1kU1NRwlHTOw2"
+# submit job
+#batch_input_file_id = "file-MYG8CPN1clawFC6fyxmEYQ6T"
+#batch_input_file_id = "file-ZUjFvy99X3ICUOh1ue1Cz35Z"
+#batch_input_file_id = "file-5o8SaKhdVgA1kU1NRwlHTOw2"
+# batch_input_file_id = "file-3baC7bZygRoxvfXb2dh7yn91"
 
 # client.batches.create(
 #     input_file_id=batch_input_file_id,
@@ -51,24 +51,73 @@ for list in lista:
 # print(f"do sada uradjeno {status.status}: {status.request_counts.completed} of {status.request_counts.total}")
 
 
-# # Retrieve the file content from the API - UNETI PRAVE ID !!!!!!!!!!!!!!!!!
-# #file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
-# file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
-# #file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
-# #file_id = "file-8aev1DjZ5iIVLMOCEivKiYdx"
+# Retrieve the file content from the API job 2
+file_id = "file-coMsj2mJL0iCuUzCR9RsqyfI"
+jsonl_file_path = 'response_data_resized.jsonl'
+file_response = client.files.content(file_id)
+with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+    for line in file_response.text.splitlines():
+        json_line = json.loads(line)
+        f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+print(f"File content has been saved to '{jsonl_file_path}'")
 
+
+# # Retrieve the file content from the API job 2
+# file_id = "file-KywRConlOwtE9eW9p4N9IYiw"
+# jsonl_file_path = 'error_drugi.jsonl'
 # file_response = client.files.content(file_id)
-
-# # Open the file for writing in JSONL format
-# #jsonl_file_path = 'response_data_prvi.jsonl'
-# jsonl_file_path = 'response_data_drugi.jsonl'
-# #jsonl_file_path = 'response_data_treci.jsonl'
-# #jsonl_file_path = 'response_data_cetvrti.jsonl'
-
 # with open(jsonl_file_path, 'w', encoding='utf-8') as f:
-#     # Assuming each line in the response is a JSON object
 #     for line in file_response.text.splitlines():
 #         json_line = json.loads(line)
 #         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+# print(f"File content has been saved to '{jsonl_file_path}'")
 
+# # Retrieve the file content from the API job 3
+# file_id = "file-1gJefnBRHK3P5jdCNc9yt1tQ"
+# jsonl_file_path = 'response_data_drugi.jsonl'
+# file_response = client.files.content(file_id)
+# with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+#     for line in file_response.text.splitlines():
+#         json_line = json.loads(line)
+#         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+# print(f"File content has been saved to '{jsonl_file_path}'")
+
+# # Retrieve the file content from the API job 4
+# file_id = "file-kp6T2XgcOiOpqeCDuuzxJCKF"
+# jsonl_file_path = 'response_data_treci.jsonl'
+# file_response = client.files.content(file_id)
+# with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+#     for line in file_response.text.splitlines():
+#         json_line = json.loads(line)
+#         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+# print(f"File content has been saved to '{jsonl_file_path}'")
+
+# # Retrieve the file content from the API job 2
+# file_id = "file-neN7trOOKrLQUpJORs2K7SVT"
+# jsonl_file_path = 'error_treci.jsonl'
+# file_response = client.files.content(file_id)
+# with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+#     for line in file_response.text.splitlines():
+#         json_line = json.loads(line)
+#         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+# print(f"File content has been saved to '{jsonl_file_path}'")
+
+# # Retrieve the file content from the API job 3
+# file_id = "file-qHo2OGKS4fiPo3rnt24Q9DZW"
+# jsonl_file_path = 'response_data_cetvrti.jsonl'
+# file_response = client.files.content(file_id)
+# with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+#     for line in file_response.text.splitlines():
+#         json_line = json.loads(line)
+#         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
+# print(f"File content has been saved to '{jsonl_file_path}'")
+
+# # Retrieve the file content from the API job 4
+# file_id = "file-OqAOezkeF7mkAfVOjLuLFmee"
+# jsonl_file_path = 'error_cetvrti.jsonl'
+# file_response = client.files.content(file_id)
+# with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+#     for line in file_response.text.splitlines():
+#         json_line = json.loads(line)
+#         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
 # print(f"File content has been saved to '{jsonl_file_path}'")

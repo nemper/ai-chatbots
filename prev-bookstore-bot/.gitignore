@@ -19,3 +19,5 @@ slnx.sqlite
 *.pyc
 *.html
 /venv
+/images
+*.csv

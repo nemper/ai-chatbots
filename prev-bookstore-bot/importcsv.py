@@ -18,7 +18,7 @@ def read_csv_file(csv_file):
 #csv_file_path = 'prvih_50.csv'  # Path to your CSV file
 #csv_file_path = 'delfidrugi.csv'  # Path to your CSV file
 #csv_file_path = 'delfitreci.csv'  # Path to your CSV file
-csv_file_path = 'delficetvrti.csv'  # Path to your CSV file
+csv_file_path = 'resizedfix.csv'  # Path to your CSV file
 
 korice_data = read_csv_file(csv_file_path)
 
@@ -60,10 +60,12 @@ for data in korice_data:
 #out_file = "batch_50.jsonl"
 #out_file = "delfi_drugi.jsonl"
 #out_file = "delfi_treci.jsonl"
-out_file = "delfi_cetvrti.jsonl"
+out_file = "resized.jsonl"
 
 with open(out_file, 'w', encoding='utf-8') as f:
     for item in batch_list:
         f.write(json.dumps(item, ensure_ascii=False) + '\n')
 
 print(f"Batch JSONL data has been saved to {out_file}")
+
+
