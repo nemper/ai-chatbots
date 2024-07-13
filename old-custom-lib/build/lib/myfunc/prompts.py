@@ -55,12 +55,12 @@ class PromptDatabase:
         """
         order_clause = "ORDER BY CASE PromptName "
         for idx, name in enumerate(prompt_names):
-            order_clause += f"WHEN %s THEN {idx} "
+            order_clause += f"WHEN ? THEN {idx} "
         order_clause += "END"
 
         query = f"""
         SELECT PromptString FROM PromptStrings
-        WHERE PromptName IN ({','.join(['%s'] * len(prompt_names))})
+        WHERE PromptName IN ({','.join(['?'] * len(prompt_names))})
         """ + order_clause
 
         params = tuple(prompt_names) + tuple(prompt_names)  # prompt_names repeated for both IN and ORDER BY
@@ -126,7 +126,7 @@ class PromptDatabase:
         JOIN PromptVariables pv ON ps.VariableID = pv.VariableID
         JOIN PythonFiles pf ON ps.VariableFileID = pf.FileID
         JOIN Users u ON ps.UserID = u.UserID
-        WHERE u.Username LIKE %s
+        WHERE u.Username LIKE ?
         """
         params = (f"%{username}%",)
         records = self.get_records(query, params)
@@ -135,7 +135,7 @@ class PromptDatabase:
     # za unos u pomocne tabele Users, PythonFiles, PromptVariables
     def add_record(self, table, **fields):
         columns = ', '.join(fields.keys())
-        placeholders = ', '.join(['%s'] * len(fields))
+        placeholders = ', '.join(['?'] * len(fields))
         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
         try:
             self.cursor.execute(query, tuple(fields.values()))
@@ -153,17 +153,17 @@ class PromptDatabase:
         """
         try:
             # Fetch UserID based on username
-            self.cursor.execute("SELECT UserID FROM Users WHERE Username = %s", (username,))
+            self.cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (username,))
             user_result = self.cursor.fetchone()
             user_id = user_result[0] if user_result else None
 
             # Fetch VariableID based on variablename
-            self.cursor.execute("SELECT VariableID FROM PromptVariables WHERE VariableName = %s", (variablename,))
+            self.cursor.execute("SELECT VariableID FROM PromptVariables WHERE VariableName = ?", (variablename,))
             variable_result = self.cursor.fetchone()
             variable_id = variable_result[0] if variable_result else None
 
             # Fetch FileID based on filename
-            self.cursor.execute("SELECT FileID FROM PythonFiles WHERE Filename = %s", (filename,))
+            self.cursor.execute("SELECT FileID FROM PythonFiles WHERE Filename = ?", (filename,))
             file_result = self.cursor.fetchone()
             file_id = file_result[0] if file_result else None
 
@@ -173,7 +173,7 @@ class PromptDatabase:
 
             # Correctly include FileID in the insertion command
             self.cursor.execute(
-                "INSERT INTO PromptStrings (PromptString, PromptName, Comment, UserID, VariableID, VariableFileID) VALUES (%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE Comment=VALUES(Comment), UserID=VALUES(UserID), VariableID=VALUES(VariableID), VariableFileID=VALUES(VariableFileID);",
+                "INSERT INTO PromptStrings (PromptString, PromptName, Comment, UserID, VariableID, VariableFileID) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE Comment=VALUES(Comment), UserID=VALUES(UserID), VariableID=VALUES(VariableID), VariableFileID=VALUES(VariableFileID);",
                 (promptstring, promptname, comment, user_id, variable_id, file_id)
             )
 
@@ -189,9 +189,9 @@ class PromptDatabase:
     
         :param table: The name of the table to update.
         :param fields: A dictionary of column names and their new values.
-        :param condition: A tuple containing the condition string and its values (e.g., ("UserID = %s", [user_id])).
+        :param condition: A tuple containing the condition string and its values (e.g., ("UserID = ?", [user_id])).
         """
-        set_clause = ', '.join([f"{key} = %s" for key in fields.keys()])
+        set_clause = ', '.join([f"{key} = ?" for key in fields.keys()])
         values = list(fields.values()) + condition[1]
     
         query = f"UPDATE {table} SET {set_clause} WHERE {condition[0]}"
@@ -214,7 +214,7 @@ class PromptDatabase:
         # This could involve setting foreign keys to NULL or cascading deletions, depending on your schema.
         
         # Delete the prompt from PromptStrings
-        delete_query = "DELETE FROM PromptStrings WHERE PromptName = %s;"
+        delete_query = "DELETE FROM PromptStrings WHERE PromptName = ?;"
         try:
             if self.conn is None or not self.conn.is_connected():
                 self.__enter__()
@@ -241,8 +241,8 @@ class PromptDatabase:
             # Prepare the SQL update statement
             sql_update_query = """
             UPDATE PromptStrings 
-            SET PromptString = %s, Comment = %s 
-            WHERE PromptName = %s
+            SET PromptString = ?, Comment = ? 
+            WHERE PromptName = ?
             """
         
             # Execute the update query with the new values and promptname
@@ -268,7 +268,7 @@ class PromptDatabase:
         self.cursor.execute('''
         SELECT PromptName, PromptString
         FROM PromptStrings
-        WHERE PromptString LIKE %s
+        WHERE PromptString LIKE ?
         ''', ('%' + search_string + '%',))
         results = self.cursor.fetchall()
     
@@ -287,7 +287,7 @@ class PromptDatabase:
         query = """
         SELECT PromptName, PromptString, Comment
         FROM PromptStrings
-        WHERE PromptName = %s
+        WHERE PromptName = ?
         """
         try:
             self.cursor.execute(query, (promptname,))
@@ -321,8 +321,8 @@ class PromptDatabase:
             # Dynamic SQL update statement construction
             sql_update_query = f"""
             UPDATE {table}
-            SET {column} = %s
-            WHERE {column} = %s
+            SET {column} = ?
+            WHERE {column} = ?
             """
     
             # Execute the update query with the new and original values
@@ -353,7 +353,7 @@ class PromptDatabase:
             return None
 
         # Dynamic SQL query construction
-        query = f"SELECT * FROM {table} WHERE {column} = %s"
+        query = f"SELECT * FROM {table} WHERE {column} = ?"
     
         try:
             self.cursor.execute(query, (value,))
@@ -394,7 +394,7 @@ class PromptDatabase:
         """
         self.cursor.execute('''
         SELECT prompt_text, comment FROM prompts
-        WHERE prompt_name = %s
+        WHERE prompt_name = ?
         ''', (prompt_name,))
         result = self.cursor.fetchone()
         if result:
@@ -410,7 +410,7 @@ class PromptDatabase:
         :param filename: The name of the file to fetch the path for.
         :return: The FilePath of the file if found, otherwise None.
         """
-        query = "SELECT FilePath FROM PythonFiles WHERE Filename = %s"
+        query = "SELECT FilePath FROM PythonFiles WHERE Filename = ?"
         try:
             self.cursor.execute(query, (filename,))
             result = self.cursor.fetchone()
@@ -429,7 +429,7 @@ class PromptDatabase:
         :param new_file_path: The new path for the file.
         :return: A success message or an error message.
         """
-        query = "UPDATE PythonFiles SET Filename = %s, FilePath = %s WHERE Filename = %s"
+        query = "UPDATE PythonFiles SET Filename = ?, FilePath = ? WHERE Filename = ?"
         try:
             self.cursor.execute(query, (new_filename, new_file_path, original_filename))
             self.conn.commit()
@@ -442,7 +442,7 @@ class PromptDatabase:
     def add_relationship_record(self, prompt_id, user_id, variable_id, file_id):
         query = """
         INSERT INTO CentralRelationshipTable (PromptID, UserID, VariableID, FileID)
-        VALUES (%s, %s, %s, %s);
+        VALUES (?, ?, ?, ?);
         """
         try:
             self.cursor.execute(query, (prompt_id, user_id, variable_id, file_id))
@@ -457,22 +457,22 @@ class PromptDatabase:
         params = []
 
         if prompt_id:
-            updates.append("PromptID = %s")
+            updates.append("PromptID = ?")
             params.append(prompt_id)
         if user_id:
-            updates.append("UserID = %s")
+            updates.append("UserID = ?")
             params.append(user_id)
         if variable_id:
-            updates.append("VariableID = %s")
+            updates.append("VariableID = ?")
             params.append(variable_id)
         if file_id:
-            updates.append("FileID = %s")
+            updates.append("FileID = ?")
             params.append(file_id)
 
         if not updates:
             return "No updates provided."
 
-        query = f"UPDATE CentralRelationshipTable SET {', '.join(updates)} WHERE ID = %s;"
+        query = f"UPDATE CentralRelationshipTable SET {', '.join(updates)} WHERE ID = ?;"
         params.append(record_id)
 
         try:
@@ -503,7 +503,7 @@ class PromptDatabase:
         :param value: The value to search for.
         :return: A dictionary with the record data or None if no record is found.
         """
-        query = f"SELECT * FROM {table} WHERE {name_column} = %s"
+        query = f"SELECT * FROM {table} WHERE {name_column} = ?"
         try:
             if self.conn is None or not self.conn.is_connected():
                 self.__enter__()
@@ -537,7 +537,7 @@ class PromptDatabase:
         JOIN Users u ON crt.UserID = u.UserID
         JOIN PromptVariables pv ON crt.VariableID = pv.VariableID
         JOIN PythonFiles pf ON crt.FileID = pf.FileID
-        WHERE crt.UserID = %s
+        WHERE crt.UserID = ?
         """
         try:
             # Execute the query with user_id as the parameter
@@ -574,7 +574,7 @@ class PromptDatabase:
         
         # If a prompt_id is provided, append a WHERE clause to filter by that ID
         if prompt_id is not None:
-            query += " WHERE crt.PromptID = %s"
+            query += " WHERE crt.PromptID = ?"
             self.cursor.execute(query, (prompt_id,))
         else:
             self.cursor.execute(query)
@@ -593,7 +593,7 @@ class PromptDatabase:
         query = """
         SELECT PromptName, PromptString, Comment
         FROM PromptStrings
-        WHERE PromptName LIKE %s
+        WHERE PromptName LIKE ?
         """
         try:
             # Adding wildcards to search for the string anywhere in the PromptName
@@ -671,7 +671,7 @@ class ConversationDatabase2:
         conversation_json = json.dumps(conversation)
         self.cursor.execute('''
         INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
-        VALUES (%s, %s, %s, %s)
+        VALUES (?, ?, ?, ?)
         ''', (app_name, user_name, thread_id, conversation_json))
         self.conn.commit()
         # print("New record added.")
@@ -682,7 +682,7 @@ class ConversationDatabase2:
         """
         self.cursor.execute('''
         SELECT conversation FROM conversations 
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
         ''', (app_name, user_name, thread_id))
         result = self.cursor.fetchone()
         if result:
@@ -701,7 +701,7 @@ class ConversationDatabase2:
         """
         delete_sql = '''
         DELETE FROM conversations
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
         '''
         self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
         self.conn.commit()
@@ -720,7 +720,7 @@ class ConversationDatabase2:
         """
         self.cursor.execute('''
         SELECT DISTINCT thread_id FROM conversations
-        WHERE app_name = %s AND user_name = %s
+        WHERE app_name = ? AND user_name = ?
         ''', (app_name, user_name))
         threads = self.cursor.fetchall()
         return [thread[0] for thread in threads]  # Adjust based on your schema if needed
@@ -742,8 +742,8 @@ class ConversationDatabase2:
         # Update the record with the new conversation
         self.cursor.execute('''
         UPDATE conversations
-        SET conversation = %s
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        SET conversation = ?
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
         ''', (new_conversation_json, app_name, user_name, thread_id))
         self.conn.commit()
         # print("Record updated with new conversation.")
@@ -761,7 +761,7 @@ class ConversationDatabase2:
         """
         sql = """
         INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         self.cursor.execute(sql, values)
@@ -787,7 +787,7 @@ class ConversationDatabase2:
             SUM(stt_tokens) as total_stt_tokens, 
             SUM(tts_tokens) as total_tts_tokens 
         FROM chatbot_token_log 
-        WHERE timestamp BETWEEN %s AND %s
+        WHERE timestamp BETWEEN ? AND ?
         """
         self.cursor.execute(sql, (start_date, end_date))
         result = self.cursor.fetchone()
@@ -871,7 +871,7 @@ class ConversationDatabase:
         conversation_json = json.dumps(conversation)
         self.cursor.execute('''
         INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
-        VALUES (%s, %s, %s, %s)
+        VALUES (?, ?, ?, ?)
         ''', (app_name, user_name, thread_id, conversation_json))
         self.conn.commit()
         # print("New record added.")
@@ -882,7 +882,7 @@ class ConversationDatabase:
         """
         self.cursor.execute('''
         SELECT conversation FROM conversations 
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
         ''', (app_name, user_name, thread_id))
         result = self.cursor.fetchone()
         if result:
@@ -901,7 +901,7 @@ class ConversationDatabase:
         """
         delete_sql = '''
         DELETE FROM conversations
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
         '''
         self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
         self.conn.commit()
@@ -920,7 +920,7 @@ class ConversationDatabase:
         """
         self.cursor.execute('''
         SELECT DISTINCT thread_id FROM conversations
-        WHERE app_name = %s AND user_name = %s
+        WHERE app_name = ? AND user_name = ?
         ''', (app_name, user_name))
         threads = self.cursor.fetchall()
         return [thread[0] for thread in threads]  # Adjust based on your schema if needed
@@ -942,8 +942,8 @@ class ConversationDatabase:
         # Update the record with the new conversation
         self.cursor.execute('''
         UPDATE conversations
-        SET conversation = %s
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
+        SET conversation = ?
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
         ''', (new_conversation_json, app_name, user_name, thread_id))
         self.conn.commit()
         # print("Record updated with new conversation.")
@@ -961,7 +961,7 @@ class ConversationDatabase:
         """
         sql = """
         INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         self.cursor.execute(sql, values)
@@ -987,7 +987,7 @@ class ConversationDatabase:
             SUM(stt_tokens) as total_stt_tokens, 
             SUM(tts_tokens) as total_tts_tokens 
         FROM chatbot_token_log 
-        WHERE timestamp BETWEEN %s AND %s
+        WHERE timestamp BETWEEN ? AND ?
         """
         self.cursor.execute(sql, (start_date, end_date))
         result = self.cursor.fetchone()
