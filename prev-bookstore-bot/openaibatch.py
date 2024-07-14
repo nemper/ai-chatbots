@@ -121,3 +121,8 @@ print(f"File content has been saved to '{jsonl_file_path}'")
 #         json_line = json.loads(line)
 #         f.write(json.dumps(json_line, ensure_ascii=False) + '\n')
 # print(f"File content has been saved to '{jsonl_file_path}'")
+
+
+# za embeddings:##############
+# {"custom_id": "AN_ID_THAT_HELPS_YOU_IDENTIFY_IT_LATER", "method": "POST", "url": "/v1/embeddings", "body": {"model": "text-embedding-3-large", "input": "Howdy cowboy", "encoding_format": "float"}}
+# {"custom_id": "ANOTHER_ID_THAT_HELPS_YOU_IDENTIFY_IT_LATER", "method": "POST", "url": "/v1/embeddings", "body": {"model": "text-embedding-3-large", "input": "Python and the Pandas", "encoding_format": "float"}}
