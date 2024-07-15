@@ -466,18 +466,18 @@ class PineconeUtility:
         Returns:
         - None
         """
-        index_name = st.selectbox("Odaberite index", ["neo-positive", "embedings1"], help="Unesite ime indeksa", key="opcije"
+        index_name = st.selectbox("Odaberite index", ["neo-positive", "delfi"], help="Unesite ime indeksa", key="opcije"
     )
         if index_name is not None and index_name!=" " and index_name !="" :
             col1, col2 = st.columns(2)
             if index_name=="embedings1":
             
-                pinecone=Pinecone(api_key=os.environ.get("PINECONE_API_KEY_STARI"), host="https://embedings1-b1b39e1.svc.us-west1-gcp.pinecone.io") #embedings1 (thai, free)
-                index = pinecone.Index(host="https://embedings1-b1b39e1.svc.us-west1-gcp.pinecone.io") #embedings1
+                pinecone=Pinecone(api_key=os.environ.get("PINECONE_API_KEY_S"), host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io") # delfi (djordje, serverless, 3072)
+                index = pinecone.Index(host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io") # delfi cosine
             elif index_name=="neo-positive":
                 
-                pinecone=Pinecone(api_key=os.environ.get("PINECONE_API_KEY_S"), host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io") #neo-positive (thai, serverless, 3072)
-                index = pinecone.Index(host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io") #neo-positive
+                pinecone=Pinecone(api_key=os.environ.get("PINECONE_API_KEY_S"), host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io") # neo-positive (djordje, serverless, 3072)
+                index = pinecone.Index(host="https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io") # neo-positive hybrid
             else:
                 st.error("Index ne postoji")
                 st.stop()
