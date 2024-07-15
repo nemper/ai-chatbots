@@ -470,7 +470,7 @@ class PineconeUtility:
     )
         if index_name is not None and index_name!=" " and index_name !="" :
             col1, col2 = st.columns(2)
-            if index_name=="embedings1":
+            if index_name=="delfi":
             
                 pinecone=Pinecone(api_key=os.environ.get("PINECONE_API_KEY_S"), host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io") # delfi (djordje, serverless, 3072)
                 index = pinecone.Index(host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io") # delfi cosine
