@@ -19,10 +19,10 @@ class PromptDatabase:
         """
         Initializes the connection details for the database, with the option to use environment variables as defaults.
         """
-        self.host = host if host is not None else os.getenv('DB_HOST')
-        self.user = user if user is not None else os.getenv('DB_USER')
-        self.password = password if password is not None else os.getenv('DB_PASSWORD')
-        self.database = database if database is not None else os.getenv('DB_NAME')
+        self.host = host if host is not None else os.getenv('MYSQL_HOST')
+        self.user = user if user is not None else os.getenv('MYSQL_USER')
+        self.password = password if password is not None else os.getenv('MYSQL_PASSWORD')
+        self.database = database if database is not None else os.getenv('MYSQL_NAME')
         self.conn = None
         self.cursor = None
         
@@ -615,10 +615,10 @@ class ConversationDatabase2:
     A class to interact with a MSSQL database for storing and retrieving conversation data.
     """
     def __init__(self, host=None, user=None, password=None, database=None):
-        self.host = host if host is not None else os.getenv('DB_HOST')
-        self.user = user if user is not None else os.getenv('DB_USER')
-        self.password = password if password is not None else os.getenv('DB_PASSWORD')
-        self.database = database if database is not None else os.getenv('DB_NAME')
+        self.host = host if host is not None else os.getenv('MYSQL_HOST')
+        self.user = user if user is not None else os.getenv('MYSQL_USER')
+        self.password = password if password is not None else os.getenv('MYSQL_PASSWORD')
+        self.database = database if database is not None else os.getenv('MYSQL_NAME')
         self.conn = None
         self.cursor = None
 
@@ -844,10 +844,10 @@ class ConversationDatabase:
         """
         Initializes the connection details for the database, with the option to use environment variables as defaults.
         """
-        self.host = host if host is not None else os.getenv('DB_HOST')
-        self.user = user if user is not None else os.getenv('DB_USER')
-        self.password = password if password is not None else os.getenv('DB_PASSWORD')
-        self.database = database if database is not None else os.getenv('DB_NAME')
+        self.host = host if host is not None else os.getenv('MYSQL_HOST')
+        self.user = user if user is not None else os.getenv('MYSQL_USER')
+        self.password = password if password is not None else os.getenv('MYSQL_PASSWORD')
+        self.database = database if database is not None else os.getenv('MYSQL_NAME')
         self.conn = None
         self.cursor = None
 
@@ -1048,9 +1048,9 @@ class SQLSearchTool:
         """
         Initialize the SQLSearchTool with a database URI.
 
-        :param db_uri: The database URI. If None, it reads from the DB_URI environment variable.
+        :param db_uri: The database URI. If None, it reads from the MYSQL_URI environment variable.
         """
-        db_uri = os.getenv("DB_URI")
+        db_uri = os.getenv("MYSQL_URI")
         self.db = SQLDatabase.from_uri(db_uri)
         self.llm = ChatOpenAI(model="gpt-4o", temperature=0)
         self.agent_executor = create_sql_agent(llm=self.llm, db=self.db, agent_type="openai-tools", verbose=True)
