@@ -19,6 +19,7 @@ slnx.sqlite
 *.pyc
 *.html
 /venv
+/myenv
 /images
 *.csv
 /zaupsert

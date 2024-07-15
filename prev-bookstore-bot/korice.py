@@ -3,6 +3,7 @@
 from bs4 import BeautifulSoup
 import re
 
+
 # Function to read and parse HTML, then extract specific links
 def extract_korice_links(html_file):
     # Read HTML file
