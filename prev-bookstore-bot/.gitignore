@@ -21,3 +21,6 @@ slnx.sqlite
 /venv
 /images
 *.csv
+/zaupsert
+/zabatchopis
+/zabatchembeddings

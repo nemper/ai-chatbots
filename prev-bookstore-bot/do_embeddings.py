@@ -13,7 +13,7 @@ with open("data.json", "r", encoding="utf-8") as stringio:
 texts = [item['description'] for item in data]
 metadata = [{key: value for key, value in item.items() if key != 'description'} for item in data]
 
-embed_model = "text-embedding-ada-002"
+embed_model = "text-embedding-3-large"
 batch_size = 100  # how many embeddings we create and insert at once
 
 all_upserts = []
