@@ -632,7 +632,7 @@ def do_embeddings(dokum, tip, api_key, host, index_name, index):
                retriever.add_texts(texts=my_list, metadatas=my_meta, namespace=namespace)
                
             else:
-                embed_model = "text-embedding-ada-002"
+                embed_model = "text-embedding-3-large"
                
                 batch_size = 100  # how many embeddings we create and insert at once
                 progress_text2 = "Insertovanje u Pinecone je u toku."
