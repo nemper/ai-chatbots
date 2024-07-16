@@ -12,7 +12,7 @@ from myfunc.mojafunkcija import positive_login, initialize_session_state, check_
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor, SelfQueryPositive
-from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
+from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model, graph_search
 from myfunc.varvars_dicts import work_prompts, work_vars
 
 mprompts = work_prompts()
