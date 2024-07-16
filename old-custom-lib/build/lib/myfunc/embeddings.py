@@ -802,12 +802,6 @@ def rag_tool_answer(prompt, phglob):
         prompt = uvod + prompt
         context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
         
-    elif st.session_state.rag_tool == "Korice":
-        processor = HybridQueryProcessor(namespace="korice")
-        context, scores = processor.process_query_results(prompt)
-
-    elif st.session_state.rag_tool == "Graph":
-        context = graph_search(prompt)
 
     # SQL Tool Configuration
     elif st.session_state.rag_tool == "SQL":

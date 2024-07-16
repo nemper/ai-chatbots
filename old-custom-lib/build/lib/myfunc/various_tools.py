@@ -18,9 +18,7 @@ import uuid
 
 from bs4 import BeautifulSoup
 from io import StringIO
-from neo4j import GraphDatabase
 from openai import OpenAI
-import sounddevice as sd
 import soundfile as sf
 from tqdm.auto import tqdm
 from urllib.parse import urljoin, urlparse
@@ -999,74 +997,4 @@ def predlozeni_odgovori(user_message):
         # Display the selected question
         st.session_state.prompt = st.session_state.selected_question
         st.session_state['selected_question'] = None
-    
 
-# in myfunc.various_tools.py
-def graph_search(pitanje):
-    prompt = (
-        "Preformuliši sledeće korisničko pitanje tako da bude jasno i razumljivo, uzimajući u obzir sledeće:\n"
-        "1. Imamo 3 vrste nodova: Author, Book, Genre.\n"
-        "2. Knjige imaju propertije: id, category, title, price, quantity, pages, eBook.\n"
-        "3. Nazivi nodova uvek počinju velikim slovom. Posebno je važno da žanrovi budu pravilno napisani (npr. Fantastika, Drama, Religija i mitologija).\n"
-        "4. Važno je razlikovati kategoriju od žanra. Kategorije su (npr. Knjiga, Film, Muzika, Udžbenik).\n"
-        "5. Naslovi knjiga su često u različitim padežima, pa je potrebno prepoznati pravu reč.\n\n"
-        "6. Korisnička pitanja mogu biti zbunjujuća, i važno je da prepoznamo da li se odnose na autora, knjigu ili žanr, i da ih ispravno formulišemo.\n\n"
-        "Primeri:\n"
-        "Pitanje: 'Interesuju me naslovi pisca Piramida.'\n"
-        "Preformulisano pitanje: 'Interesuju me drugi naslovi autora knjige \"Piramide\".'\n\n"
-        "Pitanje: 'Koji su autori napisali knjige u žanru drama?'\n"
-        "Preformulisano pitanje: 'Koji su autori napisali knjige koje spadaju u žanr Drama?'\n\n"
-        f"Pitanje: {pitanje}\n\n"
-        "Preformulisano pitanje:"
-    )
-    
-    try:
-        response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that always writes in Serbian."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-        preformulisano_pitanje = response.choices[0].message.content.strip()
-    except Exception as e:
-        st.write(f"Došlo je do greške: {e}")
-
-    # Neo4j detalji
-
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USER")
-    password = os.getenv("NEO4J_PASS")
-
-    # Kreiranje Neo4j sesije
-    driver = GraphDatabase.driver(uri, auth=(user, password))
-
-    def translate_question_to_cypher(question):
-        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
-                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
-                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
-                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        cypher_query = response.choices[0].message.content.strip()
-
-        # Uklanjanje nepotrebnog teksta oko upita
-        if '```cypher' in cypher_query:
-            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-
-        return cypher_query
-
-    def execute_cypher_query(cypher_query):
-        with driver.session() as session:
-            result = session.run(cypher_query)
-            return [record.data() for record in result]
-        
-
-    result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
-    return json.dumps(result, ensure_ascii=False, indent=2)

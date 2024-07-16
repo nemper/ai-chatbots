@@ -2,7 +2,6 @@
 import json
 import mysql.connector
 import os
-import pyodbc
 
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
@@ -607,232 +606,7 @@ class PromptDatabase:
         except Error as e:
             print(f"Error occurred: {e}")
             return []
-
-
-# in myfunc.prompts.py
-class ConversationDatabase2:
-    """
-    A class to interact with a MSSQL database for storing and retrieving conversation data.
-    """
-    def __init__(self, host=None, user=None, password=None, database=None):
-        self.host = host if host is not None else os.getenv('MYSQL_HOST')
-        self.user = user if user is not None else os.getenv('MYSQL_USER')
-        self.password = password if password is not None else os.getenv('MYSQL_PASS')
-        self.database = database if database is not None else os.getenv('MYSQL_NAME')
-        self.conn = None
-        self.cursor = None
-
-    def __enter__(self):
-        self.conn = pyodbc.connect(
-            driver='{ODBC Driver 18 for SQL Server}',
-            server=self.host,
-            database=self.database,
-            uid=self.user,
-            pwd=self.password,
-            TrustServerCertificate='yes'
-        )
-        self.cursor = self.conn.cursor()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.cursor is not None:
-            self.cursor.close()
-        if self.conn is not None:
-            self.conn.close()
-        if exc_type or exc_val or exc_tb:
-            pass
     
-    def create_sql_table(self):
-        """
-        Creates a table for storing conversations if it doesn't already exist.
-        """
-        check_table_sql = '''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='conversations' AND xtype='U')
-        CREATE TABLE conversations (
-            id INT IDENTITY(1,1) PRIMARY KEY,
-            app_name VARCHAR(255) NOT NULL,
-            user_name VARCHAR(255) NOT NULL,
-            thread_id VARCHAR(255) NOT NULL,
-            conversation NVARCHAR(MAX) NOT NULL
-        )
-        '''
-        print(f"Executing SQL: {check_table_sql}")
-        self.cursor.execute(check_table_sql)
-        self.conn.commit()
-    
-    def create_token_log_table(self):
-        """
-        Creates a table for storing token logs if it doesn't already exist.
-        """
-        check_table_sql = '''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='chatbot_token_log' AND xtype='U')
-        CREATE TABLE chatbot_token_log (
-            id INT IDENTITY(1,1) PRIMARY KEY,
-            app_id VARCHAR(255) NOT NULL,
-            embedding_tokens INT NOT NULL,
-            prompt_tokens INT NOT NULL,
-            completion_tokens INT NOT NULL,
-            stt_tokens INT NOT NULL,
-            tts_tokens INT NOT NULL,
-            model_name VARCHAR(255) NOT NULL,
-            timestamp DATETIME DEFAULT GETDATE()
-        )
-        '''
-        print(f"Executing SQL: {check_table_sql}")
-        self.cursor.execute(check_table_sql)
-        self.conn.commit()
-
-    def add_sql_record(self, app_name, user_name, thread_id, conversation):
-        """
-        Adds a new record to the conversations table.
-        
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        - conversation: The conversation data as a list of dictionaries.
-        """
-        conversation_json = json.dumps(conversation)
-        insert_sql = '''
-        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
-        VALUES (?, ?, ?, ?)
-        '''
-        print(f"Executing SQL: {insert_sql} with params: {(app_name, user_name, thread_id, conversation_json)}")
-        self.cursor.execute(insert_sql, (app_name, user_name, thread_id, conversation_json))
-        self.conn.commit()
-    
-    def query_sql_record(self, app_name, user_name, thread_id):
-        """
-        Modified to return the conversation record.
-        """
-        query_sql = '''
-        SELECT conversation FROM conversations 
-        WHERE app_name = ? AND user_name = ? AND thread_id = ?
-        '''
-        print(f"Executing SQL: {query_sql} with params: {(app_name, user_name, thread_id)}")
-        self.cursor.execute(query_sql, (app_name, user_name, thread_id))
-        result = self.cursor.fetchone()
-        if result:
-            return json.loads(result[0])
-        else:
-            return None
-    
-    def delete_sql_record(self, app_name, user_name, thread_id):
-        """
-        Deletes a conversation record based on app name, user name, and thread id.
-        
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        """
-        delete_sql = '''
-        DELETE FROM conversations
-        WHERE app_name = ? AND user_name = ? AND thread_id = ?
-        '''
-        print(f"Executing SQL: {delete_sql} with params: {(app_name, user_name, thread_id)}")
-        self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
-        self.conn.commit()
-    
-    def list_threads(self, app_name, user_name):
-        """
-        Lists all thread IDs for a given app name and user name.
-    
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-
-        Returns:
-        - A list of thread IDs associated with the given app name and user name.
-        """
-        list_threads_sql = '''
-        SELECT DISTINCT thread_id FROM conversations
-        WHERE app_name = ? AND user_name = ?
-        '''
-        print(f"Executing SQL: {list_threads_sql} with params: {(app_name, user_name)}")
-        self.cursor.execute(list_threads_sql, (app_name, user_name))
-        threads = self.cursor.fetchall()
-        return [thread[0] for thread in threads]  # Adjust based on your schema if needed
-  
-    def update_sql_record(self, app_name, user_name, thread_id, new_conversation):
-        """
-        Replaces the existing conversation data with new conversation data for a specific record in the conversations table.
-
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        - new_conversation: The new conversation data to replace as a list of dictionaries.
-        """
-
-        # Convert the new conversation to JSON format
-        new_conversation_json = json.dumps(new_conversation)
-
-        # Update the record with the new conversation
-        update_sql = '''
-        UPDATE conversations
-        SET conversation = ?
-        WHERE app_name = ? AND user_name = ? AND thread_id = ?
-        '''
-        print(f"Executing SQL: {update_sql} with params: {(new_conversation_json, app_name, user_name, thread_id)}")
-        self.cursor.execute(update_sql, (new_conversation_json, app_name, user_name, thread_id))
-        self.conn.commit()
-
-    def close(self):
-        """
-        Closes the database connection.
-        """
-        self.conn.close()
-
-    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
-        """
-        Adds a new record to the database with the provided details.
-        """
-        insert_sql = """
-        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        print(f"Executing SQL: {insert_sql} with params: {values}")
-        self.cursor.execute(insert_sql, values)
-        self.conn.commit()
-    
-    def extract_token_sums_between_dates(self, start_date, end_date):
-        """
-        Extracts the summed token values between two given dates from the chatbot_token_log table.
-        
-        Parameters:
-        - start_date: The start date in 'YYYY-MM-DD HH:MM:SS' format.
-        - end_date: The end date in 'YYYY-MM-DD HH:MM:SS' format.
-
-        Returns:
-        - A dictionary containing the summed values for each token type.
-        """
-        query_sql = """
-        SELECT 
-            SUM(embedding_tokens) as total_embedding_tokens, 
-            SUM(prompt_tokens) as total_prompt_tokens, 
-            SUM(completion_tokens) as total_completion_tokens, 
-            SUM(stt_tokens) as total_stt_tokens, 
-            SUM(tts_tokens) as total_tts_tokens 
-        FROM chatbot_token_log 
-        WHERE timestamp BETWEEN ? AND ?
-        """
-        print(f"Executing SQL: {query_sql} with params: {(start_date, end_date)}")
-        self.cursor.execute(query_sql, (start_date, end_date))
-        result = self.cursor.fetchone()
-        if result:
-            return {
-                "total_embedding_tokens": int(result[0]),
-                "total_prompt_tokens": int(result[1]),
-                "total_completion_tokens": int(result[2]),
-                "total_stt_tokens": int(result[3]),
-                "total_tts_tokens": int(result[4]),
-            }
-        else:
-            return None
-
-
 
 # in myfunc.prompts.py
 class ConversationDatabase:
@@ -846,7 +620,7 @@ class ConversationDatabase:
         """
         self.host = host if host is not None else os.getenv('MYSQL_HOST')
         self.user = user if user is not None else os.getenv('MYSQL_USER')
-        self.password = password if password is not None else os.getenv('MYSQL_PASSWORD')
+        self.password = password if password is not None else os.getenv('MYSQL_PASS')
         self.database = database if database is not None else os.getenv('MYSQL_NAME')
         self.conn = None
         self.cursor = None
@@ -1065,5 +839,3 @@ class SQLSearchTool:
         """
         result = self.agent_executor.invoke(query)
         return result['output']
-
-    
