@@ -119,6 +119,7 @@ SQLAlchemy==2.0.31
 streamlit==1.35.0
 streamlit-authenticator==0.3.2
 streamlit-javascript==0.1.5
+streamlit_mic_recorder==0.0.8
 tenacity==8.5.0
 tiktoken==0.7.0
 tinycss2==1.3.0
