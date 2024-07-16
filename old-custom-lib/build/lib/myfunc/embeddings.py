@@ -37,7 +37,7 @@ from semantic_router.splitters import RollingWindowSplitter
 from myfunc.mojafunkcija import st_style, pinecone_stats
 from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
-from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
+from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag, graph_search
 from myfunc.varvars_dicts import work_prompts, work_vars
 
 import markdown
@@ -782,7 +782,7 @@ class ContextRetriever:
             return compressed_output['compressed_text']
         else:
             return "Error: Unexpected structure of compressed_output"
-        
+
 
 # in myfunc.embeddings.py
 def rag_tool_answer(prompt, phglob):
@@ -802,6 +802,13 @@ def rag_tool_answer(prompt, phglob):
         prompt = uvod + prompt
         context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
         
+    elif st.session_state.rag_tool == "Korice":
+        processor = HybridQueryProcessor(namespace="korice")
+        context, scores = processor.process_query_results(prompt)
+
+    elif st.session_state.ra_tool == "Graph":
+        context = graph_search(prompt)
+
     # SQL Tool Configuration
     elif st.session_state.rag_tool == "SQL":
             processor = SQLSearchTool()

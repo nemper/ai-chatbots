@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.73c",
+    version="2.0.74",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
@@ -18,6 +18,7 @@ setup(
         'Markdown==3.6',
         'matplotlib==3.9.0',
         'mysql-connector-python==8.4.0',
+        'neo4j==5.19.0',
         'networkx==3.3',
         'openai==1.35.7',
         'pandas==2.2.2',
