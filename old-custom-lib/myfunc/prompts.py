@@ -617,7 +617,7 @@ class ConversationDatabase2:
     def __init__(self, host=None, user=None, password=None, database=None):
         self.host = host if host is not None else os.getenv('MYSQL_HOST')
         self.user = user if user is not None else os.getenv('MYSQL_USER')
-        self.password = password if password is not None else os.getenv('MYSQL_PASSWORD')
+        self.password = password if password is not None else os.getenv('MYSQL_PASS')
         self.database = database if database is not None else os.getenv('MYSQL_NAME')
         self.conn = None
         self.cursor = None

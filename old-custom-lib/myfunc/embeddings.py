@@ -806,7 +806,7 @@ def rag_tool_answer(prompt, phglob):
         processor = HybridQueryProcessor(namespace="korice")
         context, scores = processor.process_query_results(prompt)
 
-    elif st.session_state.ra_tool == "Graph":
+    elif st.session_state.rag_tool == "Graph":
         context = graph_search(prompt)
 
     # SQL Tool Configuration
