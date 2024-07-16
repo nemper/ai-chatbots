@@ -8,11 +8,12 @@ import uuid
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
+from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
 from myfunc.prompts import ConversationDatabase
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor, SelfQueryPositive
-from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model, graph_search
+from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 from myfunc.varvars_dicts import work_prompts, work_vars
 
 mprompts = work_prompts()
@@ -207,7 +208,7 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
     return result
 
 
-def rag_tool_answer(prompt, phglob):
+def rag_tool_answe2r(prompt, phglob):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
