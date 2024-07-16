@@ -57,6 +57,7 @@ langchain-core==0.2.19
 langchain-openai==0.1.8
 langchain-text-splitters==0.2.1
 langsmith==0.1.86
+lark==1.1.9
 lxml==5.2.2
 Markdown==3.6
 markdown-it-py==3.0.0
