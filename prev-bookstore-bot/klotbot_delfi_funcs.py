@@ -193,10 +193,10 @@ class ConversationDatabase:
     A class to interact with a MSSQL database for storing and retrieving conversation data.
     """
     def __init__(self, host=None, user=None, password=None, database=None):
-        self.host = host if host is not None else os.getenv('MYSQL_HOST')
-        self.user = user if user is not None else os.getenv('MYSQL_USER')
-        self.password = password if password is not None else os.getenv('MYSQL_PASS')
-        self.database = database if database is not None else os.getenv('MYSQL_NAME')
+        self.host = host if host is not None else os.getenv('MSSQL_HOST')
+        self.user = user if user is not None else os.getenv('MSSQL_USER')
+        self.password = password if password is not None else os.getenv('MSSQL_PASS')
+        self.database = database if database is not None else os.getenv('MSSQL_DB')
         self.conn = None
         self.cursor = None
 
