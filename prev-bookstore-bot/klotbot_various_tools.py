@@ -26,15 +26,11 @@ from uuid import uuid4
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
-
-from myfunc.mojafunkcija import st_style
-from klotbot_delfi import work_prompts
-
+from klotbot_promptdb import work_prompts
 mprompts = work_prompts()
 
 AZ_BLOB_API_KEY = os.getenv("AZ_BLOB_API_KEY")
 
-st_style()
 client=OpenAI()
 
 

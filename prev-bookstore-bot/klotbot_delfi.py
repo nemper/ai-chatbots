@@ -1,3 +1,7 @@
+os.environ['CHOOSE_RAG'] = "DELFI_CHOOSE_RAG"
+os.environ['SYS_RAGBOT'] = "DELFI_SYS_CHATBOT"
+os.environ['OPENAI_MODEL'] = "gpt-4o"
+
 import base64
 import io
 import mysql
@@ -7,12 +11,9 @@ import uuid
 
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
-
-os.environ['CHOOSE_RAG'] = "DELFI_CHOOSE_RAG"
-os.environ['SYS_RAGBOT'] = "DELFI_SYS_CHATBOT"
-
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search, work_prompts, HybridQueryProcessor
+from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search, HybridQueryProcessor
+from klotbot_promptdb import work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from klotbot_various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 
