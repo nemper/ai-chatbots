@@ -17,6 +17,9 @@ class PromptDatabase:
         self.database = database if database is not None else os.getenv('MSSQL_NAME')
         self.conn = None
         self.cursor = None
+        print(f"Host1: {self.host}")
+        print(f"User1: {self.user}")
+        print(f"Database1: {self.database}")
         
     def __enter__(self):
         """
