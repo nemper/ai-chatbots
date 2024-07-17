@@ -966,7 +966,7 @@ def play_audio_from_stream_s(full_response):
 def suggest_questions_s(system_message, user_message): # sync version of suggested questions (async) from myfunc
     
     response = client.chat.completions.create(
-                    model=work_vars["names"]["openai_model"],
+                    model=os.getenv("OPENAI_MODEL"),
                     messages=[system_message, user_message],
                     )
                
