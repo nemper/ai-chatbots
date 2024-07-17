@@ -11,13 +11,10 @@ from streamlit_mic_recorder import mic_recorder
 os.environ['CHOOSE_RAG'] = "DELFI_CHOOSE_RAG"
 os.environ['SYS_RAGBOT'] = "DELFI_SYS_CHATBOT"
 
-from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search
+from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search, work_prompts, HybridQueryProcessor
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
-from myfunc.retrievers import HybridQueryProcessor
-from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
-from myfunc.varvars_dicts import work_prompts, work_vars
+from klotbot_various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 
 mprompts = work_prompts()
 
@@ -36,7 +33,7 @@ default_values = {
     "filtered_messages": "",
     "selected_question": None,
     "username": "positive",
-    "openai_model": work_vars["names"]["openai_model"],
+    "openai_model": os.getenv("OPENAI_MODEL"),
     "azure_filename": "altass.csv",
     "app_name": "KlotBot",
     "upload_key": 0,
@@ -337,7 +334,7 @@ def main():
                     message_placeholder = st.empty()
                     full_response = ""
                     for response in client.chat.completions.create(
-                        model=work_vars["names"]["openai_model"],
+                        model=os.getenv("OPENAI_MODEL"),
                         temperature=0,
                         messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
                         stream=True,

@@ -10,7 +10,7 @@ import json
 import pyodbc
 from neo4j import GraphDatabase
 from openai import OpenAI
-from myfunc.varvars_dicts import work_vars
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -70,7 +70,7 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
         index_name, embeddings, "context", namespace=namespace)
 
     # Initialize OpenAI embeddings and LLM
-    llm = ChatOpenAI(model=work_vars["names"]["openai_model"], temperature=0)
+    llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL"), temperature=0.0)
     retriever = SelfQueryRetriever.from_llm(
         llm,
         vectorstore,
@@ -188,8 +188,7 @@ def order_search(id_porudzbine):
         return f"An error occurred: {e}"
     
 
-# in myfunc.prompts.py
-class ConversationDatabase2:
+class ConversationDatabase:
     """
     A class to interact with a MSSQL database for storing and retrieving conversation data.
     """
@@ -969,3 +968,309 @@ class PromptDatabase:
         except Exception as e:
             print(f"Error occurred: {e}")
             return []
+
+import streamlit as st
+@st.cache_data
+def work_prompts():
+    default_prompt = "You are a helpful assistant that always writes in Serbian."
+
+    all_prompts = {
+        # asistenti.py
+        "text_from_image": default_prompt ,
+        "text_from_audio": default_prompt ,
+
+        # embeddings.py
+        "contextual_compression": default_prompt ,
+        "rag_self_query": default_prompt ,
+        
+        # various_tools.py
+        "hyde_rag": default_prompt ,
+        "choose_rag": default_prompt ,
+
+        # klotbot
+        "sys_ragbot": default_prompt,
+        "rag_answer_reformat": default_prompt,
+
+        # upitnik
+        "gap_ba_expert" : default_prompt,
+        "gap_dt_consultant" : default_prompt,
+        "gap_service_suggestion" : default_prompt,
+        "gap_write_report" : default_prompt,
+
+        # zapisnik
+        "summary_end": default_prompt,
+        "summary_begin": default_prompt,
+        "intro_summary": default_prompt,
+        "topic_list_summary": default_prompt,
+        "date_participants_summary": default_prompt,
+        "topic_summary": default_prompt,
+        "conclusion_summary": default_prompt,
+
+        # pravnik
+        "new_law_email": default_prompt,
+        
+        # blogger
+        "sys_blogger": default_prompt,
+        
+        }
+
+    prompt_names = list(all_prompts.keys())
+
+    with PromptDatabase() as db:
+        env_vars = [os.getenv(name.upper()) for name in prompt_names]
+        prompt_map = db.get_prompts_by_names(prompt_names, env_vars)
+
+        for name in prompt_names:
+            all_prompts[name] = prompt_map.get(name, default_prompt)
+    
+    return all_prompts
+
+from pinecone import Pinecone
+from pinecone_text.sparse import BM25Encoder
+class HybridQueryProcessor:
+    """
+    A processor for executing hybrid queries using Pinecone.
+
+    This class allows the execution of queries that combine dense and sparse vector searches,
+    typically used for retrieving and ranking information based on text data.
+
+    Attributes:
+        api_key (str): The API key for Pinecone.
+        environment (str): The Pinecone environment setting.
+        alpha (float): The weight used to balance dense and sparse vector scores.
+        score (float): The score treshold.
+        index_name (str): The name of the Pinecone index to be used.
+        index: The Pinecone index object.
+        namespace (str): The namespace to be used for the Pinecone index.
+        top_k (int): The number of results to be returned.
+            
+    Example usage:
+    processor = HybridQueryProcessor(api_key=environ["PINECONE_API_KEY"], 
+                                 environment=environ["PINECONE_API_KEY"],
+                                 alpha=0.7, 
+                                 score=0.35,
+                                 index_name='custom_index'), 
+                                 namespace=environ["NAMESPACE"],
+                                 top_k = 10 # all params are optional
+
+    result = processor.hybrid_query("some query text")    
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initializes the HybridQueryProcessor with optional parameters.
+
+        The API key and environment settings are fetched from the environment variables.
+        Optional parameters can be passed to override these settings.
+
+        Args:
+            **kwargs: Optional keyword arguments:
+                - api_key (str): The API key for Pinecone (default fetched from environment variable).
+                - environment (str): The Pinecone environment setting (default fetched from environment variable).
+                - alpha (float): Weight for balancing dense and sparse scores (default 0.5).
+                - score (float): Weight for balancing dense and sparse scores (default 0.05).
+                - index_name (str): Name of the Pinecone index to be used (default 'positive').
+                - namespace (str): The namespace to be used for the Pinecone index (default fetched from environment variable).
+                - top_k (int): The number of results to be returned (default 6).
+        """
+        self.api_key = kwargs.get('api_key', os.getenv('PINECONE_API_KEY'))
+        self.environment = kwargs.get('environment', os.getenv('PINECONE_API_KEY'))
+        self.alpha = kwargs.get('alpha', 0.5)  # Default alpha is 0.5
+        self.score = kwargs.get('score', 0.05)  # Default score is 0.05
+        self.index_name = kwargs.get('index', 'neo-positive')  # Default index is 'positive'
+        self.namespace = kwargs.get('namespace', os.getenv("NAMESPACE"))  
+        self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
+        self.index = None
+        self.host = os.getenv("PINECONE_HOST")
+        self.check_namespace = True if self.namespace in ["brosureiuputstva", "servis", "casopis"] else False
+        self.init_pinecone()
+
+    def init_pinecone(self):
+        """
+        Initializes the Pinecone connection and index.
+        """
+        pinecone=Pinecone(api_key=self.api_key, host=self.host)
+        self.index = pinecone.Index(host=self.host)
+
+    def get_embedding(self, text, model="text-embedding-3-large"):
+
+        """
+        Retrieves the embedding for the given text using the specified model.
+
+        Args:
+            text (str): The text to be embedded.
+            model (str): The model to be used for embedding. Default is "text-embedding-3-large".
+
+        Returns:
+            list: The embedding vector of the given text.
+            int: The number of prompt tokens used.
+        """
+        
+        text = text.replace("\n", " ")
+        result = client.embeddings.create(input=[text], model=model).data[0].embedding
+       
+        return result
+
+    def hybrid_score_norm(self, dense, sparse):
+        """
+        Normalizes the scores from dense and sparse vectors using the alpha value.
+
+        Args:
+            dense (list): The dense vector scores.
+            sparse (dict): The sparse vector scores.
+
+        Returns:
+            tuple: Normalized dense and sparse vector scores.
+        """
+        return ([v * self.alpha for v in dense], 
+                {"indices": sparse["indices"], 
+                 "values": [v * (1 - self.alpha) for v in sparse["values"]]})
+    
+    def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
+        # Get embedding and unpack results
+        dense = self.get_embedding(text=upit)
+
+        # Use those results in another function call
+        hdense, hsparse = self.hybrid_score_norm(
+            sparse=BM25Encoder().fit([upit]).encode_queries(upit),
+            dense=dense
+        )
+
+        query_params = {
+            'top_k': top_k or self.top_k,
+            'vector': hdense,
+            'sparse_vector': hsparse,
+            'include_metadata': True,
+            'namespace': namespace or self.namespace
+        }
+
+        if filter:
+            query_params['filter'] = filter
+
+        response = self.index.query(**query_params)
+
+        matches = response.to_dict().get('matches', [])
+
+        results = []
+        for match in matches:
+            metadata = match.get('metadata', {})
+            context = metadata.get('context', '')
+            chunk = metadata.get('chunk')
+            source = metadata.get('source')
+            if self.check_namespace:
+                filename = metadata.get('filename')
+                url = metadata.get('url')
+            try:
+                score = match.get('score', 0)
+            except:
+                score = metadata.get('score', 0)
+            if context:
+                results.append({"page_content": context, "chunk": chunk, "source": source, "score": score})
+                if self.check_namespace:
+                    results[-1]["filename"] = filename
+                    results[-1]["url"] = url
+        
+        return results
+       
+    def process_query_results(self, upit, dict=False):
+        """
+        Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
+        Additionally, returns a list of scores for items that meet the score threshold.
+        """
+        tematika = self.hybrid_query(upit)
+        if not dict:
+            uk_teme = ""
+            score_list = []
+            for item in tematika:
+                if item["score"] > self.score:
+                    uk_teme += item["page_content"] + "\n\n"
+                    score_list.append(item["score"])
+                    if self.check_namespace:
+                        uk_teme += f"Filename: {item['filename']}\n"
+                        uk_teme += f"URL: {item['url']}\n\n"
+            
+            return uk_teme, score_list
+        else:
+            return tematika, []
+
+    def process_query_parent_results(self, upit):
+        """
+        Processes the query results and returns top result with source name, chunk number, and page content.
+        It is used for parent-child queries.
+
+        Args:
+            upit (str): The original query text.
+    
+        Returns:
+            tuple: Formatted string for chat prompt, source name, and chunk number.
+        """
+        tematika = self.hybrid_query(upit)
+
+        # Check if there are any matches
+        if not tematika:
+            return "No results found", None, None
+
+        # Extract information from the top result
+        top_result = tematika[0]
+        top_context = top_result.get('page_content', '')
+        top_chunk = top_result.get('chunk')
+        top_source = top_result.get('source')
+
+        return top_context, top_source, top_chunk
+
+     
+    def search_by_source(self, upit, source_result, top_k=5, filter=None):
+        """
+        Perform a similarity search for documents related to `upit`, filtered by a specific `source_result`.
+        
+        :param upit: Query string.
+        :param source_result: source to filter the search results.
+        :param top_k: Number of top results to return.
+        :param filter: Additional filter criteria for the query.
+        :return: Concatenated page content of the search results.
+        """
+        filter_criteria = filter or {}
+        filter_criteria['source'] = source_result
+        top_k = top_k or self.top_k
+        
+        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+        result = "\n\n".join(document['page_content'] for document in doc_result)
+    
+        return result
+        
+       
+    def search_by_chunk(self, upit, source_result, chunk, razmak=3, top_k=20, filter=None):
+        """
+        Perform a similarity search for documents related to `upit`, filtered by source and a specific chunk range.
+        Namespace for store can be different than for the original search.
+    
+        :param upit: Query string.
+        :param source_result: source to filter the search results.
+        :param chunk: Target chunk number.
+        :param razmak: Range to consider around the target chunk.
+        :param top_k: Number of top results to return.
+        :param filter: Additional filter criteria for the query.
+        :return: Concatenated page content of the search results.
+        """
+        
+        manji = chunk - razmak
+        veci = chunk + razmak
+    
+        filter_criteria = filter or {}
+        filter_criteria = {
+            'source': source_result,
+            '$and': [{'chunk': {'$gte': manji}}, {'chunk': {'$lte': veci}}]
+        }
+        
+        
+        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
+
+        # Sort the doc_result based on the 'chunk' value
+        sorted_doc_result = sorted(doc_result, key=lambda document: document.get('chunk', float('inf')))
+
+        # Generate the result string
+        result = " ".join(document.get('page_content', '') for document in sorted_doc_result)
+    
+        return result
+    
+    
