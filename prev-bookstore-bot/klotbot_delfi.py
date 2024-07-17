@@ -1,12 +1,10 @@
 import base64
 import io
-import json
 import mysql
 import os
 import streamlit as st
 import uuid
 
-from neo4j import GraphDatabase
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
@@ -15,16 +13,14 @@ os.environ['SYS_RAGBOT'] = "DELFI_SYS_CHATBOT"
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from myfunc.prompts import ConversationDatabase
+from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 from myfunc.varvars_dicts import work_prompts, work_vars
 
 mprompts = work_prompts()
-for key, value in mprompts.items():
-    print(key, value)
-    print("\n")
+
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
@@ -123,188 +119,6 @@ apply_background_image(avatar_bg)
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
-
-
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai.chat_models import ChatOpenAI
-from langchain.chains.query_constructor.base import AttributeInfo
-from langchain.retrievers.self_query.base import SelfQueryRetriever
-from langchain_community.vectorstores import Pinecone as LangPine
-
-def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
-    """
-    Executes a query against a Pinecone vector database using specified parameters or environment variables. 
-    The function initializes the Pinecone and OpenAI services, sets up the vector store and metadata, 
-    and performs a query using a custom retriever based on the provided input 'upit'.
-    
-    It is used for self-query on metadata.
-
-    Parameters:
-    upit (str): The query input for retrieving relevant documents.
-    api_key (str, optional): API key for Pinecone. Defaults to PINECONE_API_KEY from environment variables.
-    environment (str, optional): Pinecone environment. Defaults to PINECONE_API_KEY from environment variables.
-    index_name (str, optional): Name of the Pinecone index to use. Defaults to 'positive'.
-    namespace (str, optional): Namespace for Pinecone index. Defaults to NAMESPACE from environment variables.
-    openai_api_key (str, optional): OpenAI API key. Defaults to OPENAI_API_KEY from environment variables.
-
-    Returns:
-    str: A string containing the concatenated results from the query, with each document's metadata and content.
-         In case of an exception, it returns the exception message.
-
-    Note:
-    The function is tailored to a specific use case involving Pinecone and OpenAI services. 
-    It requires proper setup of these services and relevant environment variables.
-    """
-    
-    # Use the passed values if available, otherwise default to environment variables
-    api_key = api_key if api_key is not None else os.getenv('PINECONE_API_KEY')
-    environment = environment if environment is not None else os.getenv('PINECONE_API_KEY')
-    # index_name is already defaulted to 'positive'
-    namespace = namespace if namespace is not None else os.getenv("NAMESPACE")
-    openai_api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY")
-    host = host if host is not None else os.getenv("PINECONE_HOST")
-   
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
-    # prilagoditi stvanim potrebama metadata
-    metadata_field_info = [
-        AttributeInfo(name="authors", description="The author(s) of the document", type="string"),
-        AttributeInfo(name="category", description="The category of the document", type="string"),
-        AttributeInfo(name="chunk", description="The chunk number of the document", type="integer"),
-        AttributeInfo(name="date", description="The date of the document", type="string"),
-        AttributeInfo(name="eBook", description="Whether the document is an eBook", type="boolean"),
-        AttributeInfo(name="genres", description="The genres of the document", type="string"),
-        AttributeInfo(name="id", description="The unique ID of the document", type="string"),
-        AttributeInfo(name="text", description="The main content of the document", type="string"),
-        AttributeInfo(name="title", description="The title of the document", type="string"),
-    ]
-
-    # Define document content description
-    document_content_description = "Content of the document"
-
-    # Prilagoditi stvanom nazivu namespace-a
-    vectorstore = LangPine.from_existing_index(
-        index_name, embeddings, "context", namespace=namespace)
-
-    # Initialize OpenAI embeddings and LLM
-    llm = ChatOpenAI(model=work_vars["names"]["openai_model"], temperature=0)
-    retriever = SelfQueryRetriever.from_llm(
-        llm,
-        vectorstore,
-        document_content_description,
-        metadata_field_info,
-        enable_limit=True,
-        verbose=True,
-    )
-    try:
-        result = ""
-        doc_result = retriever.get_relevant_documents(upit)
-        for document in doc_result:
-            result += "Authors: " + ", ".join(document.metadata['authors']) + "\n"
-            result += "Category: " + document.metadata['category'] + "\n"
-            result += "Chunk: " + str(document.metadata['chunk']) + "\n"
-            result += "Date: " + document.metadata['date'] + "\n"
-            result += "eBook: " + str(document.metadata['eBook']) + "\n"
-            result += "Genres: " + ", ".join(document.metadata['genres']) + "\n"
-            result += "ID: " + document.metadata['id'] + "\n"
-            result += "Title: " + document.metadata['title'] + "\n"
-            result += "Content: " + document.page_content + "\n\n"
-    except Exception as e:
-        result = e
-    
-    return result
-
-
-def graph_search(pitanje):
-    prompt = (
-        "Preformuliši sledeće korisničko pitanje tako da bude jasno i razumljivo, uzimajući u obzir sledeće:\n"
-        "1. Imamo 3 vrste nodova: Author, Book, Genre.\n"
-        "2. Knjige imaju propertije: id, category, title, price, quantity, pages, eBook.\n"
-        "3. Nazivi nodova uvek počinju velikim slovom. Posebno je važno da žanrovi budu pravilno napisani (npr. Fantastika, Drama, Religija i mitologija).\n"
-        "4. Važno je razlikovati kategoriju od žanra. Kategorije su (npr. Knjiga, Film, Muzika, Udžbenik).\n"
-        "5. Naslovi knjiga su često u različitim padežima, pa je potrebno prepoznati pravu reč.\n\n"
-        "6. Korisnička pitanja mogu biti zbunjujuća, i važno je da prepoznamo da li se odnose na autora, knjigu ili žanr, i da ih ispravno formulišemo.\n\n"
-        "Primeri:\n"
-        "Pitanje: 'Interesuju me naslovi pisca Piramida.'\n"
-        "Preformulisano pitanje: 'Interesuju me drugi naslovi autora knjige \"Piramide\".'\n\n"
-        "Pitanje: 'Koji su autori napisali knjige u žanru drama?'\n"
-        "Preformulisano pitanje: 'Koji su autori napisali knjige koje spadaju u žanr Drama?'\n\n"
-        f"Pitanje: {pitanje}\n\n"
-        "Preformulisano pitanje:"
-    )
-    
-    try:
-        response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that always writes in Serbian."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-        preformulisano_pitanje = response.choices[0].message.content.strip()
-    except Exception as e:
-        st.write(f"Došlo je do greške: {e}")
-
-    # Neo4j detalji
-
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USER")
-    password = os.getenv("NEO4J_PASS")
-
-    # Kreiranje Neo4j sesije
-    driver = GraphDatabase.driver(uri, auth=(user, password))
-
-    def translate_question_to_cypher(question):
-        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
-                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
-                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
-                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        cypher_query = response.choices[0].message.content.strip()
-
-        # Uklanjanje nepotrebnog teksta oko upita
-        if '```cypher' in cypher_query:
-            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-
-        return cypher_query
-
-    def execute_cypher_query(cypher_query):
-        with driver.session() as session:
-            result = session.run(cypher_query)
-            return [record.data() for record in result]
-        
-
-    result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
-    return json.dumps(result, ensure_ascii=False, indent=2)
- 
-import re
-import csv
-def order_search(id_porudzbine):
-    match = re.search(r'\d{5,}', id_porudzbine)
-    if not match:
-        return "No integer found in the prompt."
-    
-    order_number = int(match.group())
-
-    try:
-        with open('orders.csv', mode='r', encoding='utf-8-sig') as file:
-            csv_reader = csv.reader(file)
-            next(csv_reader)
-            for row in csv_reader:
-                if int(row[0]) == order_number:
-                    return ", ".join(row)
-        return f"Order number {order_number} not found in the CSV file."
-    except FileNotFoundError:
-        return "The file 'orders.csv' does not exist."
-    except Exception as e:
-        return f"An error occurred: {e}"
     
 
 def rag_tool_answer(prompt, phglob):
