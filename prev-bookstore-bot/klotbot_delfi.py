@@ -10,6 +10,9 @@ from neo4j import GraphDatabase
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
+os.environ['CHOOSE_RAG'] = "DELFI_CHOOSE_RAG"
+os.environ['SYS_RAGBOT'] = "DELFI_SYS_CHATBOT"
+
 from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
 from myfunc.prompts import ConversationDatabase
@@ -19,7 +22,9 @@ from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, 
 from myfunc.varvars_dicts import work_prompts, work_vars
 
 mprompts = work_prompts()
-
+for key, value in mprompts.items():
+    print(key, value)
+    print("\n")
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
