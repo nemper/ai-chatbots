@@ -283,7 +283,29 @@ def graph_search(pitanje):
 
     result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
     return json.dumps(result, ensure_ascii=False, indent=2)
+ 
+import re
+import csv
+def order_search(id_porudzbine):
+    match = re.search(r'\d{5,}', id_porudzbine)
+    if not match:
+        return "No integer found in the prompt."
+    
+    order_number = int(match.group())
 
+    try:
+        with open('orders.csv', mode='r', encoding='utf-8-sig') as file:
+            csv_reader = csv.reader(file)
+            next(csv_reader)
+            for row in csv_reader:
+                if int(row[0]) == order_number:
+                    return ", ".join(row)
+        return f"Order number {order_number} not found in the CSV file."
+    except FileNotFoundError:
+        return "The file 'orders.csv' does not exist."
+    except Exception as e:
+        return f"An error occurred: {e}"
+    
 
 def rag_tool_answer(prompt, phglob):
     context = " "
@@ -310,8 +332,9 @@ def rag_tool_answer(prompt, phglob):
     elif  st.session_state.rag_tool == "Graph": 
         # Read the graph from the file-like object
         context = graph_search(prompt)
+
     elif st.session_state.rag_tool == "CSV":
-        context = "Reci da je odgovor: CSV"
+        context = order_search(prompt)
 
     return context, st.session_state.rag_tool
 
