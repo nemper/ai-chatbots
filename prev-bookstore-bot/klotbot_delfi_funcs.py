@@ -9,8 +9,200 @@ import os
 import json
 from neo4j import GraphDatabase
 from openai import OpenAI
-
+from pinecone import Pinecone
+from pinecone_text.sparse import BM25Encoder
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def connect_to_neo4j():
+    return GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASS")))
+
+
+def graph_search(pitanje):
+    prompt = (
+        "Preformuliši sledeće korisničko pitanje tako da bude jasno i razumljivo, uzimajući u obzir sledeće:\n"
+        "1. Imamo 3 vrste nodova: Author, Book, Genre.\n"
+        "2. Knjige imaju propertije: id, category, title, price, quantity, pages, eBook.\n"
+        "3. Nazivi nodova uvek počinju velikim slovom. Posebno je važno da žanrovi budu pravilno napisani (npr. Fantastika, Drama, Religija i mitologija).\n"
+        "4. Važno je razlikovati kategoriju od žanra. Kategorije su (npr. Knjiga, Film, Muzika, Udžbenik).\n"
+        "5. Naslovi knjiga su često u različitim padežima, pa je potrebno prepoznati pravu reč.\n\n"
+        "6. Korisnička pitanja mogu biti zbunjujuća, i važno je da prepoznamo da li se odnose na autora, knjigu ili žanr, i da ih ispravno formulišemo.\n\n"
+        "Primeri:\n"
+        "Pitanje: 'Interesuju me naslovi pisca Piramida.'\n"
+        "Preformulisano pitanje: 'Interesuju me drugi naslovi autora knjige \"Piramide\".'\n\n"
+        "Pitanje: 'Koji su autori napisali knjige u žanru drama?'\n"
+        "Preformulisano pitanje: 'Koji su autori napisali knjige koje spadaju u žanr Drama?'\n\n"
+        f"Pitanje: {pitanje}\n\n"
+        "Preformulisano pitanje:"
+    )
+    
+    try:
+        response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that always writes in Serbian."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+        preformulisano_pitanje = response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Došlo je do greške: {e}")
+
+    driver = connect_to_neo4j()
+
+    def translate_question_to_cypher(question):
+        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
+                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
+                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
+                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        cypher_query = response.choices[0].message.content.strip()
+
+        # Uklanjanje nepotrebnog teksta oko upita
+        if '```cypher' in cypher_query:
+            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
+
+        return cypher_query
+
+    def execute_cypher_query(cypher_query):
+        with driver.session() as session:
+            result = session.run(cypher_query)
+            return [record.data() for record in result]
+        
+
+    result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+def graph_search2(pitanje):
+    # Define your Pinecone API key and environment
+    pinecone_api_key = os.getenv('PINECONE_API_KEY')
+    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
+    index_name = 'delfi'
+    namespace = 'opisi'
+
+    driver = connect_to_neo4j()
+
+    def run_cypher_query(driver, query):
+        with driver.session() as session:
+            result = session.run(query)
+            book_data = []
+            for record in result:
+                book_node = record['b']
+                book_data.append({
+                    'id': book_node['id'],
+                    'title': book_node['title'],
+                    'category': book_node['category'],
+                    'price': book_node['price'],
+                    'quantity': book_node['quantity'],
+                    'pages': book_node['pages'],
+                    'eBook': book_node['eBook']
+                })
+            return book_data
+        
+    def generate_cypher_query(question):
+        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
+                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
+                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
+                 Genre names are also capitalized (e.g., Drama, Fantastika). If asked for a genre just return the genre name. Please ensure that the generated Cypher query uses these exact capitalizations."""},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        cypher_query = response.choices[0].message.content.strip()
+
+        # Uklanjanje nepotrebnog teksta oko upita
+        if '```cypher' in cypher_query:
+            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
+        # Append LIMIT clause if not present
+        if 'LIMIT' not in cypher_query:
+            cypher_query += "\nLIMIT 5"
+        return cypher_query
+
+    def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
+        # Initialize Pinecone
+        pc = Pinecone(api_key=api_key, environment=environment)
+        index = pc.Index(name=index_name)
+
+        # Fetch the vectors by IDs
+        results = index.fetch(ids=ids, namespace=namespace)
+        descriptions = {}
+
+        for id in ids:
+            if id in results['vectors']:
+                vector_data = results['vectors'][id]
+                if 'metadata' in vector_data:
+                    descriptions[id] = vector_data['metadata'].get('text', 'No description available')
+                else:
+                    descriptions[id] = 'Metadata not found in vector data.'
+            else:
+                descriptions[id] = 'No vector found with this ID.'
+        
+        return descriptions
+
+    def combine_data(book_data, descriptions):
+        combined_data = []
+        for book in book_data:
+            book_id = book['id']
+            description = descriptions.get(book_id, 'No description available')
+            combined_entry = {**book, 'description': description}
+            combined_data.append(combined_entry)
+        return combined_data
+    
+    cypher_query = generate_cypher_query(pitanje)
+    
+    book_data = run_cypher_query(driver, cypher_query)
+    
+    book_ids = [book['id'] for book in book_data]
+    try:
+        descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
+    
+        combined_data = combine_data(book_data, descriptions)
+        output = " "
+        for data in combined_data:
+            output += "Title: {data['title']}\n\n"
+            output += f"Title: {data['title']}\n"
+            output += f"Category: {data['category']}\n"
+            output += f"Price: {data['price']}\n"
+            output += f"Quantity: {data['quantity']}\n"
+            output += f"Pages: {data['pages']}\n"
+            output += f"eBook: {data['eBook']}\n"
+            output += f"Description: {data['description']}\n\n\n"
+    except:
+        output = "Nema podataka za zeljeni query."
+
+    return output
+
+
+def order_search(id_porudzbine):
+    match = re.search(r'\d{5,}', id_porudzbine)
+    if not match:
+        return "No integer found in the prompt."
+    
+    order_number = int(match.group())
+
+    try:
+        with open('orders.csv', mode='r', encoding='utf-8-sig') as file:
+            csv_reader = csv.reader(file)
+            next(csv_reader)
+            for row in csv_reader:
+                if int(row[0]) == order_number:
+                    return ", ".join(row)
+        return f"Order number {order_number} not found in the CSV file."
+    except FileNotFoundError:
+        return "The file 'orders.csv' does not exist."
+    except Exception as e:
+        return f"An error occurred: {e}"
 
 
 def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
@@ -97,216 +289,6 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
     return result
 
 
-def graph_search(pitanje):
-    prompt = (
-        "Preformuliši sledeće korisničko pitanje tako da bude jasno i razumljivo, uzimajući u obzir sledeće:\n"
-        "1. Imamo 3 vrste nodova: Author, Book, Genre.\n"
-        "2. Knjige imaju propertije: id, category, title, price, quantity, pages, eBook.\n"
-        "3. Nazivi nodova uvek počinju velikim slovom. Posebno je važno da žanrovi budu pravilno napisani (npr. Fantastika, Drama, Religija i mitologija).\n"
-        "4. Važno je razlikovati kategoriju od žanra. Kategorije su (npr. Knjiga, Film, Muzika, Udžbenik).\n"
-        "5. Naslovi knjiga su često u različitim padežima, pa je potrebno prepoznati pravu reč.\n\n"
-        "6. Korisnička pitanja mogu biti zbunjujuća, i važno je da prepoznamo da li se odnose na autora, knjigu ili žanr, i da ih ispravno formulišemo.\n\n"
-        "Primeri:\n"
-        "Pitanje: 'Interesuju me naslovi pisca Piramida.'\n"
-        "Preformulisano pitanje: 'Interesuju me drugi naslovi autora knjige \"Piramide\".'\n\n"
-        "Pitanje: 'Koji su autori napisali knjige u žanru drama?'\n"
-        "Preformulisano pitanje: 'Koji su autori napisali knjige koje spadaju u žanr Drama?'\n\n"
-        f"Pitanje: {pitanje}\n\n"
-        "Preformulisano pitanje:"
-    )
-    
-    try:
-        response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that always writes in Serbian."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-        preformulisano_pitanje = response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Došlo je do greške: {e}")
-
-    # Neo4j detalji
-
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USER")
-    password = os.getenv("NEO4J_PASS")
-
-    # Kreiranje Neo4j sesije
-    driver = GraphDatabase.driver(uri, auth=(user, password))
-
-    def translate_question_to_cypher(question):
-        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
-                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
-                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
-                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        cypher_query = response.choices[0].message.content.strip()
-
-        # Uklanjanje nepotrebnog teksta oko upita
-        if '```cypher' in cypher_query:
-            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-
-        return cypher_query
-
-    def execute_cypher_query(cypher_query):
-        with driver.session() as session:
-            result = session.run(cypher_query)
-            return [record.data() for record in result]
-        
-
-    result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
-    return json.dumps(result, ensure_ascii=False, indent=2)
-
-
-
-def graph_search2(pitanje):
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-    # Neo4j detalji
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USER")
-    password = os.getenv("NEO4J_PASS")
-
-    # Define your Pinecone API key and environment
-    pinecone_api_key = os.getenv('PINECONE_API_KEY')
-    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
-    index_name = 'delfi'
-    namespace = 'opisi'
-
-    def connect_to_neo4j(uri, user, password):
-        driver = GraphDatabase.driver(uri, auth=(user, password))
-        return driver
-
-    def run_cypher_query(driver, query):
-        with driver.session() as session:
-            result = session.run(query)
-            book_data = []
-            for record in result:
-                book_node = record['b']
-                book_data.append({
-                    'id': book_node['id'],
-                    'title': book_node['title'],
-                    'category': book_node['category'],
-                    'price': book_node['price'],
-                    'quantity': book_node['quantity'],
-                    'pages': book_node['pages'],
-                    'eBook': book_node['eBook']
-                })
-            return book_data
-        
-    def generate_cypher_query(question):
-        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
-                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
-                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
-                 Genre names are also capitalized (e.g., Drama, Fantastika). If asked for a genre just return the genre name. Please ensure that the generated Cypher query uses these exact capitalizations."""},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        cypher_query = response.choices[0].message.content.strip()
-
-        # Uklanjanje nepotrebnog teksta oko upita
-        if '```cypher' in cypher_query:
-            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-        # Append LIMIT clause if not present
-        if 'LIMIT' not in cypher_query:
-            cypher_query += "\nLIMIT 5"
-        return cypher_query
-
-    def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
-        # Initialize Pinecone
-        pc = Pinecone(api_key=api_key, environment=environment)
-        index = pc.Index(name=index_name)
-
-        # Fetch the vectors by IDs
-        results = index.fetch(ids=ids, namespace=namespace)
-        descriptions = {}
-
-        for id in ids:
-            if id in results['vectors']:
-                vector_data = results['vectors'][id]
-                if 'metadata' in vector_data:
-                    descriptions[id] = vector_data['metadata'].get('text', 'No description available')
-                else:
-                    descriptions[id] = 'Metadata not found in vector data.'
-            else:
-                descriptions[id] = 'No vector found with this ID.'
-        
-        return descriptions
-
-    def combine_data(book_data, descriptions):
-        combined_data = []
-        for book in book_data:
-            book_id = book['id']
-            description = descriptions.get(book_id, 'No description available')
-            combined_entry = {**book, 'description': description}
-            combined_data.append(combined_entry)
-        return combined_data
-    
-    driver = connect_to_neo4j(uri, user, password)
-    
-    cypher_query = generate_cypher_query(pitanje)
-    
-    book_data = run_cypher_query(driver, cypher_query)
-    
-    book_ids = [book['id'] for book in book_data]
-    try:
-        descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
-    
-        combined_data = combine_data(book_data, descriptions)
-        output = " "
-        for data in combined_data:
-            output += "Title: {data['title']}\n\n"
-            output += f"Title: {data['title']}\n"
-            output += f"Category: {data['category']}\n"
-            output += f"Price: {data['price']}\n"
-            output += f"Quantity: {data['quantity']}\n"
-            output += f"Pages: {data['pages']}\n"
-            output += f"eBook: {data['eBook']}\n"
-            output += f"Description: {data['description']}\n\n\n"
-    except Exception as e:
-        output = "Nema podataka za zeljeni query."
-
-    return output
-
-
-
-def order_search(id_porudzbine):
-    match = re.search(r'\d{5,}', id_porudzbine)
-    if not match:
-        return "No integer found in the prompt."
-    
-    order_number = int(match.group())
-
-    try:
-        with open('orders.csv', mode='r', encoding='utf-8-sig') as file:
-            csv_reader = csv.reader(file)
-            next(csv_reader)
-            for row in csv_reader:
-                if int(row[0]) == order_number:
-                    return ", ".join(row)
-        return f"Order number {order_number} not found in the CSV file."
-    except FileNotFoundError:
-        return "The file 'orders.csv' does not exist."
-    except Exception as e:
-        return f"An error occurred: {e}"
-
-        
-
-from pinecone import Pinecone
-from pinecone_text.sparse import BM25Encoder
 class HybridQueryProcessor:
     """
     A processor for executing hybrid queries using Pinecone.
