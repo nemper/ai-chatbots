@@ -1,4 +1,8 @@
 import os
+os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
+os.environ["SYS_RAGBOT"] = "DELFI_SYS_CHATBOT"
+os.environ["PINECONE_ENVIRONMENT"] = "us-west1-gcp-free"
 import base64
 import io
 import mysql
@@ -8,15 +12,15 @@ import soundfile as sf
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import SelfQueryDelfi, order_search, graph_search, graph_search2, HybridQueryProcessor
+from klotbot_delfi_funcs import SelfQueryDelfi, order_search, graph_search, graph_search2, graph_search3, HybridQueryProcessor
 from klotbot_promptdb import ConversationDatabase, work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
 import asyncio
 import aiohttp
-
 mprompts = work_prompts()
-
+for k, v in mprompts.items():
+    print(k, v)
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
@@ -372,10 +376,13 @@ def rag_tool_answer(prompt, phglob):
 
     elif st.session_state.rag_tool == "Graph2":
         context = graph_search2(prompt)
+    
+    elif st.session_state.rag_tool == "Graph3":
+        context = graph_search3(prompt)
 
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
-
+    st.write(st.session_state.rag_tool)
     return context, st.session_state.rag_tool
 
 

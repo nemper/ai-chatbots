@@ -11,6 +11,7 @@ from neo4j import GraphDatabase
 from openai import OpenAI
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
+from typing import List, Dict
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -160,13 +161,10 @@ def graph_search2(pitanje):
         return combined_data
     
     cypher_query = generate_cypher_query(pitanje)
-    
     book_data = run_cypher_query(driver, cypher_query)
-    
     book_ids = [book['id'] for book in book_data]
     try:
         descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
-    
         combined_data = combine_data(book_data, descriptions)
         output = " "
         for data in combined_data:
@@ -181,6 +179,134 @@ def graph_search2(pitanje):
     except:
         output = "Nema podataka za zeljeni query."
 
+    return output
+
+
+def graph_search3(pitanje):
+    pinecone_api_key = os.getenv('PINECONE_API_KEY')
+    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
+    index_name = 'delfi'
+    namespace = 'opisi'
+
+    # Initialize Pinecone
+    pc = Pinecone(api_key=pinecone_api_key, environment=pinecone_environment)
+    index = pc.Index(index_name)
+
+    def run_cypher_query(id):
+        driver = connect_to_neo4j()
+        query = f"MATCH (b:Book) WHERE b.id = '{id}' RETURN b"
+        with driver.session() as session:
+            result = session.run(query)
+            book_data = []
+            for record in result:
+                book_node = record['b']
+                book_data.append({
+                    'id': book_node['id'],
+                    'title': book_node['title'],
+                    'category': book_node['category'],
+                    'price': book_node['price'],
+                    'quantity': book_node['quantity'],
+                    'pages': book_node['pages'],
+                    'eBook': book_node['eBook']
+                })
+            return book_data
+
+    def get_embedding(text, model="text-embedding-3-large"):
+        response = client.embeddings.create(
+            input=[text],
+            model=model
+        ).data[0].embedding
+        # print(f"Embedding Response: {response}")
+        
+        return response
+
+    def dense_query(query, top_k=5, filter=None, namespace=namespace):
+        # Get embedding for the query
+        dense = get_embedding(text=query)
+        # print(f"Dense: {dense}")
+
+        query_params = {
+            'top_k': top_k,
+            'vector': dense,
+            'include_metadata': True,
+            'namespace': namespace
+        }
+
+        response = index.query(**query_params)
+        # print(f"Response: {response}")
+
+        matches = response.to_dict().get('matches', [])
+        # print(f"Matches: {matches}")
+
+        return matches
+
+    def search_pinecone(query: str, top_k: int = 5) -> List[Dict]:
+        # Dobij embedding za query
+        query_embedding = dense_query(query)
+        # print(f"Results: {query_embedding}")
+
+        # Ekstraktuj id i text iz metapodataka rezultata
+        matches = []
+        for match in query_embedding:
+            metadata = match['metadata']
+            matches.append({
+                'id': metadata['id'],
+                'text': metadata['text']
+            })
+        
+        # print(f"Matches: {matches}")
+        return matches
+
+    def combine_data(book_data, descriptions):
+        combined_data = []
+        for book in book_data:
+            combined_entry = {**book, 'description': descriptions}
+            combined_data.append(combined_entry)
+            print(f"Combined Entry: {combined_entry}")
+        return combined_data
+
+    query = pitanje.strip()
+    search_results = search_pinecone(query)
+
+    combined_results = []
+
+    for result in search_results:
+        
+        additional_data = run_cypher_query(result['id'])
+        
+        # Korak 3: Kombinovanje podataka
+        combined_data = combine_data(additional_data, result['text'])
+        
+        combined_results.append(combined_data)
+    
+    # return combined_results
+    # driver = connect_to_neo4j(uri, user, password)
+    
+    # query = input("Enter your search content: ")
+
+    # results = search_pinecone(query)
+    # print(f"The type of the variable 'query' is: {type(results)}")
+    # ids, descriptions = zip(*results)
+    
+    # if not ids:
+    #     print("No matching books found.")
+    #     return
+    
+    # ids_str = ', '.join([f"'{id}'" for id in ids])
+    # cypher_query = f"MATCH (b:Book) WHERE b.id IN [{ids_str}] RETURN b"
+    # book_data = run_cypher_query(driver, cypher_query)
+    
+    # combined_data = combine_data(book_data, descriptions)
+    output = " "
+    for data in combined_data:
+        output += "Title: {data['title']}\n\n"
+        output += f"Title: {data['title']}\n"
+        output += f"Category: {data['category']}\n"
+        output += f"Price: {data['price']}\n"
+        output += f"Quantity: {data['quantity']}\n"
+        output += f"Pages: {data['pages']}\n"
+        output += f"eBook: {data['eBook']}\n"
+        output += f"Description: {data['description']}\n\n\n"
     return output
 
 
@@ -261,7 +387,7 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
         index_name, embeddings, "context", namespace=namespace)
 
     # Initialize OpenAI embeddings and LLM
-    llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL"), temperature=0.0)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
     retriever = SelfQueryRetriever.from_llm(
         llm,
         vectorstore,

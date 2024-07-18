@@ -26,7 +26,6 @@ class ConversationDatabase:
                 TrustServerCertificate='yes'
             )
             self.cursor = self.conn.cursor()
-            print("Database connection established.")
         except Exception as e:
             print(f"Error connecting to the database: {e}")
             raise
@@ -53,7 +52,6 @@ class ConversationDatabase:
         )
         '''
         try:
-            print(f"Executing SQL: {check_table_sql}")
             self.cursor.execute(check_table_sql)
             self.conn.commit()
         except Exception as e:
@@ -81,12 +79,9 @@ class ConversationDatabase:
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
         '''
         try:
-            print(f"Executing SQL: {update_sql} with params: {(new_conversation_json, app_name, user_name, thread_id)}")
             self.cursor.execute(update_sql, (new_conversation_json, app_name, user_name, thread_id))
             self.conn.commit()
-            print("Update successful.")
             affected_rows = self.cursor.rowcount
-            print(f"Number of affected rows: {affected_rows}")
             if affected_rows == 0:
                 print("No rows were updated. Please check if the record exists.")
         except pyodbc.Error as e:
@@ -131,10 +126,8 @@ class ConversationDatabase:
         VALUES (?, ?, ?, ?)
         '''
         try:
-            print(f"Executing SQL: {insert_sql} with params: {(app_name, user_name, thread_id, conversation_json)}")
             self.cursor.execute(insert_sql, (app_name, user_name, thread_id, conversation_json))
             self.conn.commit()
-            print("Insert successful.")
         except pyodbc.Error as e:
             print(f"Error adding record: {e}")
             self.conn.rollback()
@@ -152,7 +145,6 @@ class ConversationDatabase:
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
         '''
         try:
-            print(f"Executing SQL: {query_sql} with params: {(app_name, user_name, thread_id)}")
             self.cursor.execute(query_sql, (app_name, user_name, thread_id))
             result = self.cursor.fetchone()
             if result:
@@ -169,7 +161,6 @@ class ConversationDatabase:
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
         '''
         try:
-            print(f"Executing SQL: {delete_sql} with params: {(app_name, user_name, thread_id)}")
             self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
             self.conn.commit()
         except Exception as e:
@@ -182,7 +173,6 @@ class ConversationDatabase:
         WHERE app_name = ? AND user_name = ?
         '''
         try:
-            print(f"Executing SQL: {list_threads_sql} with params: {(app_name, user_name)}")
             self.cursor.execute(list_threads_sql, (app_name, user_name))
             threads = self.cursor.fetchall()
             return [thread[0] for thread in threads]
@@ -197,7 +187,6 @@ class ConversationDatabase:
         """
         values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         try:
-            print(f"Executing SQL: {insert_sql} with params: {values}")
             self.cursor.execute(insert_sql, values)
             self.conn.commit()
         except Exception as e:
@@ -216,7 +205,6 @@ class ConversationDatabase:
         WHERE timestamp BETWEEN ? AND ?
         """
         try:
-            print(f"Executing SQL: {query_sql} with params: {(start_date, end_date)}")
             self.cursor.execute(query_sql, (start_date, end_date))
             result = self.cursor.fetchone()
             if result:
