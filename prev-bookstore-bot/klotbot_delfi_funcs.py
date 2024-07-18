@@ -212,7 +212,7 @@ def graph_search2(pitanje):
                 {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
                  The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
                  Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
-                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
+                 Genre names are also capitalized (e.g., Drama, Fantastika). If asked for a genre just return the genre name. Please ensure that the generated Cypher query uses these exact capitalizations."""},
                 {"role": "user", "content": prompt}
             ]
         )
@@ -223,7 +223,7 @@ def graph_search2(pitanje):
             cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
         # Append LIMIT clause if not present
         if 'LIMIT' not in cypher_query:
-            cypher_query += "\nLIMIT 25"
+            cypher_query += "\nLIMIT 5"
         return cypher_query
 
     def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
@@ -260,16 +260,12 @@ def graph_search2(pitanje):
     driver = connect_to_neo4j(uri, user, password)
     
     cypher_query = generate_cypher_query(pitanje)
-    print(f"Generated Cypher Query: {cypher_query}")
     
     book_data = run_cypher_query(driver, cypher_query)
-    # print(book_data)
     
     book_ids = [book['id'] for book in book_data]
-    # print(book_ids)
     try:
         descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
-    # print(descriptions)
     
         combined_data = combine_data(book_data, descriptions)
         output = " "

@@ -540,7 +540,6 @@ def main():
         # Original processing to generate complete_prompt
         result, alat = rag_tool_answer(st.session_state.prompt, phglob)
         st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
-        st.write("Odgovor direktno iz alata: ", result)
 
         if result=="CALENDLY":
             full_prompt=""
