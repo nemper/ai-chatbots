@@ -166,7 +166,124 @@ def graph_search(pitanje):
 
     result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
     return json.dumps(result, ensure_ascii=False, indent=2)
- 
+
+
+
+def graph_search2(pitanje):
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    # Neo4j detalji
+    uri = os.getenv("NEO4J_URI")
+    user = os.getenv("NEO4J_USER")
+    password = os.getenv("NEO4J_PASS")
+
+    # Define your Pinecone API key and environment
+    pinecone_api_key = os.getenv('PINECONE_API_KEY')
+    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
+    index_name = 'delfi'
+    namespace = 'opisi'
+
+    def connect_to_neo4j(uri, user, password):
+        driver = GraphDatabase.driver(uri, auth=(user, password))
+        return driver
+
+    def run_cypher_query(driver, query):
+        with driver.session() as session:
+            result = session.run(query)
+            book_data = []
+            for record in result:
+                book_node = record['b']
+                book_data.append({
+                    'id': book_node['id'],
+                    'title': book_node['title'],
+                    'category': book_node['category'],
+                    'price': book_node['price'],
+                    'quantity': book_node['quantity'],
+                    'pages': book_node['pages'],
+                    'eBook': book_node['eBook']
+                })
+            return book_data
+        
+    def generate_cypher_query(question):
+        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
+                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
+                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
+                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        cypher_query = response.choices[0].message.content.strip()
+
+        # Uklanjanje nepotrebnog teksta oko upita
+        if '```cypher' in cypher_query:
+            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
+
+        return cypher_query
+
+    def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
+        # Initialize Pinecone
+        pc = Pinecone(api_key=api_key, environment=environment)
+        index = pc.Index(name=index_name)
+
+        # Fetch the vectors by IDs
+        results = index.fetch(ids=ids, namespace=namespace)
+        descriptions = {}
+
+        for id in ids:
+            if id in results['vectors']:
+                vector_data = results['vectors'][id]
+                if 'metadata' in vector_data:
+                    descriptions[id] = vector_data['metadata'].get('text', 'No description available')
+                else:
+                    descriptions[id] = 'Metadata not found in vector data.'
+            else:
+                descriptions[id] = 'No vector found with this ID.'
+        
+        return descriptions
+
+    def combine_data(book_data, descriptions):
+        combined_data = []
+        for book in book_data:
+            book_id = book['id']
+            description = descriptions.get(book_id, 'No description available')
+            combined_entry = {**book, 'description': description}
+            combined_data.append(combined_entry)
+        return combined_data
+    # pinecone_index_name = "YOUR_PINECONE_INDEX_NAME"
+    
+    driver = connect_to_neo4j(uri, user, password)
+    
+    cypher_query = generate_cypher_query(pitanje)
+    print(f"Generated Cypher Query: {cypher_query}")
+    
+    book_data = run_cypher_query(driver, cypher_query)
+    # print(book_data)
+    
+    book_ids = [book['id'] for book in book_data]
+    # print(book_ids)
+    descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
+    # print(descriptions)
+    
+    combined_data = combine_data(book_data, descriptions)
+    output = " "
+    for data in combined_data:
+        output += "Title: {data['title']}\n\n"
+        output += f"Title: {data['title']}\n"
+        output += f"Category: {data['category']}\n"
+        output += f"Price: {data['price']}\n"
+        output += f"Quantity: {data['quantity']}\n"
+        output += f"Pages: {data['pages']}\n"
+        output += f"eBook: {data['eBook']}\n"
+        output += f"Description: {data['description']}\n\n\n"
+
+    return output
+
+
+
 def order_search(id_porudzbine):
     match = re.search(r'\d{5,}', id_porudzbine)
     if not match:

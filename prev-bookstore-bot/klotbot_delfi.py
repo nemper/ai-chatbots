@@ -399,6 +399,9 @@ def rag_tool_answer(prompt, phglob):
         # Read the graph from the file-like object
         context = graph_search(prompt)
 
+    elif st.session_state.rag_tool == "Graph2":
+        context = graph_search2(prompt)
+
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
 
