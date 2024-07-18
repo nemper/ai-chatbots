@@ -12,7 +12,7 @@ import soundfile as sf
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search, HybridQueryProcessor
+from klotbot_delfi_funcs import ConversationDatabase, SelfQueryDelfi, order_search, graph_search, graph_search2, HybridQueryProcessor
 from klotbot_promptdb import work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
@@ -404,7 +404,8 @@ def rag_tool_answer(prompt, phglob):
 
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
-
+    print("RAG TOOL: ", st.session_state.rag_tool)
+    print("TOOL CONTEXT: ", context)
     return context, st.session_state.rag_tool
 
 
@@ -442,7 +443,6 @@ def main():
         current_thread_id = st.session_state.thread_id
 
 
-        print("AAAAAAAAAAAAAAAAAAAA")
         with ConversationDatabase() as db:
             db.update_or_insert_sql_record(
                 st.session_state.app_name,
@@ -638,8 +638,8 @@ def main():
     
             if st.session_state.vrsta:
                 st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
-            with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
-                db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
+            #with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
+            #    db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
 
             with col2:    # cuva konverzaciju u txt fajl
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          

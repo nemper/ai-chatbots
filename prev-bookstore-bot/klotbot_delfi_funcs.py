@@ -221,7 +221,9 @@ def graph_search2(pitanje):
         # Uklanjanje nepotrebnog teksta oko upita
         if '```cypher' in cypher_query:
             cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-
+        # Append LIMIT clause if not present
+        if 'LIMIT' not in cypher_query:
+            cypher_query += "\nLIMIT 25"
         return cypher_query
 
     def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
@@ -265,20 +267,24 @@ def graph_search2(pitanje):
     
     book_ids = [book['id'] for book in book_data]
     # print(book_ids)
-    descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
+    try:
+        descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
     # print(descriptions)
     
-    combined_data = combine_data(book_data, descriptions)
-    output = " "
-    for data in combined_data:
-        output += "Title: {data['title']}\n\n"
-        output += f"Title: {data['title']}\n"
-        output += f"Category: {data['category']}\n"
-        output += f"Price: {data['price']}\n"
-        output += f"Quantity: {data['quantity']}\n"
-        output += f"Pages: {data['pages']}\n"
-        output += f"eBook: {data['eBook']}\n"
-        output += f"Description: {data['description']}\n\n\n"
+        combined_data = combine_data(book_data, descriptions)
+        output = " "
+        for data in combined_data:
+            output += "Title: {data['title']}\n\n"
+            output += f"Title: {data['title']}\n"
+            output += f"Category: {data['category']}\n"
+            output += f"Price: {data['price']}\n"
+            output += f"Quantity: {data['quantity']}\n"
+            output += f"Pages: {data['pages']}\n"
+            output += f"eBook: {data['eBook']}\n"
+            output += f"Description: {data['description']}\n\n\n"
+    except Exception as e:
+        output = "Nema podataka za zeljeni query."
+        print(f"An error occurred: {e}")
 
     return output
 
