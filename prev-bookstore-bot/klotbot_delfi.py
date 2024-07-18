@@ -18,6 +18,8 @@ from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
 import asyncio
 
+
+
 def get_structured_decision_from_model(user_query):
 
     """
@@ -250,7 +252,7 @@ default_values = {
     "vrsta": False,
     "messages": {},
     "image_ai": None,
-    "thread_id": 'ime',
+    "thread_id": str(uuid.uuid4()),
     "filtered_messages": "",
     "selected_question": None,
     "username": "positive",
@@ -259,7 +261,7 @@ default_values = {
     "app_name": "KlotBot",
     "upload_key": 0,
 }
-
+print(default_values)
 initialize_session_state(default_values)
 
 if st.session_state.thread_id not in st.session_state.messages:
@@ -435,6 +437,18 @@ def main():
         st.info("Start a conversation by selecting a new or existing conversation.")
     else:
         current_thread_id = st.session_state.thread_id
+
+
+        print("AAAAAAAAAAAAAAAAAAAA")
+        with ConversationDatabase() as db:
+            db.update_or_insert_sql_record(
+                st.session_state.app_name,
+                st.session_state.username,
+                current_thread_id,
+                st.session_state.messages[current_thread_id]
+            )
+
+
         try:
             if "Thread_" in st.session_state.thread_id:
                 contains_system_role = any(message.get('role') == 'system' for message in st.session_state.messages[thread_name])
