@@ -6,7 +6,6 @@ from langchain_community.vectorstores import Pinecone as LangPine
 import re
 import csv
 import os
-import json
 import streamlit as st
 from neo4j import GraphDatabase
 from openai import OpenAI
@@ -93,7 +92,7 @@ def graphp(pitanje):
 
     def get_descriptions_from_pinecone(ids, api_key=os.getenv('PINECONE_API_KEY'), host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io", index_name="delfi", namespace="opisi"):
         # Initialize Pinecone
-        index = connect_to_pinecone
+        index = connect_to_pinecone()
 
         # Fetch the vectors by IDs
         results = index.fetch(ids=ids, namespace=namespace)
