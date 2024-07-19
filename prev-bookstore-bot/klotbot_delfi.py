@@ -51,10 +51,10 @@ client=OpenAI()
 
 # Set chat input placeholder color
 chat_placeholder_color("#f1f1f1")
-avatar_bg="botbg.png" 
-avatar_ai="bot.png" 
+avatar_bg="delfilogo.png" 
+avatar_ai="delfiavatar.jpg" 
 avatar_user = "user.webp"
-avatar_sys = "positivelogo.jpg"
+avatar_sys = "delfilogo.png"
 
 global phglob
 phglob=st.empty()
