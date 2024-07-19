@@ -1,7 +1,7 @@
 import json
 import os
 import pyodbc
-
+import streamlit as st
 
 class ConversationDatabase:
     """
@@ -785,7 +785,7 @@ class PromptDatabase:
             print(f"Error occurred: {e}")
             return []
 
-import streamlit as st
+
 @st.cache_data
 def work_prompts():
     default_prompt = "You are a helpful assistant that always writes in Serbian."

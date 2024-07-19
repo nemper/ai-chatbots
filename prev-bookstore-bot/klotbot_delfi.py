@@ -12,7 +12,7 @@ import soundfile as sf
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import SelfQueryDelfi, order_search, graph_search, graph_search2, graph_search3, HybridQueryProcessor
+from klotbot_delfi_funcs import HybridQueryProcessor, SelfQueryDelfi, graphp, pineg, order_search
 from klotbot_promptdb import ConversationDatabase, work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
@@ -44,9 +44,8 @@ initialize_session_state(default_values)
 if st.session_state.thread_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
 
-
 api_key=os.getenv("OPENAI_API_KEY")
-client=OpenAI()
+client=OpenAI(api_key=api_key)
 
 # Set chat input placeholder color
 chat_placeholder_color("#f1f1f1")
@@ -55,10 +54,9 @@ avatar_ai="delfiavatar.jpg"
 avatar_user = "user.webp"
 avatar_sys = "delfilogo.png"
 
-global phglob
-phglob=st.empty()
+# global phglob
+# phglob=st.empty()
 
-# Function to get image as base64
 @st.cache_data
 def get_img_as_base64(file):
     with open(file, "rb") as f:
@@ -133,7 +131,7 @@ async def fetch_spoken_response(client, user_message, full_response, api_key):
         return audio_data
 
 
-async def suggest_questions(prompt, api_key = os.environ.get("OPENAI_API_KEY")):
+async def suggest_questions(prompt, api_key = api_key):
     system_message = {
         "role": "system",
         "content": f"Use only the Serbian language"
@@ -347,7 +345,7 @@ def get_structured_decision_from_model(user_query):
     return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
 
 
-def rag_tool_answer(prompt, phglob):
+def rag_tool_answer(prompt):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
@@ -365,14 +363,11 @@ def rag_tool_answer(prompt, phglob):
         prompt = uvod + prompt
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
 
-    elif  st.session_state.rag_tool == "Graph": 
-        context = graph_search(prompt)
+    elif  st.session_state.rag_tool == "Graphp": 
+        context = graphp(prompt)
 
-    elif st.session_state.rag_tool == "Graph2":
-        context = graph_search2(prompt, mprompts["rag_self_query"])
-
-    elif st.session_state.rag_tool == "Graph3":
-        context = graph_search3(prompt, mprompts["rag_self_query"])
+    elif st.session_state.rag_tool == "Pineg":
+        context = pineg(prompt)
 
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
@@ -508,7 +503,7 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
-        result, alat = rag_tool_answer(st.session_state.prompt, phglob)
+        result, alat = rag_tool_answer(st.session_state.prompt)
         st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
 
         if result=="CALENDLY":

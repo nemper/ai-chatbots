@@ -7,7 +7,7 @@ import re
 import csv
 import os
 import json
-# import streamlit as st
+import streamlit as st
 from neo4j import GraphDatabase
 from openai import OpenAI
 from pinecone import Pinecone
@@ -15,12 +15,12 @@ from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# @st.cache_resource
+@st.cache_resource
 def connect_to_neo4j():
     return GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASS")))
 
 
-def graph_search(pitanje):
+def graphp(pitanje):
     prompt = (
         "Preformuliši sledeće korisničko pitanje tako da bude jasno i razumljivo, uzimajući u obzir sledeće:\n"
         "1. Imamo 3 vrste nodova: Author, Book, Genre.\n"
@@ -83,149 +83,7 @@ def graph_search(pitanje):
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-def graph_search2(pitanje, pinecone_prompt):
-    def run_cypher_query(driver, query):
-        with driver.session() as session:
-            result = session.run(query)
-            data = []
-            for record in result:
-                for key in record.keys():
-                    node = record[key]
-                    if key == 'b':
-                        data.append({
-                            'id': node['id'],
-                            'title': node['title'],
-                            'category': node['category'],
-                            'price': node['price'],
-                            'quantity': node['quantity'],
-                            'pages': node['pages'],
-                            'eBook': node['eBook']
-                        })
-                    elif key == 'a':
-                        data.append({
-                            'name': node['name']
-                        })
-                    elif key == 'g':
-                        data.append({
-                            'name': node['name']
-                        })
-            # print(f"Data: {data}")
-            return data
-        
-    def generate_cypher_query(question):
-        prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-            "role": "system",
-            "content": (
-                "You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database."
-                "The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE."
-                "Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook."
-                "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
-                "Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."
-                "Limit the returned results to 5 records."
-                "Here is an example user question and the corresponding Cypher query: "
-                "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) = toLower('Da Vinčijev kod') RETURN b LIMIT 5."
-            )
-        },
-                {"role": "user", "content": prompt}
-            ]
-        )
-        cypher_query = response.choices[0].message.content.strip()
-        # print(f"Generated Not Cleaned Cypher Query: {cypher_query}")
-
-        # Uklanjanje nepotrebnog teksta oko upita
-        if '```cypher' in cypher_query:
-            cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-        
-        # Uklanjanje tačke ako je prisutna na kraju
-        if cypher_query.endswith('.'):
-            cypher_query = cypher_query[:-1].strip()
-
-        return cypher_query
-
-    def get_descriptions_from_pinecone(ids, api_key=os.getenv('PINECONE_API_KEY'), host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io", index_name="delfi", namespace="opisi"):
-        # Initialize Pinecone
-        pc = Pinecone(api_key=api_key, host=host)
-        index = pc.Index(host=host)
-
-        # Fetch the vectors by IDs
-        results = index.fetch(ids=ids, namespace=namespace)
-        descriptions = {}
-
-        for id in ids:
-            if id in results['vectors']:
-                vector_data = results['vectors'][id]
-                if 'metadata' in vector_data:
-                    descriptions[id] = vector_data['metadata'].get('text', 'No description available')
-                else:
-                    descriptions[id] = 'Metadata not found in vector data.'
-            else:
-                descriptions[id] = 'No vector found with this ID.'
-        
-        return descriptions
-
-    def combine_data(book_data, descriptions):
-        combined_data = []
-        for book in book_data:
-            book_id = book['id']
-            description = descriptions.get(book_id, 'No description available')
-            combined_entry = {**book, 'description': description}
-            combined_data.append(combined_entry)
-        return combined_data
-
-    def get_question():
-        while True:
-            question = pitanje
-            if question.strip():
-                return question
-            else:
-                print("Pitanje ne može biti prazno. Molimo pokušajte ponovo.")
-
-    def is_valid_cypher(cypher_query):
-        # Provera validnosti Cypher upita (osnovna provera)
-        if not cypher_query or "MATCH" not in cypher_query.upper():
-            # print("Cypher upit nije validan.")
-            return False
-        # print("Cypher upit je validan.")
-        return True
-    def has_id_field(data):
-        # Provera da li vraćeni podaci sadrže 'id' polje
-        return all('id' in item for item in data)
-    
-    driver = connect_to_neo4j()
-    while True:
-        question = get_question()
-        cypher_query = generate_cypher_query(question)
-        
-        if is_valid_cypher(cypher_query):
-            book_data = run_cypher_query(driver, cypher_query)
-            if not has_id_field(book_data):
-                return book_data
-
-            book_ids = [book['id'] for book in book_data]
-            context = get_descriptions_from_pinecone(book_ids)
-            print("ABV", context)
-            combined_data = combine_data(book_data, context)
-            output = " "
-            for data in combined_data:
-                output += "Title: {data['title']}\n\n"
-                output += f"Title: {data['title']}\n"
-                output += f"Category: {data['category']}\n"
-                output += f"Price: {data['price']}\n"
-                output += f"Quantity: {data['quantity']}\n"
-                output += f"Pages: {data['pages']}\n"
-                output += f"eBook: {data['eBook']}\n"
-                output += f"Description: {data['description']}\n\n\n"
-            return output
-        else:
-            return "Traženi pojam nije jasan. Molimo pokušajte ponovo."
-
-
-def graph_search3(pitanje):
+def pineg(pitanje):
     pinecone_api_key = os.getenv('PINECONE_API_KEY')
     pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
     index_name = 'delfi'
@@ -513,7 +371,7 @@ class HybridQueryProcessor:
         self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
         self.index = None
         self.host = os.getenv("PINECONE_HOST")
-        self.check_namespace = True if self.namespace in ["brosureiuputstva", "servis", "casopis"] else False
+        self.check_namespace = True if self.namespace in ["brosureiuputstva", "servis"] else False
         self.init_pinecone()
 
     def init_pinecone(self):
@@ -522,25 +380,6 @@ class HybridQueryProcessor:
         """
         pinecone=Pinecone(api_key=self.api_key, host=self.host)
         self.index = pinecone.Index(host=self.host)
-
-    def get_embedding(self, text, model="text-embedding-3-large"):
-
-        """
-        Retrieves the embedding for the given text using the specified model.
-
-        Args:
-            text (str): The text to be embedded.
-            model (str): The model to be used for embedding. Default is "text-embedding-3-large".
-
-        Returns:
-            list: The embedding vector of the given text.
-            int: The number of prompt tokens used.
-        """
-        
-        text = text.replace("\n", " ")
-        result = client.embeddings.create(input=[text], model=model).data[0].embedding
-       
-        return result
 
     def hybrid_score_norm(self, dense, sparse):
         """
@@ -623,84 +462,3 @@ class HybridQueryProcessor:
             return uk_teme, score_list
         else:
             return tematika, []
-
-    def process_query_parent_results(self, upit):
-        """
-        Processes the query results and returns top result with source name, chunk number, and page content.
-        It is used for parent-child queries.
-
-        Args:
-            upit (str): The original query text.
-    
-        Returns:
-            tuple: Formatted string for chat prompt, source name, and chunk number.
-        """
-        tematika = self.hybrid_query(upit)
-
-        # Check if there are any matches
-        if not tematika:
-            return "No results found", None, None
-
-        # Extract information from the top result
-        top_result = tematika[0]
-        top_context = top_result.get('page_content', '')
-        top_chunk = top_result.get('chunk')
-        top_source = top_result.get('source')
-
-        return top_context, top_source, top_chunk
-
-     
-    def search_by_source(self, upit, source_result, top_k=5, filter=None):
-        """
-        Perform a similarity search for documents related to `upit`, filtered by a specific `source_result`.
-        
-        :param upit: Query string.
-        :param source_result: source to filter the search results.
-        :param top_k: Number of top results to return.
-        :param filter: Additional filter criteria for the query.
-        :return: Concatenated page content of the search results.
-        """
-        filter_criteria = filter or {}
-        filter_criteria['source'] = source_result
-        top_k = top_k or self.top_k
-        
-        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
-        result = "\n\n".join(document['page_content'] for document in doc_result)
-    
-        return result
-        
-       
-    def search_by_chunk(self, upit, source_result, chunk, razmak=3, top_k=20, filter=None):
-        """
-        Perform a similarity search for documents related to `upit`, filtered by source and a specific chunk range.
-        Namespace for store can be different than for the original search.
-    
-        :param upit: Query string.
-        :param source_result: source to filter the search results.
-        :param chunk: Target chunk number.
-        :param razmak: Range to consider around the target chunk.
-        :param top_k: Number of top results to return.
-        :param filter: Additional filter criteria for the query.
-        :return: Concatenated page content of the search results.
-        """
-        
-        manji = chunk - razmak
-        veci = chunk + razmak
-    
-        filter_criteria = filter or {}
-        filter_criteria = {
-            'source': source_result,
-            '$and': [{'chunk': {'$gte': manji}}, {'chunk': {'$lte': veci}}]
-        }
-        
-        
-        doc_result = self.hybrid_query(upit, top_k=top_k, filter=filter_criteria, namespace=self.namespace)
-
-        # Sort the doc_result based on the 'chunk' value
-        sorted_doc_result = sorted(doc_result, key=lambda document: document.get('chunk', float('inf')))
-
-        # Generate the result string
-        result = " ".join(document.get('page_content', '') for document in sorted_doc_result)
-    
-        return result
-    
