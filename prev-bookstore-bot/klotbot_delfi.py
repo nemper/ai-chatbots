@@ -18,9 +18,7 @@ from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
 import asyncio
 import aiohttp
-mprompts = work_prompts()
-for k, v in mprompts.items():
-    print(k, v)
+
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,

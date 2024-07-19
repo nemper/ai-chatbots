@@ -7,6 +7,7 @@ import re
 import csv
 import os
 import json
+# import streamlit as st
 from neo4j import GraphDatabase
 from openai import OpenAI
 from pinecone import Pinecone
@@ -14,7 +15,7 @@ from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-
+# @st.cache_data
 def connect_to_neo4j():
     return GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASS")))
 
@@ -83,51 +84,72 @@ def graph_search(pitanje):
 
 
 def graph_search2(pitanje):
-    # Define your Pinecone API key and environment
     pinecone_api_key = os.getenv('PINECONE_API_KEY')
     pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
     index_name = 'delfi'
     namespace = 'opisi'
 
-    driver = connect_to_neo4j()
-
     def run_cypher_query(driver, query):
         with driver.session() as session:
             result = session.run(query)
-            book_data = []
+            data = []
             for record in result:
-                book_node = record['b']
-                book_data.append({
-                    'id': book_node['id'],
-                    'title': book_node['title'],
-                    'category': book_node['category'],
-                    'price': book_node['price'],
-                    'quantity': book_node['quantity'],
-                    'pages': book_node['pages'],
-                    'eBook': book_node['eBook']
-                })
-            return book_data
+                for key in record.keys():
+                    node = record[key]
+                    if key == 'b':
+                        data.append({
+                            'id': node['id'],
+                            'title': node['title'],
+                            'category': node['category'],
+                            'price': node['price'],
+                            'quantity': node['quantity'],
+                            'pages': node['pages'],
+                            'eBook': node['eBook']
+                        })
+                    elif key == 'a':
+                        data.append({
+                            'name': node['name']
+                        })
+                    elif key == 'g':
+                        data.append({
+                            'name': node['name']
+                        })
+            # print(f"Data: {data}")
+            return data
         
     def generate_cypher_query(question):
         prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
-                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
-                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
-                 Genre names are also capitalized (e.g., Drama, Fantastika). If asked for a genre just return the genre name. Please ensure that the generated Cypher query uses these exact capitalizations."""},
+                {
+            "role": "system",
+            "content": (
+                "You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database."
+                "The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE."
+                "Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook."
+                "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
+                "Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."
+                "Limit the returned results to 5 records."
+                "Here is an example user question and the corresponding Cypher query: "
+                "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) = toLower('Da Vinčijev kod') RETURN b LIMIT 5."
+            )
+        },
                 {"role": "user", "content": prompt}
             ]
         )
         cypher_query = response.choices[0].message.content.strip()
+        # print(f"Generated Not Cleaned Cypher Query: {cypher_query}")
 
         # Uklanjanje nepotrebnog teksta oko upita
         if '```cypher' in cypher_query:
             cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-        # Append LIMIT clause if not present
-        if 'LIMIT' not in cypher_query:
-            cypher_query += "\nLIMIT 5"
+        
+        # Uklanjanje tačke ako je prisutna na kraju
+        if cypher_query.endswith('.'):
+            cypher_query = cypher_query[:-1].strip()
+
         return cypher_query
 
     def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
@@ -159,27 +181,55 @@ def graph_search2(pitanje):
             combined_entry = {**book, 'description': description}
             combined_data.append(combined_entry)
         return combined_data
-    
-    cypher_query = generate_cypher_query(pitanje)
-    book_data = run_cypher_query(driver, cypher_query)
-    book_ids = [book['id'] for book in book_data]
-    try:
-        descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
-        combined_data = combine_data(book_data, descriptions)
-        output = " "
-        for data in combined_data:
-            output += "Title: {data['title']}\n\n"
-            output += f"Title: {data['title']}\n"
-            output += f"Category: {data['category']}\n"
-            output += f"Price: {data['price']}\n"
-            output += f"Quantity: {data['quantity']}\n"
-            output += f"Pages: {data['pages']}\n"
-            output += f"eBook: {data['eBook']}\n"
-            output += f"Description: {data['description']}\n\n\n"
-    except:
-        output = "Nema podataka za zeljeni query."
 
-    return output
+    def get_question():
+        while True:
+            question = pitanje
+            if question.strip():
+                return question
+            else:
+                print("Pitanje ne može biti prazno. Molimo pokušajte ponovo.")
+
+    def is_valid_cypher(cypher_query):
+        # Provera validnosti Cypher upita (osnovna provera)
+        if not cypher_query or "MATCH" not in cypher_query.upper():
+            # print("Cypher upit nije validan.")
+            return False
+        # print("Cypher upit je validan.")
+        return True
+    
+    driver = connect_to_neo4j()
+    while True:
+        question = get_question()
+        cypher_query = generate_cypher_query(question)
+        print(f"Generated Cypher Query: {cypher_query}")
+        
+        if is_valid_cypher(cypher_query):
+            try:
+                book_data = run_cypher_query(driver, cypher_query)
+                print(f"Book Data: {book_data}")
+                # print(f"Book Data: {book_data}")
+                # print(has_id_field(book_data))
+
+                book_ids = [book['id'] for book in book_data]
+                descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
+                print(f"Descriptions: {descriptions}")
+                combined_data = combine_data(book_data, descriptions)
+                output = " "
+                for data in combined_data:
+                    output += "Title: {data['title']}\n\n"
+                    output += f"Title: {data['title']}\n"
+                    output += f"Category: {data['category']}\n"
+                    output += f"Price: {data['price']}\n"
+                    output += f"Quantity: {data['quantity']}\n"
+                    output += f"Pages: {data['pages']}\n"
+                    output += f"eBook: {data['eBook']}\n"
+                    output += f"Description: {data['description']}\n\n\n"
+                return output
+            except Exception as e:
+                return f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo."
+        else:
+            return "Traženi pojam nije jasan. Molimo pokušajte ponovo."
 
 
 def graph_search3(pitanje):
