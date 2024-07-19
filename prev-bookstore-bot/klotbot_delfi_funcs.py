@@ -371,7 +371,7 @@ class HybridQueryProcessor:
         self.namespace = kwargs.get('namespace', os.getenv("NAMESPACE"))  
         self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
         self.index = None
-        self.host = os.getenv("PINECONE_HOST")
+        self.host = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
         self.check_namespace = True if self.namespace in ["brosureiuputstva", "servis"] else False
         self.init_pinecone()
 

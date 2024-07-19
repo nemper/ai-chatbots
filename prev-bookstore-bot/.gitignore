@@ -10,7 +10,7 @@
 *.docx
 .vsidx
 .wsuo
-*.csv
+#*.csv
 *.xlsx
 slnx.sqlite
 *.JSONL
@@ -21,7 +21,7 @@ slnx.sqlite
 /venv
 /myenv
 /images
-*.csv
+#*.csv
 /zaupsert
 /zabatchopis
 /zabatchembeddings
