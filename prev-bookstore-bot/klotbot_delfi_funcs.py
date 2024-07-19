@@ -15,7 +15,7 @@ from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# @st.cache_data
+# @st.cache_resource
 def connect_to_neo4j():
     return GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASS")))
 
@@ -83,12 +83,7 @@ def graph_search(pitanje):
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-def graph_search2(pitanje):
-    pinecone_api_key = os.getenv('PINECONE_API_KEY')
-    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
-    index_name = 'delfi'
-    namespace = 'opisi'
-
+def graph_search2(pitanje, pinecone_prompt):
     def run_cypher_query(driver, query):
         with driver.session() as session:
             result = session.run(query)
@@ -152,10 +147,10 @@ def graph_search2(pitanje):
 
         return cypher_query
 
-    def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
+    def get_descriptions_from_pinecone(ids, api_key=os.getenv('PINECONE_API_KEY'), host="https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io", index_name="delfi", namespace="opisi"):
         # Initialize Pinecone
-        pc = Pinecone(api_key=api_key, environment=environment)
-        index = pc.Index(name=index_name)
+        pc = Pinecone(api_key=api_key, host=host)
+        index = pc.Index(host=host)
 
         # Fetch the vectors by IDs
         results = index.fetch(ids=ids, namespace=namespace)
@@ -197,37 +192,35 @@ def graph_search2(pitanje):
             return False
         # print("Cypher upit je validan.")
         return True
+    def has_id_field(data):
+        # Provera da li vraćeni podaci sadrže 'id' polje
+        return all('id' in item for item in data)
     
     driver = connect_to_neo4j()
     while True:
         question = get_question()
         cypher_query = generate_cypher_query(question)
-        print(f"Generated Cypher Query: {cypher_query}")
         
         if is_valid_cypher(cypher_query):
-            try:
-                book_data = run_cypher_query(driver, cypher_query)
-                print(f"Book Data: {book_data}")
-                # print(f"Book Data: {book_data}")
-                # print(has_id_field(book_data))
+            book_data = run_cypher_query(driver, cypher_query)
+            if not has_id_field(book_data):
+                return book_data
 
-                book_ids = [book['id'] for book in book_data]
-                descriptions = get_descriptions_from_pinecone(book_ids, pinecone_api_key, pinecone_environment, index_name, namespace)
-                print(f"Descriptions: {descriptions}")
-                combined_data = combine_data(book_data, descriptions)
-                output = " "
-                for data in combined_data:
-                    output += "Title: {data['title']}\n\n"
-                    output += f"Title: {data['title']}\n"
-                    output += f"Category: {data['category']}\n"
-                    output += f"Price: {data['price']}\n"
-                    output += f"Quantity: {data['quantity']}\n"
-                    output += f"Pages: {data['pages']}\n"
-                    output += f"eBook: {data['eBook']}\n"
-                    output += f"Description: {data['description']}\n\n\n"
-                return output
-            except Exception as e:
-                return f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo."
+            book_ids = [book['id'] for book in book_data]
+            context = get_descriptions_from_pinecone(book_ids)
+            print("ABV", context)
+            combined_data = combine_data(book_data, context)
+            output = " "
+            for data in combined_data:
+                output += "Title: {data['title']}\n\n"
+                output += f"Title: {data['title']}\n"
+                output += f"Category: {data['category']}\n"
+                output += f"Price: {data['price']}\n"
+                output += f"Quantity: {data['quantity']}\n"
+                output += f"Pages: {data['pages']}\n"
+                output += f"eBook: {data['eBook']}\n"
+                output += f"Description: {data['description']}\n\n\n"
+            return output
         else:
             return "Traženi pojam nije jasan. Molimo pokušajte ponovo."
 

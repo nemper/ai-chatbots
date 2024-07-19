@@ -18,6 +18,7 @@ from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
 import asyncio
 import aiohttp
+mprompts = work_prompts()
 
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
@@ -353,33 +354,29 @@ def rag_tool_answer(prompt, phglob):
     if  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor()
         context, scores = processor.process_query_results(prompt)
-        # st.info("Score po chunku:")
-        # st.write(scores)
-        
+
     elif  st.session_state.rag_tool == "Opisi":
-        # Example configuration for SelfQuery
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(prompt)
                 
     elif  st.session_state.rag_tool == "Korice":
-        # Example configuration for SelfQuery
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
 
     elif  st.session_state.rag_tool == "Graph": 
-        # Read the graph from the file-like object
         context = graph_search(prompt)
 
     elif st.session_state.rag_tool == "Graph2":
-        context = graph_search2(prompt)
-    
+        context = graph_search2(prompt, mprompts["rag_self_query"])
+
     elif st.session_state.rag_tool == "Graph3":
-        context = graph_search3(prompt)
+        context = graph_search3(prompt, mprompts["rag_self_query"])
 
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
+
     st.write(st.session_state.rag_tool)
     return context, st.session_state.rag_tool
 
@@ -417,7 +414,6 @@ def main():
     else:
         current_thread_id = st.session_state.thread_id
 
-
         with ConversationDatabase() as db:
             db.update_or_insert_sql_record(
                 st.session_state.app_name,
@@ -425,7 +421,6 @@ def main():
                 current_thread_id,
                 st.session_state.messages[current_thread_id]
             )
-
 
         try:
             if "Thread_" in st.session_state.thread_id:
