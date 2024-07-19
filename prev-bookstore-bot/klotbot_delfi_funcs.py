@@ -19,6 +19,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def connect_to_neo4j():
     return GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASS")))
 
+@st.cache_resource
+def connect_to_pinecone():
+    pinecone_api_key = os.getenv('PINECONE_API_KEY')
+    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
+    index_name = 'delfi'
+    pc = Pinecone(api_key=pinecone_api_key, environment=pinecone_environment)
+    return pc.Index(index_name)
 
 def graphp(pitanje):
     prompt = (
@@ -84,14 +91,8 @@ def graphp(pitanje):
 
 
 def pineg(pitanje):
-    pinecone_api_key = os.getenv('PINECONE_API_KEY')
-    pinecone_environment = os.getenv('PINECONE_ENVIRONMENT')
-    index_name = 'delfi'
     namespace = 'opisi'
-
-    # Initialize Pinecone
-    pc = Pinecone(api_key=pinecone_api_key, environment=pinecone_environment)
-    index = pc.Index(index_name)
+    index = connect_to_pinecone()
 
     def run_cypher_query(id):
         driver = connect_to_neo4j()
@@ -462,3 +463,23 @@ class HybridQueryProcessor:
             return uk_teme, score_list
         else:
             return tematika, []
+        
+    def get_embedding(self, text, model="text-embedding-3-large"):
+
+        """
+        Retrieves the embedding for the given text using the specified model.
+
+        Args:
+            text (str): The text to be embedded.
+            model (str): The model to be used for embedding. Default is "text-embedding-3-large".
+
+        Returns:
+            list: The embedding vector of the given text.
+            int: The number of prompt tokens used.
+        """
+        
+        text = text.replace("\n", " ")
+        result = client.embeddings.create(input=[text], model=model).data[0].embedding
+       
+        return result
+    
