@@ -27,186 +27,66 @@ def connect_to_pinecone():
     return pc.Index(index_name)
 
 def graphp(pitanje):
-    def run_cypher_query(driver, query):
-        with driver.session() as session:
-            results = session.run(query)
-            cleaned_results = []
-            for record in results:
-                cleaned_record = {}
-                for key, value in record.items():
-                    if isinstance(value, neo4j.graph.Node):
-                        # Ako je vrednost Node objekat, pristupamo properties atributima
-                        properties = {k: v for k, v in value._properties.items()}
-                    else:
-                        # Ako je vrednost obična vrednost, samo je dodamo
-                        properties = {key: value}
-                    
-                    for prop_key, prop_value in properties.items():
-                        # Uklanjamo prefiks 'b.' ako postoji
-                        new_key = prop_key.split('.')[-1]
-                        cleaned_record[new_key] = prop_value
-                
-                cleaned_results.append(cleaned_record)
-        
-        # print(f"Cleaned Results: {cleaned_results}")
-        return cleaned_results
-        
-    def generate_cypher_query(question):
+    prompt = (
+        "Preformuliši sledeće korisničko pitanje tako da bude jasno i razumljivo, uzimajući u obzir sledeće:\n"
+        "1. Imamo 3 vrste nodova: Author, Book, Genre.\n"
+        "2. Knjige imaju propertije: id, category, title, price, quantity, pages, eBook.\n"
+        "3. Nazivi nodova uvek počinju velikim slovom. Posebno je važno da žanrovi budu pravilno napisani (npr. Fantastika, Drama, Religija i mitologija).\n"
+        "4. Važno je razlikovati kategoriju od žanra. Kategorije su (npr. Knjiga, Film, Muzika, Udžbenik).\n"
+        "5. Naslovi knjiga su često u različitim padežima, pa je potrebno prepoznati pravu reč.\n\n"
+        "6. Korisnička pitanja mogu biti zbunjujuća, i važno je da prepoznamo da li se odnose na autora, knjigu ili žanr, i da ih ispravno formulišemo.\n\n"
+        "Primeri:\n"
+        "Pitanje: 'Interesuju me naslovi pisca Piramida.'\n"
+        "Preformulisano pitanje: 'Interesuju me drugi naslovi autora knjige \"Piramide\".'\n\n"
+        "Pitanje: 'Koji su autori napisali knjige u žanru drama?'\n"
+        "Preformulisano pitanje: 'Koji su autori napisali knjige koje spadaju u žanr Drama?'\n\n"
+        f"Pitanje: {pitanje}\n\n"
+        "Preformulisano pitanje:"
+    )
+    
+    try:
+        response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that always writes in Serbian."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+        preformulisano_pitanje = response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Došlo je do greške: {e}")
+
+    driver = connect_to_neo4j()
+
+    def translate_question_to_cypher(question):
         prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {
-            "role": "system",
-            "content": (
-                "You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database."
-                "The database has 3 node types: Author, Book, Genre, and 2 relationship types: BELONGS_TO and WROTE."
-                "Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook."
-                "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
-                "Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."
-                "Limit the returned results to 5 records, except if you reaturning all the Genres."
-                "Here is an example user question and the corresponding Cypher query: "
-                "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) = toLower('Da Vinčijev kod') RETURN b LIMIT 5."
-                "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the seatched term."
-                "When generating the Cypher query, ensure to handle inflected forms properly. For example, if the user asks for books by 'Tolkiena,' generate a query for 'Tolkien' instead, removing any inflections."
-                "Ensure that the RETURN function in the Cypher query always uses 'b' for Book nodes, 'a' for Author nodes, and 'g' for Genre nodes. Do not use other variable names like 'b1', 'b2' or 'otherbook', as it will cause the rest of the code to malfunction."
-                "When returning some properties of books, ensure to return the title too."
-            )
-        },
+                {"role": "system", "content": """You are a helpful assistant that converts natural language questions into Cypher queries for a Neo4j database. 
+                 The database has 3 node types: Author, Books, Genre, and 2 relationship types: BELONGS_TO and WROTE. 
+                 Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook. All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE). 
+                 Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."""},
                 {"role": "user", "content": prompt}
             ]
         )
         cypher_query = response.choices[0].message.content.strip()
-        # print(f"Generated Not Cleaned Cypher Query: {cypher_query}")
 
         # Uklanjanje nepotrebnog teksta oko upita
         if '```cypher' in cypher_query:
             cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-        
-        # Uklanjanje tačke ako je prisutna na kraju
-        if cypher_query.endswith('.'):
-            cypher_query = cypher_query[:-1].strip()
 
         return cypher_query
 
-    def get_descriptions_from_pinecone(ids, api_key, host, namespace):
-        # Initialize Pinecone
-        pc = Pinecone(api_key=api_key, host=host)
-        index = pc.Index(host=host)
-
-        # Fetch the vectors by IDs
-        results = index.fetch(ids=ids, namespace=namespace)
-        descriptions = {}
-
-        for id in ids:
-            if id in results['vectors']:
-                vector_data = results['vectors'][id]
-                if 'metadata' in vector_data:
-                    descriptions[id] = vector_data['metadata'].get('text', 'No description available')
-                else:
-                    descriptions[id] = 'Metadata not found in vector data.'
-            else:
-                descriptions[id] = 'Nemamo opis za ovaj artikal.'
-        # print(f"Descriptions: {descriptions}")
-        return descriptions
-
-    def combine_data(book_data, descriptions):
-        # print(f"Book Data: {book_data}")
-        # print(f"Descriptions: {descriptions}")
-        combined_data = []
-
-        for book in book_data:        
-            print(f"Book: {book}")
-            book_id = book.get('id', None)
-            
-            print(f"Book ID: {book_id}")
-            description = descriptions.get(book_id, 'No description available')
-            combined_entry = {**book, 'description': description}
-            combined_data.append(combined_entry)
+    def execute_cypher_query(cypher_query):
+        with driver.session() as session:
+            result = session.run(cypher_query)
+            return [record.data() for record in result]
         
-        # print(f"Combined Data: {combined_data}")
-        return combined_data
 
-    def display_results(combined_data):
-        output = " "
-        for data in combined_data:
-            if 'title' in data:
-                output += f"Title: {data['title']}\n"
-            if 'category' in data:
-                output += f"Category: {data['category']}\n"
-            if 'price' in data:
-                output += f"Price: {data['price']}\n"
-            if 'quantity' in data:
-                output += f"Quantity: {data['quantity']}\n"
-            if 'pages' in data:
-                output += f"Pages: {data['pages']}\n"
-            if 'eBook' in data:
-                output += f"eBook: {data['eBook']}\n"
-            if 'description' in data:
-                output += f"Description: {data['description']}\n\n\n"
-            print("\n")
-
-    def is_valid_cypher(cypher_query):
-        # Provera validnosti Cypher upita (osnovna provera)
-        if not cypher_query or "MATCH" not in cypher_query.upper():
-            # print("Cypher upit nije validan.")
-            return False
-        # print("Cypher upit je validan.")
-        return True
-
-    #def has_id_field(data):
-        # Provera da li vraćeni podaci sadrže 'id' polje
-     #   return all('id' in item for item in data)
-    
-    def formulate_answer_with_llm(question, graph_data):
-        input_text = f"Pitanje: '{question}'\nPodaci iz grafa: {graph_data}\nMolimo formulišite odgovor na osnovu ovih podataka."
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            temperature=0.0,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that formulates answers based on given data. You have been provided with a user question and data returned from a graph database. Please formulate an answer based on these inputs."},
-                {"role": "user", "content": input_text}
-            ]
-        )
-        return response.choices[0].message.content.strip()
-    driver = connect_to_neo4j()
-    
-    while True:
-        cypher_query = generate_cypher_query(pitanje)
-        print(f"Generated Cypher Query: {cypher_query}")
-        
-        if is_valid_cypher(cypher_query):
-            try:
-                book_data = run_cypher_query(driver, cypher_query)
-
-                # Define the regex pattern to match both 'id' and 'b.id'
-                pattern = r"'(?:b\.)?id': '([^']+)'"
-                
-                # Extract the IDs from the Cypher query result
-                book_ids = []
-                try:
-                    for data in book_data:
-                        match = re.search(pattern, str(data))
-                        if match:
-                            book_ids.append(match.group(1))
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-
-                print(f"Book IDs: {book_ids}")
-                if len(book_ids) == 0:
-                    print("Vraćeni podaci ne sadrže 'id' polje.")
-                    return formulate_answer_with_llm(pitanje, book_data)
-                # book_ids = [book['id'] for book in book_data]
-                descriptionsDict = get_descriptions_from_pinecone(book_ids, os.getenv("PINECONE_API_KEY"), os.getenv("PINECONE_HOST"), "Opisi")
-                # descriptions = list(descriptionsDict.values())
-                combined_data = combine_data(book_data, descriptionsDict)
-                print(display_results(combined_data))
-                return display_results(combined_data)
-            except Exception as e:
-                print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
-        else:
-            print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
+    result = execute_cypher_query(translate_question_to_cypher(preformulisano_pitanje))
+    return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 def pineg(pitanje):
