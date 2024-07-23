@@ -27,10 +27,17 @@ def connect_to_pinecone():
     return pc.Index(index_name)
 
 def graphp(pitanje):
+    driver = connect_to_neo4j()
+
     def run_cypher_query(driver, query):
         with driver.session() as session:
             results = session.run(query)
             cleaned_results = []
+            max_characters=100000
+            total_characters = 0
+            max_record_length = 0
+            min_record_length = float('inf')
+            
             for record in results:
                 cleaned_record = {}
                 for key, value in record.items():
@@ -46,15 +53,34 @@ def graphp(pitanje):
                         new_key = prop_key.split('.')[-1]
                         cleaned_record[new_key] = prop_value
                 
+                record_length = sum(len(str(value)) for value in cleaned_record.values())
+                if total_characters + record_length > max_characters:
+                    break  # Prekida se ako dodavanje ovog zapisa prelazi maksimalan broj karaktera
+
                 cleaned_results.append(cleaned_record)
+                record_length = sum(len(str(value)) for value in cleaned_record.values())
+                total_characters += record_length
+                if record_length > max_record_length:
+                    max_record_length = record_length
+                if record_length < min_record_length:
+                    min_record_length = record_length
         
-        # print(f"Cleaned Results: {cleaned_results}")
+        number_of_records = len(cleaned_results)
+        # average_characters_per_record = total_characters / number_of_records if number_of_records > 0 else 0
+
+        print(f"Number of records: {number_of_records}")
+        print(f"Total number of characters: {total_characters}")
+        # print(f"Average characters per record: {average_characters_per_record}")
+        # print(f"Longest record length: {max_record_length}")
+        # print(f"Shortest record length: {min_record_length}")
+
         return cleaned_results
         
     def generate_cypher_query(question):
         prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
         response = client.chat.completions.create(
             model="gpt-4o",
+            temperature=0.0,
             messages=[
                 {
             "role": "system",
@@ -64,14 +90,28 @@ def graphp(pitanje):
                 "Only Book nodes have properties: id, category, title, price, quantity, pages, and eBook."
                 "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
                 "Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."
-                "Limit the returned results to 5 records, except if you reaturning all the Genres."
-                "Here is an example user question and the corresponding Cypher query: "
-                "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) = toLower('Da Vinčijev kod') RETURN b LIMIT 5."
+                "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
+                "For recommendations, ensure to return just the title and the author of the recommended books."
                 "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the seatched term."
                 "When generating the Cypher query, ensure to handle inflected forms properly. For example, if the user asks for books by 'Tolkiena,' generate a query for 'Tolkien' instead, removing any inflections."
-                "Ensure that the RETURN function in the Cypher query always uses 'b' for Book nodes, 'a' for Author nodes, and 'g' for Genre nodes. Do not use other variable names like 'b1', 'b2' or 'otherbook', as it will cause the rest of the code to malfunction."
                 "When returning some properties of books, ensure to return the title too."
+                "Ensure that the Cypher query returns only the requested data. If the user does not specify which properties they want to retrieve, return only the title and the author."
+
+                "Here is an example user question and the corresponding Cypher query: "
+                "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Da Vinčijev kod') RETURN b"
+
+                "Example user question: 'Interesuje me knjiga Piramide.' "
+                "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Piramide') AND b.quantity > 0 RETURN b.title AS title, a.name AS author"
+                
+                "Example user question: 'Preporuci mi knjige slicne knjizi The Hobbit.' "
+                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, a.name AS author"
+
+                "Example user question: 'Koja je cena za Autostoperski vodič kroz galaksiju?' "
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Autostoperski vodič kroz galaksiju') AND b.quantity > 0 RETURN b.title AS title, b.price AS price"
+
+                "Example user question: 'Da li imate anu karenjinu na stanju' "
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Ana Karenjina') AND b.quantity > 0 RETURN b.title AS title"
             )
         },
                 {"role": "user", "content": prompt}
@@ -90,13 +130,14 @@ def graphp(pitanje):
 
         return cypher_query
 
-    def get_descriptions_from_pinecone(ids, api_key, host, namespace):
-        # Initialize Pinecone
-        pc = Pinecone(api_key=api_key, host=host)
+    def get_descriptions_from_pinecone(ids):
+        # Initialize 
+        host = os.getenv("PINECONE_HOST")
+        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=host)
         index = pc.Index(host=host)
 
         # Fetch the vectors by IDs
-        results = index.fetch(ids=ids, namespace=namespace)
+        results = index.fetch(ids=ids, namespace="Opisi")
         descriptions = {}
 
         for id in ids:
@@ -144,7 +185,7 @@ def graphp(pitanje):
             if 'eBook' in data:
                 output += f"eBook: {data['eBook']}\n"
             if 'description' in data:
-                output += f"Description: {data['description']}\n\n\n"
+                output += f"Description: {data['description']}\n\n"
             print("\n")
 
     def is_valid_cypher(cypher_query):
@@ -155,10 +196,10 @@ def graphp(pitanje):
         # print("Cypher upit je validan.")
         return True
 
-    #def has_id_field(data):
+    def has_id_field(data):
         # Provera da li vraćeni podaci sadrže 'id' polje
-     #   return all('id' in item for item in data)
-    
+        return all('id' in item for item in data)
+
     def formulate_answer_with_llm(question, graph_data):
         input_text = f"Pitanje: '{question}'\nPodaci iz grafa: {graph_data}\nMolimo formulišite odgovor na osnovu ovih podataka."
         response = client.chat.completions.create(
@@ -170,6 +211,7 @@ def graphp(pitanje):
             ]
         )
         return response.choices[0].message.content.strip()
+ 
     driver = connect_to_neo4j()
     
     while True:
@@ -179,6 +221,8 @@ def graphp(pitanje):
         if is_valid_cypher(cypher_query):
             try:
                 book_data = run_cypher_query(driver, cypher_query)
+                # print(f"Book Data: {book_data}")
+                print(has_id_field(book_data))
 
                 # Define the regex pattern to match both 'id' and 'b.id'
                 pattern = r"'(?:b\.)?id': '([^']+)'"
@@ -192,21 +236,24 @@ def graphp(pitanje):
                             book_ids.append(match.group(1))
                 except Exception as e:
                     print(f"An error occurred: {e}")
-
-                print(f"Book IDs: {book_ids}")
-                if len(book_ids) == 0:
+                
+                # print(f"Book IDs: {book_ids}")
+                
+                if not book_ids:
                     print("Vraćeni podaci ne sadrže 'id' polje.")
                     return formulate_answer_with_llm(pitanje, book_data)
+
                 # book_ids = [book['id'] for book in book_data]
-                descriptionsDict = get_descriptions_from_pinecone(book_ids, os.getenv("PINECONE_API_KEY"), os.getenv("PINECONE_HOST"), "Opisi")
+                descriptionsDict = get_descriptions_from_pinecone(book_ids)
                 # descriptions = list(descriptionsDict.values())
                 combined_data = combine_data(book_data, descriptionsDict)
-                print(display_results(combined_data))
-                return display_results(combined_data)
+                display_results(combined_data)
+                return
             except Exception as e:
                 print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
         else:
             print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
+
 
 
 def pineg(pitanje):
