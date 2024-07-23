@@ -118,15 +118,10 @@ def graphp(pitanje):
             ]
         )
         cypher_query = response.choices[0].message.content.strip()
-        # print(f"Generated Not Cleaned Cypher Query: {cypher_query}")
 
         # Uklanjanje nepotrebnog teksta oko upita
         if '```cypher' in cypher_query:
             cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
-        
-        # Uklanjanje tačke ako je prisutna na kraju
-        if cypher_query.endswith('.'):
-            cypher_query = cypher_query[:-1].strip()
 
         return cypher_query
 
