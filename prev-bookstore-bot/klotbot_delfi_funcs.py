@@ -27,8 +27,6 @@ def connect_to_pinecone():
     return pc.Index(index_name)
 
 def graphp(pitanje):
-    driver = connect_to_neo4j()
-
     def run_cypher_query(driver, query):
         with driver.session() as session:
             results = session.run(query)
@@ -64,16 +62,6 @@ def graphp(pitanje):
                     max_record_length = record_length
                 if record_length < min_record_length:
                     min_record_length = record_length
-        
-        number_of_records = len(cleaned_results)
-        # average_characters_per_record = total_characters / number_of_records if number_of_records > 0 else 0
-
-        print(f"Number of records: {number_of_records}")
-        print(f"Total number of characters: {total_characters}")
-        # print(f"Average characters per record: {average_characters_per_record}")
-        # print(f"Longest record length: {max_record_length}")
-        # print(f"Shortest record length: {min_record_length}")
-
         return cleaned_results
         
     def generate_cypher_query(question):
@@ -148,20 +136,14 @@ def graphp(pitanje):
         return descriptions
 
     def combine_data(book_data, descriptions):
-        # print(f"Book Data: {book_data}")
-        # print(f"Descriptions: {descriptions}")
         combined_data = []
 
         for book in book_data:        
-            print(f"Book: {book}")
             book_id = book.get('id', None)
             
-            print(f"Book ID: {book_id}")
             description = descriptions.get(book_id, 'No description available')
             combined_entry = {**book, 'description': description}
             combined_data.append(combined_entry)
-        
-        # print(f"Combined Data: {combined_data}")
         return combined_data
 
     def display_results(combined_data):
@@ -181,14 +163,11 @@ def graphp(pitanje):
                 output += f"eBook: {data['eBook']}\n"
             if 'description' in data:
                 output += f"Description: {data['description']}\n\n"
-            print("\n")
 
     def is_valid_cypher(cypher_query):
         # Provera validnosti Cypher upita (osnovna provera)
         if not cypher_query or "MATCH" not in cypher_query.upper():
-            # print("Cypher upit nije validan.")
             return False
-        # print("Cypher upit je validan.")
         return True
 
     def has_id_field(data):
@@ -211,12 +190,9 @@ def graphp(pitanje):
     
     while True:
         cypher_query = generate_cypher_query(pitanje)
-        print(f"Generated Cypher Query: {cypher_query}")
-        
         if is_valid_cypher(cypher_query):
             try:
                 book_data = run_cypher_query(driver, cypher_query)
-                # print(f"Book Data: {book_data}")
                 print(has_id_field(book_data))
 
                 # Define the regex pattern to match both 'id' and 'b.id'
@@ -232,10 +208,7 @@ def graphp(pitanje):
                 except Exception as e:
                     print(f"An error occurred: {e}")
                 
-                # print(f"Book IDs: {book_ids}")
-                
                 if not book_ids:
-                    print("Vraćeni podaci ne sadrže 'id' polje.")
                     return formulate_answer_with_llm(pitanje, book_data)
 
                 # book_ids = [book['id'] for book in book_data]
