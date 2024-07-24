@@ -201,7 +201,8 @@ def standard_chunks(dokum,chunk_size, chunk_overlap):
 
                 if dokum is not None and st.session_state.submit_b == True:
                     data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-
+                    print("AAAA", type(data))
+                    print("AAAA", data)
                     try:
                         text_splitter = CharacterTextSplitter(
                                 separator=text_delimiter,
@@ -210,6 +211,7 @@ def standard_chunks(dokum,chunk_size, chunk_overlap):
                             )
 
                         texts = text_splitter.split_documents(data)
+                        print("BBBB", type(texts))
                     except:
                         texts = data
 
