@@ -201,14 +201,17 @@ def standard_chunks(dokum,chunk_size, chunk_overlap):
 
                 if dokum is not None and st.session_state.submit_b == True:
                     data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-                    text_splitter = CharacterTextSplitter(
-                            separator=text_delimiter,
-                            chunk_size=chunk_size,
-                            chunk_overlap=chunk_overlap,
-                        )
 
-                    texts = text_splitter.split_documents(data)
+                    try:
+                        text_splitter = CharacterTextSplitter(
+                                separator=text_delimiter,
+                                chunk_size=chunk_size,
+                                chunk_overlap=chunk_overlap,
+                            )
 
+                        texts = text_splitter.split_documents(data)
+                    except:
+                        texts = data
 
                     # # Create the OpenAI embeddings
                     st.success(f"Učitano {len(texts)} tekstova")
