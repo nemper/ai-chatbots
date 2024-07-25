@@ -4,16 +4,14 @@ import mysql
 import os
 import streamlit as st
 import uuid
-
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
 from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from myfunc.prompts import ConversationDatabase
+from myfunc.denti import ConversationDatabase, work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
-from myfunc.varvars_dicts import work_prompts, work_vars
 
 mprompts = work_prompts()
 
@@ -32,7 +30,7 @@ default_values = {
     "filtered_messages": "",
     "selected_question": None,
     "username": "positive",
-    "openai_model": work_vars["names"]["openai_model"],
+    "openai_model": "gpt-4o",
     "azure_filename": "altass.csv",
     "app_name": "KlotBot",
     "upload_key": 0,
@@ -299,7 +297,7 @@ def main():
                     message_placeholder = st.empty()
                     full_response = ""
                     for response in client.chat.completions.create(
-                        model=work_vars["names"]["openai_model"],
+                        model="gpt-4o",
                         temperature=0,
                         messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
                         stream=True,
