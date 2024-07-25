@@ -9,7 +9,6 @@ myfunc/prompts.py
 myfunc/pyui_javascript.py
 myfunc/retrievers.py
 myfunc/various_tools.py
-myfunc/varvars_dicts.py
 myfunc.egg-info/PKG-INFO
 myfunc.egg-info/SOURCES.txt
 myfunc.egg-info/dependency_links.txt

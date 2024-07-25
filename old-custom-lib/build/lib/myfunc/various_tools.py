@@ -28,7 +28,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
 from myfunc.mojafunkcija import st_style
-from myfunc.varvars_dicts import work_prompts, work_vars
+from myfunc.denti import work_prompts
 
 mprompts = work_prompts()
 
@@ -75,7 +75,7 @@ class MeetingTranscriptSummarizer:
         - The AI model's response as a string.
         """
         response = client.chat.completions.create(
-            model=work_vars["names"]["openai_model"],
+            model=os.getenv("OPENAI_MODEL"),
             temperature=self.temperature,
             messages=[
                 {"role": "system", "content": prompt + "Use only the Serbian Language"},
@@ -165,7 +165,7 @@ def summarize_meeting_transcript(transcript, temp, broj_tema):
         """
         
         response = client.chat.completions.create(
-            model=work_vars["names"]["openai_model"],
+            model=os.getenv("OPENAI_MODEL"),
             temperature=temp,  
             messages=[
                 {"role": "system", "content": prompt + "Use only the Serbian Language"},
@@ -660,7 +660,7 @@ def hyde_rag(prompt):
     - The generated response from the AI as a string.
     """
     response = client.chat.completions.create(
-        model= work_vars["names"]["openai_model"],
+        model= os.getenv("OPENAI_MODEL"),
         temperature=0.5,
         messages=[
             {"role": "system", "content": mprompts["hyde_rag"]},
@@ -717,7 +717,7 @@ def get_structured_decision_from_model(user_query):
     """
     client = OpenAI()
     response = client.chat.completions.create(
-        model=work_vars["names"]["openai_model"],
+        model=os.getenv("OPENAI_MODEL"),
         temperature=0,
         response_format={"type": "json_object"},
         messages=create_structured_prompt(user_query),
@@ -782,7 +782,7 @@ async def suggest_questions(prompt, api_key = os.environ.get("OPENAI_API_KEY")):
             url="https://api.openai.com/v1/chat/completions",
             headers=headers,
             json={
-                "model": work_vars["names"]["openai_model"],
+                "model": os.getenv("OPENAI_MODEL"),
                 "messages": [system_message, user_message],
             },
         )
@@ -837,7 +837,7 @@ async def suggest_questions(system_message, user_message, api_key):
             url="https://api.openai.com/v1/chat/completions",
             headers=headers,
             json={
-                "model": work_vars["names"]["openai_model"],
+                "model": os.getenv("OPENAI_MODEL"),
                 "messages": [system_message, user_message],
             },
         )
@@ -966,7 +966,7 @@ def play_audio_from_stream_s(full_response):
 def suggest_questions_s(system_message, user_message): # sync version of suggested questions (async) from myfunc
     
     response = client.chat.completions.create(
-                    model=work_vars["names"]["openai_model"],
+                    model=os.getenv("OPENAI_MODEL"),
                     messages=[system_message, user_message],
                     )
                
