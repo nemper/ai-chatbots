@@ -6,10 +6,6 @@ from langchain_community.vectorstores import Pinecone as LangPine
 import re
 import csv
 import os
-os.environ["OPENAI_MODEL"] = "gpt-4o"
-os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["SYS_RAGBOT"] = "DELFI_SYS_CHATBOT"
-os.environ["PINECONE_ENVIRONMENT"] = "us-west1-gcp-free"
 import streamlit as st
 import neo4j
 from openai import OpenAI
