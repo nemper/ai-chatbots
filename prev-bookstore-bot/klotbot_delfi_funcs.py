@@ -12,6 +12,7 @@ from openai import OpenAI
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict
+from time import sleep
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @st.cache_resource
@@ -272,9 +273,8 @@ def graphp(pitanje):
 def pineg(pitanje):
     namespace = 'opisi'
     index = connect_to_pinecone()
-
+    driver = connect_to_neo4j()
     def run_cypher_query(id):
-        driver = connect_to_neo4j()
         query = f"MATCH (b:Book) WHERE b.id = '{id}' RETURN b"
         with driver.session() as session:
             result = session.run(query)
@@ -283,6 +283,7 @@ def pineg(pitanje):
                 book_node = record['b']
                 book_data.append({
                     'id': book_node['id'],
+                    'oldProductId': book_node['oldProductId'],
                     'title': book_node['title'],
                     'category': book_node['category'],
                     'price': book_node['price'],
@@ -338,6 +339,18 @@ def pineg(pitanje):
         # print(f"Matches: {matches}")
         return matches
 
+    def create_product_links(products):
+        static_url = 'https://delfi.rs/'
+        updated_products = []
+        
+        for product in products:
+            if 'oldProductId' in product and 'category' in product:
+                category = product['category'].lower().replace(' ', '_')
+                product['link'] = static_url + product['category'].lower() + '/' + str(product.pop('oldProductId'))
+            updated_products.append(product)
+        
+        return updated_products
+
     def combine_data(book_data, descriptions):
         combined_data = []
         for book in book_data:
@@ -346,49 +359,58 @@ def pineg(pitanje):
             print(f"Combined Entry: {combined_entry}")
         return combined_data
 
-    query = pitanje.strip()
-    search_results = search_pinecone(query)
+    def display_results(combined_data):
+        output = " "
+        for data in combined_data:
+            output += f"Title: {data['title']}\n"
+            output += f"Category: {data['category']}\n"
+            output += f"Price: {data['price']}\n"
+            output += f"Quantity: {data['quantity']}\n"
+            output += f"Pages: {data['pages']}\n"
+            output += f"eBook: {data['eBook']}\n"
+            output += f"Description: {data['description']}\n"
+            output += f"Link: {data['link']}\n"
+        return output
+
+    search_results = search_pinecone(pitanje)
 
     combined_results = []
 
     for result in search_results:
         
-        additional_data = run_cypher_query(result['id'])
+        try:
+            data = run_cypher_query(result['id'])
+        except:
+            sleep(0.2)
+            data = run_cypher_query(result['id'])
+        additional_data = create_product_links(data)
+        print(f"Additional Data: {additional_data}")
         
         # Korak 3: Kombinovanje podataka
         combined_data = combine_data(additional_data, result['text'])
         
         combined_results.append(combined_data)
-    
+
     # return combined_results
     # driver = connect_to_neo4j(uri, user, password)
-    
+
     # query = input("Enter your search content: ")
 
     # results = search_pinecone(query)
     # print(f"The type of the variable 'query' is: {type(results)}")
     # ids, descriptions = zip(*results)
-    
+
     # if not ids:
     #     print("No matching books found.")
     #     return
-    
+
     # ids_str = ', '.join([f"'{id}'" for id in ids])
     # cypher_query = f"MATCH (b:Book) WHERE b.id IN [{ids_str}] RETURN b"
     # book_data = run_cypher_query(driver, cypher_query)
-    
+
     # combined_data = combine_data(book_data, descriptions)
-    output = " "
-    for data in combined_data:
-        output += "Title: {data['title']}\n\n"
-        output += f"Title: {data['title']}\n"
-        output += f"Category: {data['category']}\n"
-        output += f"Price: {data['price']}\n"
-        output += f"Quantity: {data['quantity']}\n"
-        output += f"Pages: {data['pages']}\n"
-        output += f"eBook: {data['eBook']}\n"
-        output += f"Description: {data['description']}\n\n\n"
-    return output
+    return display_results(combined_data)
+
 
 
 def order_search(id_porudzbine):
