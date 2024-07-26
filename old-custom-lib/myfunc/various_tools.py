@@ -28,7 +28,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.utilities import GoogleSerperAPIWrapper
 
 from myfunc.mojafunkcija import st_style
-from myfunc.denti import work_prompts
+from myfunc.mssql import work_prompts
 
 mprompts = work_prompts()
 

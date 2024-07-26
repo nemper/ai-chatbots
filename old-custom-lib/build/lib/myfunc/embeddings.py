@@ -35,10 +35,9 @@ from semantic_router.splitters import RollingWindowSplitter
 # from semantic_router.utils.logger import logger
 
 from myfunc.mojafunkcija import st_style, pinecone_stats
-from myfunc.prompts import SQLSearchTool
 from myfunc.retrievers import HybridQueryProcessor, PineconeUtility, SelfQueryPositive, TextProcessing
 from myfunc.various_tools import get_structured_decision_from_model, positive_calendly, web_search_process, scrape_webpage_text, hyde_rag
-from myfunc.denti import work_prompts
+from myfunc.mssql import work_prompts
 
 import markdown
 import pypandoc
@@ -807,14 +806,6 @@ def rag_tool_answer(prompt, phglob):
         prompt = uvod + prompt
         context = SelfQueryPositive(prompt, namespace="selfdemo", index_name="neo-positive")
         
-
-    # SQL Tool Configuration
-    elif st.session_state.rag_tool == "SQL":
-            processor = SQLSearchTool()
-            try:
-                context = processor.search(prompt)
-            except Exception as e :
-                st.error(f"Ne mogu da ispunim zahtev {e}")
     elif st.session_state.rag_tool == "WebSearchProcess":
          context = web_search_process(prompt)
          

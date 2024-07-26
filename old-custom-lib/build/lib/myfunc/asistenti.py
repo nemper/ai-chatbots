@@ -16,7 +16,7 @@ from streamlit_javascript import st_javascript
 import glob
 from pydub import AudioSegment
 
-from myfunc.denti import work_prompts
+from myfunc.mssql import work_prompts
 
 mprompts = work_prompts()
 

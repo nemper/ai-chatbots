@@ -1,27 +1,244 @@
-# in myfunc.prompts.py
 import json
-import mysql.connector
 import os
+import pyodbc
+import streamlit as st
 
-from langchain_community.utilities.sql_database import SQLDatabase
-from langchain_community.agent_toolkits import create_sql_agent
-from langchain_openai import ChatOpenAI
-from mysql.connector import Error
+class ConversationDatabase:
+    """
+    A class to interact with a MSSQL database for storing and retrieving conversation data.
+    """
+    def __init__(self, host=None, user=None, password=None, database=None):
+        self.host = host if host is not None else os.getenv('MSSQL_HOST')
+        self.user = user if user is not None else os.getenv('MSSQL_USER')
+        self.password = password if password is not None else os.getenv('MSSQL_PASS')
+        self.database = database if database is not None else os.getenv('MSSQL_DB')
+        self.conn = None
+        self.cursor = None
+
+    def __enter__(self):
+        try:
+            self.conn = pyodbc.connect(
+                driver='{ODBC Driver 18 for SQL Server}',
+                server=self.host,
+                database=self.database,
+                uid=self.user,
+                pwd=self.password,
+                TrustServerCertificate='yes'
+            )
+            self.cursor = self.conn.cursor()
+        except Exception as e:
+            print(f"Error connecting to the database: {e}")
+            raise
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.conn is not None:
+            self.conn.close()
+        if exc_type or exc_val or exc_tb:
+            print(f"Exception occurred: {exc_type}, {exc_val}")
+            pass
+
+    def create_sql_table(self):
+        check_table_sql = '''
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='conversations' AND xtype='U')
+        CREATE TABLE conversations (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            app_name VARCHAR(255) NOT NULL,
+            user_name VARCHAR(255) NOT NULL,
+            thread_id VARCHAR(255) NOT NULL,
+            conversation NVARCHAR(MAX) NOT NULL
+        )
+        '''
+        try:
+            self.cursor.execute(check_table_sql)
+            self.conn.commit()
+        except Exception as e:
+            print(f"Error creating table: {e}")
+            raise
+
+    def update_sql_record(self, app_name, user_name, thread_id, new_conversation):
+        """
+        Replaces the existing conversation data with new conversation data for a specific record in the conversations table.
+
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier (string).
+        - new_conversation: The new conversation data to replace as a list of dictionaries.
+        """
+
+        # Convert the new conversation to JSON format
+        new_conversation_json = json.dumps(new_conversation)
+
+        # Update the record with the new conversation
+        update_sql = '''
+        UPDATE conversations
+        SET conversation = ?
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
+        '''
+        try:
+            self.cursor.execute(update_sql, (new_conversation_json, app_name, user_name, thread_id))
+            self.conn.commit()
+            affected_rows = self.cursor.rowcount
+            if affected_rows == 0:
+                print("No rows were updated. Please check if the record exists.")
+        except pyodbc.Error as e:
+            print(f"Error updating record: {e}")
+            self.conn.rollback()
+
+    def record_exists(self, app_name, user_name, thread_id):
+        """
+        Checks if a record exists in the conversations table.
+
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier (string).
+
+        Returns:
+        - Boolean indicating if the record exists.
+        """
+        check_sql = '''
+        SELECT COUNT(*)
+        FROM conversations
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
+        '''
+        self.cursor.execute(check_sql, (app_name, user_name, thread_id))
+        count = self.cursor.fetchone()[0]
+        return count > 0
+
+    def add_sql_record(self, app_name, user_name, thread_id, conversation):
+        """
+        Adds a new record to the conversations table.
+
+        Parameters:
+        - app_name: The name of the application.
+        - user_name: The name of the user.
+        - thread_id: The thread identifier (string).
+        - conversation: The conversation data as a list of dictionaries.
+        """
+
+        conversation_json = json.dumps(conversation)
+        insert_sql = '''
+        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
+        VALUES (?, ?, ?, ?)
+        '''
+        try:
+            self.cursor.execute(insert_sql, (app_name, user_name, thread_id, conversation_json))
+            self.conn.commit()
+        except pyodbc.Error as e:
+            print(f"Error adding record: {e}")
+            self.conn.rollback()
+
+    def update_or_insert_sql_record(self, app_name, user_name, thread_id, new_conversation):
+        if self.record_exists(app_name, user_name, thread_id):
+            self.update_sql_record(app_name, user_name, thread_id, new_conversation)
+        else:
+            self.add_sql_record(app_name, user_name, thread_id, new_conversation)
 
 
-# in myfunc.prompts.py
+    def query_sql_record(self, app_name, user_name, thread_id):
+        query_sql = '''
+        SELECT conversation FROM conversations 
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
+        '''
+        try:
+            self.cursor.execute(query_sql, (app_name, user_name, thread_id))
+            result = self.cursor.fetchone()
+            if result:
+                return json.loads(result[0])
+            else:
+                return None
+        except Exception as e:
+            print(f"Error querying record: {e}")
+            raise
+
+    def delete_sql_record(self, app_name, user_name, thread_id):
+        delete_sql = '''
+        DELETE FROM conversations
+        WHERE app_name = ? AND user_name = ? AND thread_id = ?
+        '''
+        try:
+            self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
+            self.conn.commit()
+        except Exception as e:
+            print(f"Error deleting record: {e}")
+            raise
+
+    def list_threads(self, app_name, user_name):
+        list_threads_sql = '''
+        SELECT DISTINCT thread_id FROM conversations
+        WHERE app_name = ? AND user_name = ?
+        '''
+        try:
+            self.cursor.execute(list_threads_sql, (app_name, user_name))
+            threads = self.cursor.fetchall()
+            return [thread[0] for thread in threads]
+        except Exception as e:
+            print(f"Error listing threads: {e}")
+            raise
+
+    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
+        insert_sql = """
+        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """
+        values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
+        try:
+            self.cursor.execute(insert_sql, values)
+            self.conn.commit()
+        except Exception as e:
+            print(f"Error adding token record: {e}")
+            raise
+
+    def extract_token_sums_between_dates(self, start_date, end_date):
+        query_sql = """
+        SELECT 
+            SUM(embedding_tokens) as total_embedding_tokens, 
+            SUM(prompt_tokens) as total_prompt_tokens, 
+            SUM(completion_tokens) as total_completion_tokens, 
+            SUM(stt_tokens) as total_stt_tokens, 
+            SUM(tts_tokens) as total_tts_tokens 
+        FROM chatbot_token_log 
+        WHERE timestamp BETWEEN ? AND ?
+        """
+        try:
+            self.cursor.execute(query_sql, (start_date, end_date))
+            result = self.cursor.fetchone()
+            if result:
+                return {
+                    "total_embedding_tokens": int(result[0]),
+                    "total_prompt_tokens": int(result[1]),
+                    "total_completion_tokens": int(result[2]),
+                    "total_stt_tokens": int(result[3]),
+                    "total_tts_tokens": int(result[4]),
+                }
+            else:
+                return None
+        except Exception as e:
+            print(f"Error extracting token sums: {e}")
+            raise
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+            print("Database connection closed.")
+
+
 class PromptDatabase:
     """
-    A class to interact with a MySQL database for storing and retrieving prompt templates.
+    A class to interact with an MSSQL database for storing and retrieving prompt templates.
     """
     def __init__(self, host=None, user=None, password=None, database=None):
         """
         Initializes the connection details for the database, with the option to use environment variables as defaults.
         """
-        self.host = host if host is not None else os.getenv('MYSQL_HOST')
-        self.user = user if user is not None else os.getenv('MYSQL_USER')
-        self.password = password if password is not None else os.getenv('MYSQL_PASS')
-        self.database = database if database is not None else os.getenv('MYSQL_NAME')
+        self.host = host if host is not None else os.getenv('MSSQL_HOST')
+        self.user = user if user is not None else os.getenv('MSSQL_USER')
+        self.password = password if password is not None else os.getenv('MSSQL_PASS')
+        self.database = database if database is not None else os.getenv('MSSQL_DB')
         self.conn = None
         self.cursor = None
         
@@ -29,7 +246,14 @@ class PromptDatabase:
         """
         Establishes the database connection and returns the instance itself when entering the context.
         """
-        self.conn = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database=self.database)
+        self.conn = pyodbc.connect(
+            driver='{ODBC Driver 18 for SQL Server}',
+            server=self.host,
+            database=self.database,
+            uid=self.user,
+            pwd=self.password,
+            TrustServerCertificate='yes'
+        )
         self.cursor = self.conn.cursor()
         return self
 
@@ -42,24 +266,21 @@ class PromptDatabase:
             self.cursor.close()
         if self.conn is not None:
             self.conn.close()
-        # Handle exception if needed, can log or re-raise exceptions based on requirements
         if exc_type or exc_val or exc_tb:
-            # Optionally log or handle exception
             pass
 
-    # !!!! poziva ga osnovni metod za pretragu u ostalim .py - get_prompts_by_names 
     def query_sql_prompt_strings(self, prompt_names):
         """
         Fetches the existing prompt strings for a given list of prompt names, maintaining the order of prompt_names.
         """
         order_clause = "ORDER BY CASE PromptName "
         for idx, name in enumerate(prompt_names):
-            order_clause += f"WHEN %s THEN {idx} "
+            order_clause += f"WHEN ? THEN {idx} "
         order_clause += "END"
 
         query = f"""
         SELECT PromptString FROM PromptStrings
-        WHERE PromptName IN ({','.join(['%s'] * len(prompt_names))})
+        WHERE PromptName IN ({','.join(['?'] * len(prompt_names))})
         """ + order_clause
 
         params = tuple(prompt_names) + tuple(prompt_names)  # prompt_names repeated for both IN and ORDER BY
@@ -67,20 +288,16 @@ class PromptDatabase:
         results = self.cursor.fetchall()
         return [result[0] for result in results] if results else []
 
-
-    # za odabir za selectbox i za funkcije unosa i editovanja - osnovna funkcija
     def get_records(self, query, params=None):
         try:
-            if self.conn is None or not self.conn.is_connected():
+            if self.conn is None:
                 self.__enter__()
             self.cursor.execute(query, params)
             records = self.cursor.fetchall()
             return records
-        except Error as e:
-            
+        except Exception as e:
             return []
-        
-    # opsta funkcija za prikaz polja za selectbox - koristi get_recoirds za pripremu
+
     def get_records_from_column(self, table, column):
         """
         Fetch records from a specified column in a specified table.
@@ -88,14 +305,12 @@ class PromptDatabase:
         query = f"SELECT DISTINCT {column} FROM {table}"
         records = self.get_records(query)
         return [record[0] for record in records] if records else []
-    
-    # !!!! osnovni metod za pretragu u ostalim .py    
+
     def get_prompts_by_names(self, variable_names, prompt_names):
         prompt_strings = self.query_sql_prompt_strings(prompt_names)
         prompt_variables = dict(zip(variable_names, prompt_strings))
         return prompt_variables
 
-    # za prikaz cele tabele kao info prilikom unosa i editovanja koristi kasnije df
     def get_all_records_from_table(self, table_name):
         """
         Fetch all records and all columns for a given table.
@@ -110,9 +325,8 @@ class PromptDatabase:
             return records, columns
         except Exception as e:
             print(f"Failed to fetch records: {e}")
-            return [],[]  # Return an empty DataFrame in case of an error
-    
-    # prikazuje tabelu promptstrings za dati username
+            return [], []  # Return an empty DataFrame in case of an error
+
     def get_prompts_for_username(self, username):
         """
         Fetch all prompt texts and matching variable names for a given username.
@@ -120,49 +334,47 @@ class PromptDatabase:
         :return: A pandas DataFrame with the prompt texts and matching variable names.
         """
         query = """
-        SELECT ps.PromptName, ps.PromptString, pv.VariableName, pf.Filename, pf.FilePath,u.Username 
+        SELECT ps.PromptName, ps.PromptString, pv.VariableName, pf.Filename, pf.FilePath, u.Username 
         FROM PromptStrings ps
         JOIN PromptVariables pv ON ps.VariableID = pv.VariableID
         JOIN PythonFiles pf ON ps.VariableFileID = pf.FileID
         JOIN Users u ON ps.UserID = u.UserID
-        WHERE u.Username LIKE %s
+        WHERE u.Username LIKE ?
         """
         params = (f"%{username}%",)
         records = self.get_records(query, params)
         return records
-        
-    # za unos u pomocne tabele Users, PythonFiles, PromptVariables
+
     def add_record(self, table, **fields):
         columns = ', '.join(fields.keys())
-        placeholders = ', '.join(['%s'] * len(fields))
+        placeholders = ', '.join(['?'] * len(fields))
         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
         try:
             self.cursor.execute(query, tuple(fields.values()))
             self.conn.commit()
             return self.cursor.lastrowid
-        except Error as e:
+        except Exception as e:
             self.conn.rollback()
             print(f"Error in add_record: {e}")
             return None
-            
-    # za unos u tabelu promptstrings
+
     def add_new_record(self, username, filename, variablename, promptstring, promptname, comment):
         """
         Adds a new record to the database, handling the relationships between users, files, variables, and prompts.
         """
         try:
             # Fetch UserID based on username
-            self.cursor.execute("SELECT UserID FROM Users WHERE Username = %s", (username,))
+            self.cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (username,))
             user_result = self.cursor.fetchone()
             user_id = user_result[0] if user_result else None
 
             # Fetch VariableID based on variablename
-            self.cursor.execute("SELECT VariableID FROM PromptVariables WHERE VariableName = %s", (variablename,))
+            self.cursor.execute("SELECT VariableID FROM PromptVariables WHERE VariableName = ?", (variablename,))
             variable_result = self.cursor.fetchone()
             variable_id = variable_result[0] if variable_result else None
 
             # Fetch FileID based on filename
-            self.cursor.execute("SELECT FileID FROM PythonFiles WHERE Filename = %s", (filename,))
+            self.cursor.execute("SELECT FileID FROM PythonFiles WHERE Filename = ?", (filename,))
             file_result = self.cursor.fetchone()
             file_id = file_result[0] if file_result else None
 
@@ -172,7 +384,7 @@ class PromptDatabase:
 
             # Correctly include FileID in the insertion command
             self.cursor.execute(
-                "INSERT INTO PromptStrings (PromptString, PromptName, Comment, UserID, VariableID, VariableFileID) VALUES (%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE Comment=VALUES(Comment), UserID=VALUES(UserID), VariableID=VALUES(VariableID), VariableFileID=VALUES(VariableFileID);",
+                "INSERT INTO PromptStrings (PromptString, PromptName, Comment, UserID, VariableID, VariableFileID) VALUES (?, ?, ?, ?, ?, ?)",
                 (promptstring, promptname, comment, user_id, variable_id, file_id)
             )
 
@@ -188,9 +400,9 @@ class PromptDatabase:
     
         :param table: The name of the table to update.
         :param fields: A dictionary of column names and their new values.
-        :param condition: A tuple containing the condition string and its values (e.g., ("UserID = %s", [user_id])).
+        :param condition: A tuple containing the condition string and its values (e.g., ("UserID = ?", [user_id])).
         """
-        set_clause = ', '.join([f"{key} = %s" for key in fields.keys()])
+        set_clause = ', '.join([f"{key} = ?" for key in fields.keys()])
         values = list(fields.values()) + condition[1]
     
         query = f"UPDATE {table} SET {set_clause} WHERE {condition[0]}"
@@ -198,33 +410,27 @@ class PromptDatabase:
         try:
             self.cursor.execute(query, values)
             self.conn.commit()
-            return "Uspesno dodat slog"  # Returns the number of rows affected
+            return "Record updated successfully"
         except Exception as e:
             self.conn.rollback()
             return f"Error in update_record: {e}"
         
-    # za brisanje recorda u promptstrings   
     def delete_prompt_by_name(self, promptname):
         """
         Delete a prompt record from PromptStrings by promptname.
         This method also handles deletions or updates in related tables if necessary.
         """
-        # Optional: Handle related data in other tables before deleting the prompt.
-        # This could involve setting foreign keys to NULL or cascading deletions, depending on your schema.
-        
-        # Delete the prompt from PromptStrings
-        delete_query = "DELETE FROM PromptStrings WHERE PromptName = %s;"
+        delete_query = "DELETE FROM PromptStrings WHERE PromptName = ?"
         try:
-            if self.conn is None or not self.conn.is_connected():
+            if self.conn is None:
                 self.__enter__()
-            self.cursor.execute(delete_query, (promptname))
-            self.conn.commit()  # Commit the transaction to finalize the deletion
+            self.cursor.execute(delete_query, (promptname,))
+            self.conn.commit()
             return f"Prompt '{promptname}' deleted successfully."
-        except Error as e:
-            self.conn.rollback()  # Rollback in case of error
+        except Exception as e:
+            self.conn.rollback()
             return f"Error deleting prompt '{promptname}': {e}"
     
-    # za update u promptstrings
     def update_prompt_record(self, promptname, new_promptstring, new_comment):
         """
         Updates the PromptString and Comment fields of an existing prompt record identified by PromptName.
@@ -234,26 +440,23 @@ class PromptDatabase:
         :param new_comment: The new value for the Comment field.
         """
         try:
-            if self.conn is None or not self.conn.is_connected():
+            if self.conn is None:
                 self.__enter__()
         
-            # Prepare the SQL update statement
             sql_update_query = """
             UPDATE PromptStrings 
-            SET PromptString = %s, Comment = %s 
-            WHERE PromptName = %s
+            SET PromptString = ?, Comment = ? 
+            WHERE PromptName = ?
             """
         
-            # Execute the update query with the new values and promptname
             self.cursor.execute(sql_update_query, (new_promptstring, new_comment, promptname))
-            self.conn.commit()  # Commit the changes
+            self.conn.commit()
             return "Prompt record updated successfully."
         
-        except Error as e:
-            self.conn.rollback()  # Rollback the transaction in case of error
+        except Exception as e:
+            self.conn.rollback()
             return f"Error occurred while updating the prompt record: {e}"
 
-    # za pretragu promptstrings
     def search_for_string_in_prompt_text(self, search_string):
         """
         Lists all prompt_name and prompt_text where a specific string is part of the prompt_text.
@@ -267,15 +470,13 @@ class PromptDatabase:
         self.cursor.execute('''
         SELECT PromptName, PromptString
         FROM PromptStrings
-        WHERE PromptString LIKE %s
+        WHERE PromptString LIKE ?
         ''', ('%' + search_string + '%',))
         results = self.cursor.fetchall()
     
-        # Convert the results into a list of dictionaries for easier use
         records = [{'PromptName': row[0], 'PromptString': row[1]} for row in results]
         return records
 
-    # za pretragu promptstrings po imenu prompta
     def get_prompt_details_by_name(self, promptname):
         """
         Fetches the details of a prompt record identified by PromptName.
@@ -286,7 +487,7 @@ class PromptDatabase:
         query = """
         SELECT PromptName, PromptString, Comment
         FROM PromptStrings
-        WHERE PromptName = %s
+        WHERE PromptName = ?
         """
         try:
             self.cursor.execute(query, (promptname,))
@@ -295,11 +496,10 @@ class PromptDatabase:
                 return {"PromptString": result[0], "Comment": result[1]}
             else:
                 return None
-        except Error as e:
+        except Exception as e:
             print(f"Error occurred: {e}")
             return None
-        
-    # za user i variables i gde god ima samo jedan    
+
     def update_all_record(self, original_value, new_value, table, column):
         """
         Updates a specific record identified by the original value in a given table and column.
@@ -310,30 +510,26 @@ class PromptDatabase:
         :param column: The column to update.
         """
         try:
-            # Safety check: Validate table and column names
             valid_tables = ['Users', 'PromptVariables', 'PythonFiles']
             valid_columns = ['Username', 'VariableName', 'Filename', 'FilePath']
         
             if table not in valid_tables or column not in valid_columns:
                 return "Invalid table or column name."
         
-            # Dynamic SQL update statement construction
             sql_update_query = f"""
             UPDATE {table}
-            SET {column} = %s
-            WHERE {column} = %s
+            SET {column} = ?
+            WHERE {column} = ?
             """
     
-            # Execute the update query with the new and original values
             self.cursor.execute(sql_update_query, (new_value, original_value))
-            self.conn.commit()  # Commit the changes
+            self.conn.commit()
             return f"Record updated successfully in {table}."
     
         except Exception as e:
-            self.conn.rollback()  # Rollback the transaction in case of error
+            self.conn.rollback()
             return f"Error occurred while updating the record: {e}"
 
-    # za users i variables i gde god ima samo jedan
     def get_prompt_details_for_all(self, value, table, column):
         """
         Fetches the details of a record identified by a value in a specific table and column.
@@ -343,44 +539,38 @@ class PromptDatabase:
         :param column: The column to match the value against.
         :return: A dictionary with the details of the record, or None if not found.
         """
-        # Safety check: Validate table and column names
         valid_tables = ['Users', 'PromptVariables', 'PythonFiles']
-        valid_columns = ['Username', 'VariableName', 'Filename', 'FilePath']  # Adjust based on your schema
+        valid_columns = ['Username', 'VariableName', 'Filename', 'FilePath']
     
         if table not in valid_tables or column not in valid_columns:
             print("Invalid table or column name.")
             return None
 
-        # Dynamic SQL query construction
-        query = f"SELECT * FROM {table} WHERE {column} = %s"
+        query = f"SELECT * FROM {table} WHERE {column} = ?"
     
         try:
             self.cursor.execute(query, (value,))
             result = self.cursor.fetchone()
             if result:
-            
                 columns = [desc[0] for desc in self.cursor.description]
                 return dict(zip(columns, result))
             else:
                 return None
-        except Error as e:
+        except Exception as e:
             print(f"Error occurred: {e}")
             return None
-    
-    # pomocna funkcija za zatvaranje konekcije
+
     def close(self):
         """
         Closes the database connection and cursor, if they exist.
         """
         if self.cursor is not None:
             self.cursor.close()
-            self.cursor = None  # Reset cursor to None to avoid re-closing a closed cursor
-        if self.conn is not None and self.conn.is_connected():
+            self.cursor = None
+        if self.conn is not None:
             self.conn.close()
-            self.conn = None  # Reset connection to None for safety
+            self.conn = None
 
-
-    # !!!! legacy stari poziv za ostale .py
     def query_sql_record(self, prompt_name):
         """
         Fetches the existing prompt text and comment for a given prompt name.
@@ -393,7 +583,7 @@ class PromptDatabase:
         """
         self.cursor.execute('''
         SELECT prompt_text, comment FROM prompts
-        WHERE prompt_name = %s
+        WHERE prompt_name = ?
         ''', (prompt_name,))
         result = self.cursor.fetchone()
         if result:
@@ -401,7 +591,6 @@ class PromptDatabase:
         else:
             return None
 
-    # privremeno za PythonFiles
     def get_file_path_by_name(self, filename):
         """
         Fetches the FilePath for a given Filename from the PythonFiles table.
@@ -409,7 +598,7 @@ class PromptDatabase:
         :param filename: The name of the file to fetch the path for.
         :return: The FilePath of the file if found, otherwise None.
         """
-        query = "SELECT FilePath FROM PythonFiles WHERE Filename = %s"
+        query = "SELECT FilePath FROM PythonFiles WHERE Filename = ?"
         try:
             self.cursor.execute(query, (filename,))
             result = self.cursor.fetchone()
@@ -418,7 +607,6 @@ class PromptDatabase:
             print(f"Error occurred: {e}")
             return None
 
-    # privremeno za PythonFiles
     def update_filename_and_path(self, original_filename, new_filename, new_file_path):
         """
         Updates the Filename and FilePath in the PythonFiles table for a given original Filename.
@@ -428,7 +616,7 @@ class PromptDatabase:
         :param new_file_path: The new path for the file.
         :return: A success message or an error message.
         """
-        query = "UPDATE PythonFiles SET Filename = %s, FilePath = %s WHERE Filename = %s"
+        query = "UPDATE PythonFiles SET Filename = ?, FilePath = ? WHERE Filename = ?"
         try:
             self.cursor.execute(query, (new_filename, new_file_path, original_filename))
             self.conn.commit()
@@ -441,14 +629,14 @@ class PromptDatabase:
     def add_relationship_record(self, prompt_id, user_id, variable_id, file_id):
         query = """
         INSERT INTO CentralRelationshipTable (PromptID, UserID, VariableID, FileID)
-        VALUES (%s, %s, %s, %s);
+        VALUES (?, ?, ?, ?);
         """
         try:
             self.cursor.execute(query, (prompt_id, user_id, variable_id, file_id))
             self.conn.commit()
-            return  f"Uspesno dodat {self.cursor.rowcount} slog" # Return the ID of the newly inserted record
-        except mysql.connector.Error as e:
-            self.conn.rollback()  # Roll back the transaction on error
+            return f"Record added successfully"
+        except Exception as e:
+            self.conn.rollback()
             return f"Error in add_relationship_record: {e}"
 
     def update_relationship_record(self, record_id, prompt_id=None, user_id=None, variable_id=None, file_id=None):
@@ -456,39 +644,38 @@ class PromptDatabase:
         params = []
 
         if prompt_id:
-            updates.append("PromptID = %s")
+            updates.append("PromptID = ?")
             params.append(prompt_id)
         if user_id:
-            updates.append("UserID = %s")
+            updates.append("UserID = ?")
             params.append(user_id)
         if variable_id:
-            updates.append("VariableID = %s")
+            updates.append("VariableID = ?")
             params.append(variable_id)
         if file_id:
-            updates.append("FileID = %s")
+            updates.append("FileID = ?")
             params.append(file_id)
 
         if not updates:
             return "No updates provided."
 
-        query = f"UPDATE CentralRelationshipTable SET {', '.join(updates)} WHERE ID = %s;"
+        query = f"UPDATE CentralRelationshipTable SET {', '.join(updates)} WHERE ID = ?;"
         params.append(record_id)
 
         try:
             self.cursor.execute(query, tuple(params))
             self.conn.commit()
-            return "Succesful update relationship record"
-        except mysql.connector.Error as e:
+            return "Record updated successfully"
+        except Exception as e:
             self.conn.rollback()
             return f"Error in update_relationship_record: {e}"
 
     def delete_record(self, table, condition):
         query = f"DELETE FROM {table} WHERE {condition[0]}"
         try:
-            # Directly using condition[1] which is expected to be a list or tuple of values
             self.cursor.execute(query, condition[1])
             self.conn.commit()
-            return f"Record deleted"
+            return f"Record deleted successfully"
         except Exception as e:
             self.conn.rollback()
             return f"Error in delete_record: {e}"
@@ -502,14 +689,13 @@ class PromptDatabase:
         :param value: The value to search for.
         :return: A dictionary with the record data or None if no record is found.
         """
-        query = f"SELECT * FROM {table} WHERE {name_column} = %s"
+        query = f"SELECT * FROM {table} WHERE {name_column} = ?"
         try:
-            if self.conn is None or not self.conn.is_connected():
+            if self.conn is None:
                 self.__enter__()
             self.cursor.execute(query, (value,))
             result = self.cursor.fetchone()
             if result:
-                # Constructing a dictionary from the column names and values
                 columns = [desc[0] for desc in self.cursor.description]
                 return dict(zip(columns, result))
             else:
@@ -536,10 +722,9 @@ class PromptDatabase:
         JOIN Users u ON crt.UserID = u.UserID
         JOIN PromptVariables pv ON crt.VariableID = pv.VariableID
         JOIN PythonFiles pf ON crt.FileID = pf.FileID
-        WHERE crt.UserID = %s
+        WHERE crt.UserID = ?
         """
         try:
-            # Execute the query with user_id as the parameter
             self.cursor.execute(query, (user_id,))
             records = self.cursor.fetchall()
             
@@ -554,14 +739,11 @@ class PromptDatabase:
                     }
                     relationships.append(relationship)
         except Exception as e:
-            # Handle the error appropriately within your application context
-            # For example, log the error message
             return False
         
         return relationships
     
     def fetch_relationship_data(self, prompt_id=None):
-        # Use self.cursor to execute your query, assuming your class manages a cursor attribute
         query = """
         SELECT crt.ID, ps.PromptName, u.Username, pv.VariableName, pf.Filename
         FROM CentralRelationshipTable crt
@@ -571,14 +753,12 @@ class PromptDatabase:
         JOIN PythonFiles pf ON crt.FileID = pf.FileID
         """
         
-        # If a prompt_id is provided, append a WHERE clause to filter by that ID
         if prompt_id is not None:
-            query += " WHERE crt.PromptID = %s"
+            query += " WHERE crt.PromptID = ?"
             self.cursor.execute(query, (prompt_id,))
         else:
             self.cursor.execute(query)
         
-        # Fetch all records
         records = self.cursor.fetchall()
         return records
     
@@ -592,250 +772,71 @@ class PromptDatabase:
         query = """
         SELECT PromptName, PromptString, Comment
         FROM PromptStrings
-        WHERE PromptName LIKE %s
+        WHERE PromptName LIKE ?
         """
         try:
-            # Adding wildcards to search for the string anywhere in the PromptName
             self.cursor.execute(query, ('%' + promptname + '%',))
             results = self.cursor.fetchall()
             if results:
-                # Return a list of dictionaries with the details of the matching records
                 return [{"PromptName": result[0], "PromptString": result[1], "Comment": result[2]} for result in results]
             else:
                 return []
-        except Error as e:
+        except Exception as e:
             print(f"Error occurred: {e}")
             return []
-    
 
-# in myfunc.prompts.py
-class ConversationDatabase:
-    """
-    A class to interact with a MySQL database for storing and retrieving conversation data.
-    """
-    
-    def __init__(self, host=None, user=None, password=None, database=None):
-        """
-        Initializes the connection details for the database, with the option to use environment variables as defaults.
-        """
-        self.host = host if host is not None else os.getenv('MYSQL_HOST')
-        self.user = user if user is not None else os.getenv('MYSQL_USER')
-        self.password = password if password is not None else os.getenv('MYSQL_PASS')
-        self.database = database if database is not None else os.getenv('MYSQL_NAME')
-        self.conn = None
-        self.cursor = None
 
-    def __enter__(self):
-        """
-        Establishes the database connection and returns the instance itself when entering the context.
-        """
-        self.conn = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database=self.database)
-        self.cursor = self.conn.cursor()
-        return self
+@st.cache_data
+def work_prompts():
+    default_prompt = "You are a helpful assistant that always writes in Serbian."
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Closes the database connection and cursor when exiting the context.
-        Handles any exceptions that occurred within the context.
-        """
-        if self.cursor is not None:
-            self.cursor.close()
-        if self.conn is not None:
-            self.conn.close()
-        # Handle exception if needed, can log or re-raise exceptions based on requirements
-        if exc_type or exc_val or exc_tb:
-            # Optionally log or handle exception
-            pass
-    
-    
-    def create_sql_table(self):
-        """
-        Creates a table for storing conversations if it doesn't already exist.
-        """
-        self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            app_name VARCHAR(255) NOT NULL,
-            user_name VARCHAR(255) NOT NULL,
-            thread_id VARCHAR(255) NOT NULL,
-            conversation LONGTEXT NOT NULL
-        )
-        ''')
-        # print("Table created if new.")
-    
-    def add_sql_record(self, app_name, user_name, thread_id, conversation):
-        """
-        Adds a new record to the conversations table.
+    all_prompts = {
+        # asistenti.py
+        "text_from_image": default_prompt ,
+        "text_from_audio": default_prompt ,
+
+        # embeddings.py
+        "contextual_compression": default_prompt ,
+        "rag_self_query": default_prompt ,
         
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        - conversation: The conversation data as a list of dictionaries.
-        """
-        conversation_json = json.dumps(conversation)
-        self.cursor.execute('''
-        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
-        VALUES (%s, %s, %s, %s)
-        ''', (app_name, user_name, thread_id, conversation_json))
-        self.conn.commit()
-        # print("New record added.")
-    
-    def query_sql_record(self, app_name, user_name, thread_id):
-        """
-        Modified to return the conversation record.
-        """
-        self.cursor.execute('''
-        SELECT conversation FROM conversations 
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
-        ''', (app_name, user_name, thread_id))
-        result = self.cursor.fetchone()
-        if result:
-            return json.loads(result[0])
-        else:
-            return None
-    
-    def delete_sql_record(self, app_name, user_name, thread_id):
-        """
-        Deletes a conversation record based on app name, user name, and thread id.
+        # various_tools.py
+        "hyde_rag": default_prompt ,
+        "choose_rag": default_prompt ,
+
+        # klotbot
+        "sys_ragbot": default_prompt,
+        "rag_answer_reformat": default_prompt,
+
+        # upitnik
+        "gap_ba_expert" : default_prompt,
+        "gap_dt_consultant" : default_prompt,
+        "gap_service_suggestion" : default_prompt,
+        "gap_write_report" : default_prompt,
+
+        # zapisnik
+        "summary_end": default_prompt,
+        "summary_begin": default_prompt,
+        "intro_summary": default_prompt,
+        "topic_list_summary": default_prompt,
+        "date_participants_summary": default_prompt,
+        "topic_summary": default_prompt,
+        "conclusion_summary": default_prompt,
+
+        # pravnik
+        "new_law_email": default_prompt,
         
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        """
-        delete_sql = '''
-        DELETE FROM conversations
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
-        '''
-        self.cursor.execute(delete_sql, (app_name, user_name, thread_id))
-        self.conn.commit()
-        # print("Conversation thread deleted.")
-    
-    def list_threads(self, app_name, user_name):
-        """
-        Lists all thread IDs for a given app name and user name.
-    
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-
-        Returns:
-        - A list of thread IDs associated with the given app name and user name.
-        """
-        self.cursor.execute('''
-        SELECT DISTINCT thread_id FROM conversations
-        WHERE app_name = %s AND user_name = %s
-        ''', (app_name, user_name))
-        threads = self.cursor.fetchall()
-        return [thread[0] for thread in threads]  # Adjust based on your schema if needed
-  
-    def update_sql_record(self, app_name, user_name, thread_id, new_conversation):
-        """
-        Replaces the existing conversation data with new conversation data for a specific record in the conversations table.
-
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier.
-        - new_conversation: The new conversation data to replace as a list of dictionaries.
-        """
-
-        # Convert the new conversation to JSON format
-        new_conversation_json = json.dumps(new_conversation)
-
-        # Update the record with the new conversation
-        self.cursor.execute('''
-        UPDATE conversations
-        SET conversation = %s
-        WHERE app_name = %s AND user_name = %s AND thread_id = %s
-        ''', (new_conversation_json, app_name, user_name, thread_id))
-        self.conn.commit()
-        # print("Record updated with new conversation.")
-
-    def close(self):
-        """
-        Closes the database connection.
-        """
-        self.conn.close()
-
-    # DEPRECATED OD 2.0.59c - KORISTIMO OPENAI PROJECTS - SKROZ SAM IZBRISAO JOS STARIJI PRISTUP (DVE METODE) KOJI JE BIO ODMAH ISPOD
-    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
-        """
-        Adds a new record to the database with the provided details.
-        """
-        sql = """
-        INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        values = (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
-        self.cursor.execute(sql, values)
-        self.conn.commit()
-    
-    # ISTO od 2.0.59c
-    def extract_token_sums_between_dates(self, start_date, end_date):
-        """
-        Extracts the summed token values between two given dates from the chatbot_token_log table.
+        # blogger
+        "sys_blogger": default_prompt,
         
-        Parameters:
-        - start_date: The start date in 'YYYY-MM-DD HH:MM:SS' format.
-        - end_date: The end date in 'YYYY-MM-DD HH:MM:SS' format.
+        }
 
-        Returns:
-        - A dictionary containing the summed values for each token type.
-        """
-        sql = """
-        SELECT 
-            SUM(embedding_tokens) as total_embedding_tokens, 
-            SUM(prompt_tokens) as total_prompt_tokens, 
-            SUM(completion_tokens) as total_completion_tokens, 
-            SUM(stt_tokens) as total_stt_tokens, 
-            SUM(tts_tokens) as total_tts_tokens 
-        FROM chatbot_token_log 
-        WHERE timestamp BETWEEN %s AND %s
-        """
-        self.cursor.execute(sql, (start_date, end_date))
-        result = self.cursor.fetchone()
-        if result:
-            return {
-                "total_embedding_tokens": int(result[0]),
-                "total_prompt_tokens": int(result[1]),
-                "total_completion_tokens": int(result[2]),
-                "total_stt_tokens": int(result[3]),
-                "total_tts_tokens": int(result[4]),
-            }
-        else:
-            return None
+    prompt_names = list(all_prompts.keys())
 
+    with PromptDatabase() as db:
+        env_vars = [os.getenv(name.upper()) for name in prompt_names]
+        prompt_map = db.get_prompts_by_names(prompt_names, env_vars)
 
-
-# in myfunc.prompts.py
-class SQLSearchTool:
-    """
-    VER. 27.06.24
-    A tool to search an SQL database using natural language queries.
-    This class uses the LangChain library to create an SQL agent that
-    interprets natural language and executes corresponding SQL queries.
-    """
-
-    def __init__(self, db_uri=None):
-        """
-        Initialize the SQLSearchTool with a database URI.
-
-        :param db_uri: The database URI. If None, it reads from the MYSQL_URI environment variable.
-        """
-        db_uri = os.getenv("MYSQL_URI")
-        self.db = SQLDatabase.from_uri(db_uri)
-        self.llm = ChatOpenAI(model="gpt-4o", temperature=0)
-        self.agent_executor = create_sql_agent(llm=self.llm, db=self.db, agent_type="openai-tools", verbose=True)
-
+        for name in prompt_names:
+            all_prompts[name] = prompt_map.get(name, default_prompt)
     
-    def search(self, query):
-        """
-        Execute a search using a natural language query.
-
-        :param query: The natural language query.
-        :return: The response from the agent executor.
-        """
-        result = self.agent_executor.invoke(query)
-        return result['output']
+    return all_prompts
