@@ -480,14 +480,16 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
         AttributeInfo(name="id", description="The unique ID of the document", type="string"),
         AttributeInfo(name="text", description="The main content of the document", type="string"),
         AttributeInfo(name="title", description="The title of the document", type="string"),
+        AttributeInfo(name="sec_id", description="The ID for the url generation", type="string"),
     ]
 
     # Define document content description
     document_content_description = "Content of the document"
 
     # Prilagoditi stvanom nazivu namespace-a
+    text_key = "text" if namespace == "opisi" else "description"
     vectorstore = LangPine.from_existing_index(
-        index_name, embeddings, "context", namespace=namespace)
+        index_name=index_name, embedding=embeddings, text_key=text_key, namespace=namespace)
 
     # Initialize OpenAI embeddings and LLM
     llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
@@ -502,17 +504,25 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
     try:
         result = ""
         doc_result = retriever.get_relevant_documents(upit)
-        for document in doc_result:
-            result += "Authors: " + ", ".join(document.metadata['authors']) + "\n"
-            result += "Category: " + document.metadata['category'] + "\n"
-            result += "Chunk: " + str(document.metadata['chunk']) + "\n"
-            result += "Date: " + document.metadata['date'] + "\n"
-            result += "eBook: " + str(document.metadata['eBook']) + "\n"
-            result += "Genres: " + ", ".join(document.metadata['genres']) + "\n"
-            result += "ID: " + document.metadata['id'] + "\n"
-            result += "Title: " + document.metadata['title'] + "\n"
-            result += "Content: " + document.page_content + "\n\n"
+        for doc in doc_result:
+            metadata = doc.metadata
+            result += (
+                f"ID: {str(metadata['id'])}\n"
+                f"Title: {str(metadata['title'])}\n"
+                f"Authors: {', '.join(map(str, metadata['authors']))}\n"
+                f"Chunk: {str(metadata['chunk'])}\n"
+                f"Date: {str(metadata['date'])}\n"
+                f"eBook: {str(metadata['eBook'])}\n"
+                f"Genres: {', '.join(map(str, metadata['genres']))}\n"
+                f"URL: {"https://delfi.rs/" + str(metadata['category']) + "/" + str(metadata['sec_id'])}\n"
+                f"Content: {str(doc.page_content)}\n\n"
+            )
+        print(result)
+        return result.strip()
+
     except Exception as e:
+        print("CCCCC")
+        print(e)
         result = e
     
     return result

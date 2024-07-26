@@ -1,4 +1,8 @@
 import os
+os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
+os.environ["SYS_RAGBOT"] = "DELFI_SYS_CHATBOT"
+os.environ["PINECONE_ENVIRONMENT"] = "us-west1-gcp-free"
 import base64
 import io
 import mysql
@@ -353,12 +357,12 @@ def rag_tool_answer(prompt):
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(prompt)
-                
+
     elif  st.session_state.rag_tool == "Korice":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
-
+        
     elif  st.session_state.rag_tool == "Graphp": 
         context = graphp(prompt)
 
