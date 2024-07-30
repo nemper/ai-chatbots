@@ -490,7 +490,7 @@ def API_search(matching_sec_ids):
     # Get the info for multiple products
     products_info = get_multiple_products_info(token, product_ids)
     print(f"Products Info: {products_info}")
-    output = "Data returned from API for each searched id: \n"
+    output = "Data returned from API for each searched id. Mention the total number of books available: \n"
     for info in products_info:
         output += str(info) + "\n"
     
