@@ -12,7 +12,7 @@ import soundfile as sf
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import HybridQueryProcessor, SelfQueryDelfi, graphp, pineg, order_search
+from klotbot_delfi_funcs import HybridQueryProcessor, SelfQueryDelfi, graphp, pineg, order_search, stolag
 from klotbot_promptdb import ConversationDatabase, work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
@@ -372,7 +372,11 @@ def rag_tool_answer(prompt):
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
 
-    st.write(st.session_state.rag_tool)
+    elif st.session_state.rag_tool == "Stolag":
+        uvod = mprompts["rag_self_query"]
+        prompt = uvod + prompt
+        return stolag(SelfQueryDelfi(prompt))
+
     return context, st.session_state.rag_tool
 
 

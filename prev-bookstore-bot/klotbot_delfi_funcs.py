@@ -13,6 +13,8 @@ from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict
 from time import sleep
+import requests
+import xml.etree.ElementTree as ET
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @st.cache_resource
@@ -432,14 +434,89 @@ def order_search(id_porudzbine):
         return "The file 'orders.csv' does not exist."
     except Exception as e:
         return f"An error occurred: {e}"
+    
 
+def stolag(out_from_SelfQueryDelfi):
+    # Regular expression to extract Sec_id and Title
+    pattern = re.compile(r'Sec_id:\s*(\S+)\s*Title:\s*(.+?)\s*Authors:', re.MULTILINE | re.DOTALL)
+
+    # Find all matches in the text
+    matches = pattern.findall(out_from_SelfQueryDelfi)
+
+    # Process the matches if any are found
+    if matches:
+        books = [{'Sec_id': int(float(m[0])), 'Title': m[1].strip()} for m in matches]
+
+        # Extract the Title of the first book and normalize it
+        first_title = books[0]['Title'].lower()
+
+        matching_sec_ids = []
+
+        for book in books:
+            normalized_title = book['Title'].lower()
+            
+            # Check if the current book matches the criteria
+            if (normalized_title == first_title or
+                first_title in normalized_title or
+                normalized_title in first_title):
+                matching_sec_ids.append(book['Sec_id'])
+
+        return API_search(matching_sec_ids)
+    else:
+        return "No matches found"
+
+
+def API_search(matching_sec_ids):
+    # Function to call the API for a specific product_id
+    def get_product_info(token, product_id):
+        url = "https://www.delfi.rs/api/products"  # Replace with your actual API endpoint
+        params = {
+            "token": token,
+            "product_id": product_id
+        }
+        response = requests.get(url, params=params)
+        return response.content
+
+    # Function to parse the XML response and extract required fields
+    def parse_product_info(xml_data):
+        root = ET.fromstring(xml_data)
+        product_info = {}
+        product_node = root.find(".//product")
+        if product_node is not None:
+            product_info['na_stanju'] = product_node.findtext('na_stanju')
+            product_info['cena'] = product_node.findtext('cena')
+            product_info['lager'] = product_node.findtext('lager')
+        return product_info
+
+    # Main function to get info for a list of product IDs
+    def get_multiple_products_info(token, product_ids):
+        products_info = []
+        for product_id in product_ids:
+            xml_data = get_product_info(token, product_id)
+            product_info = parse_product_info(xml_data)
+            products_info.append(product_info)
+        return products_info
+
+    # Replace with your actual token and product IDs
+    token = os.getenv("DELFI_API_KEY")
+    product_ids = matching_sec_ids
+
+    # Get the info for multiple products
+    products_info = get_multiple_products_info(token, product_ids)
+
+    # Print the results
+    output = ""
+    for info in products_info:
+        output += info
+    
+    return output
 
 def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
     """
     Executes a query against a Pinecone vector database using specified parameters or environment variables. 
     The function initializes the Pinecone and OpenAI services, sets up the vector store and metadata, 
     and performs a query using a custom retriever based on the provided input 'upit'.
-    
+
     It is used for self-query on metadata.
 
     Parameters:
@@ -507,25 +584,23 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
         for doc in doc_result:
             metadata = doc.metadata
             result += (
-                f"ID: {str(metadata['id'])}\n"
+                f"Sec_id: {str(metadata['sec_id'])}\n"
                 f"Title: {str(metadata['title'])}\n"
                 f"Authors: {', '.join(map(str, metadata['authors']))}\n"
                 f"Chunk: {str(metadata['chunk'])}\n"
                 f"Date: {str(metadata['date'])}\n"
                 f"eBook: {str(metadata['eBook'])}\n"
                 f"Genres: {', '.join(map(str, metadata['genres']))}\n"
-                f"URL: {"https://delfi.rs/" + str(metadata['category']) + "/" + str(metadata['sec_id'])}\n"
+                f"URL: https://delfi.rs/{str(metadata['category'])}/{str(metadata['sec_id'])}\n"
+                f"ID: {str(metadata['id'])}\n"
                 f"Content: {str(doc.page_content)}\n\n"
             )
         print(result)
         return result.strip()
 
     except Exception as e:
-        print("CCCCC")
         print(e)
-        result = e
-    
-    return result
+        return str(e)
 
 
 class HybridQueryProcessor:
