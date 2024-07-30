@@ -442,7 +442,7 @@ def stolag(out_from_SelfQueryDelfi):
 
     # Find all matches in the text
     matches = pattern.findall(out_from_SelfQueryDelfi)
-
+    print(f"Matches: {matches}")
     # Process the matches if any are found
     if matches:
         books = [{'Sec_id': int(float(m[0])), 'Title': m[1].strip()} for m in matches]
@@ -507,7 +507,9 @@ def API_search(matching_sec_ids):
     # Print the results
     output = ""
     for info in products_info:
-        output += info
+        output += f"Na stanju: {info.get('na_stanju', 'N/A')}\n"
+        output += f"Cena: {info.get('cena', 'N/A')}\n"
+        output += f"Lager: {info.get('lager', 'N/A')}\n\n"
     
     return output
 
