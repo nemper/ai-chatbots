@@ -28,7 +28,7 @@ def connect_to_pinecone():
     pc = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
     return pc.Index(host=pinecone_host)
 
-def graphp(pitanje):
+def graphp(pitanje, usingAPI):
     driver = connect_to_neo4j()
     namespace = 'opisi'
     def run_cypher_query(driver, query):
@@ -117,6 +117,8 @@ def graphp(pitanje):
 
                 "Example user question: 'Da li imate mobi dik na stanju, treba mi 27 komada?' "
                 "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category"
+
+                "ALWAYS return oldProductId ID, regardless of the user's question."
             )
         },
                 {"role": "user", "content": prompt}
@@ -229,47 +231,49 @@ def graphp(pitanje):
         )
         return response.choices[0].message.content.strip()
 
+    cypher_query = generate_cypher_query(pitanje)
+    print(f"Generated Cypher Query: {cypher_query}")
+
+    if usingAPI:
+        cypher_query = """
+        MATCH (b:Book)-[:WROTE]-(a:Author) 
+        WHERE toLower(b.title) CONTAINS toLower('The Hobbit') AND b.quantity > 0
+        RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author
+        """
     
-    while True:
-        cypher_query = generate_cypher_query(pitanje)
-        print(f"Generated Cypher Query: {cypher_query}")
-        
-        if is_valid_cypher(cypher_query):
+    if is_valid_cypher(cypher_query):
+        try:
+            cleaned_data = run_cypher_query(driver, cypher_query)
+            book_data = create_product_links(cleaned_data)
+
+            # print(f"Book Data: {book_data}")
+            print(has_id_field(book_data))
+            print("Book Data: ", book_data)
+            # Define the regex pattern to match both 'id' and 'b.id'
+            pattern = r"'(?:b\.)?id': '([^']+)'"
+            if usingAPI:
+                return [re.search(r'/(\d+)$', item['link']).group(1) for item in book_data]
+            # Extract the IDs from the Cypher query result
+            book_ids = []
             try:
-                cleaned_data = run_cypher_query(driver, cypher_query)
-                book_data = create_product_links(cleaned_data)
-
-                # print(f"Book Data: {book_data}")
-                print(has_id_field(book_data))
-
-                # Define the regex pattern to match both 'id' and 'b.id'
-                pattern = r"'(?:b\.)?id': '([^']+)'"
-                
-                # Extract the IDs from the Cypher query result
-                book_ids = []
-                try:
-                    for data in book_data:
-                        match = re.search(pattern, str(data))
-                        if match:
-                            book_ids.append(match.group(1))
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-                
-                # print(f"Book IDs: {book_ids}")
-                
-                if not book_ids:
-                    print("Vraćeni podaci ne sadrže 'id' polje.")
-                    return formulate_answer_with_llm(pitanje, book_data)
-
-                # book_ids = [book['id'] for book in book_data]
-                descriptionsDict = get_descriptions_from_pinecone(book_ids)
-                # descriptions = list(descriptionsDict.values())
-
-                return display_results(combine_data(book_data, descriptionsDict))
+                for data in book_data:
+                    match = re.search(pattern, str(data))
+                    if match:
+                        book_ids.append(match.group(1))
             except Exception as e:
-                print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
-        else:
-            print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
+                print(f"An error occurred: {e}")
+            
+            if not book_ids:
+                print("Vraćeni podaci ne sadrže 'id' polje.")
+                return formulate_answer_with_llm(pitanje, book_data)
+
+            # book_ids = [book['id'] for book in book_data]
+            descriptionsDict = get_descriptions_from_pinecone(book_ids)
+            # descriptions = list(descriptionsDict.values())
+
+            return display_results(combine_data(book_data, descriptionsDict))
+        except Exception as e:
+            print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
 
 
 def pineg(pitanje):
@@ -436,36 +440,6 @@ def order_search(id_porudzbine):
         return f"An error occurred: {e}"
     
 
-def stolag(out_from_SelfQueryDelfi):
-    # Regular expression to extract Sec_id and Title
-    pattern = re.compile(r'Sec_id:\s*(\S+)\s*Title:\s*(.+?)\s*Authors:', re.MULTILINE | re.DOTALL)
-
-    # Find all matches in the text
-    matches = pattern.findall(out_from_SelfQueryDelfi)
-    print(f"Matches: {matches}")
-    # Process the matches if any are found
-    if matches:
-        books = [{'Sec_id': int(float(m[0])), 'Title': m[1].strip()} for m in matches]
-
-        # Extract the Title of the first book and normalize it
-        first_title = books[0]['Title'].lower()
-
-        matching_sec_ids = []
-
-        for book in books:
-            normalized_title = book['Title'].lower()
-            
-            # Check if the current book matches the criteria
-            if (normalized_title == first_title or
-                first_title in normalized_title or
-                normalized_title in first_title):
-                matching_sec_ids.append(book['Sec_id'])
-
-        return API_search(matching_sec_ids)
-    else:
-        return "No matches found"
-
-
 def API_search(matching_sec_ids):
     # Function to call the API for a specific product_id
     def get_product_info(token, product_id):
@@ -475,17 +449,22 @@ def API_search(matching_sec_ids):
             "product_id": product_id
         }
         response = requests.get(url, params=params)
+        print(f"API response for product_id {product_id}: {response.content}")  # Debugging line
         return response.content
 
     # Function to parse the XML response and extract required fields
     def parse_product_info(xml_data):
-        root = ET.fromstring(xml_data)
         product_info = {}
-        product_node = root.find(".//product")
-        if product_node is not None:
-            product_info['na_stanju'] = product_node.findtext('na_stanju')
-            product_info['cena'] = product_node.findtext('cena')
-            product_info['lager'] = product_node.findtext('lager')
+        try:
+            root = ET.fromstring(xml_data)
+            product_node = root.find(".//product")
+            if product_node is not None:
+                product_info['cena'] = product_node.findtext('cena')
+                product_info['lager'] = product_node.findtext('lager')
+            else:
+                print("Product node not found in XML data")  # Debugging line
+        except ET.ParseError as e:
+            print(f"Error parsing XML: {e}")  # Debugging line
         return product_info
 
     # Main function to get info for a list of product IDs
@@ -494,7 +473,14 @@ def API_search(matching_sec_ids):
         for product_id in product_ids:
             xml_data = get_product_info(token, product_id)
             product_info = parse_product_info(xml_data)
-            products_info.append(product_info)
+            if product_info:  # Only add if product info is found
+                products_info.append(product_info)
+            else:
+                products_info.append({
+                    'product_id': product_id,
+                    'cena': 'N/A',
+                    'lager': 'N/A'
+                })
         return products_info
 
     # Replace with your actual token and product IDs
@@ -503,13 +489,10 @@ def API_search(matching_sec_ids):
 
     # Get the info for multiple products
     products_info = get_multiple_products_info(token, product_ids)
-
-    # Print the results
-    output = ""
+    print(f"Products Info: {products_info}")
+    output = "Data returned from API for each searched id: \n"
     for info in products_info:
-        output += f"Na stanju: {info.get('na_stanju', 'N/A')}\n"
-        output += f"Cena: {info.get('cena', 'N/A')}\n"
-        output += f"Lager: {info.get('lager', 'N/A')}\n\n"
+        output += str(info) + "\n"
     
     return output
 

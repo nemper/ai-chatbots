@@ -12,7 +12,7 @@ import soundfile as sf
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
-from klotbot_delfi_funcs import HybridQueryProcessor, SelfQueryDelfi, graphp, pineg, order_search, stolag
+from klotbot_delfi_funcs import HybridQueryProcessor, SelfQueryDelfi, graphp, pineg, order_search, API_search
 from klotbot_promptdb import ConversationDatabase, work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
 import json
@@ -364,7 +364,7 @@ def rag_tool_answer(prompt):
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
         
     elif  st.session_state.rag_tool == "Graphp": 
-        context = graphp(prompt)
+        context = graphp(prompt, False)
 
     elif st.session_state.rag_tool == "Pineg":
         context = pineg(prompt)
@@ -373,11 +373,9 @@ def rag_tool_answer(prompt):
         context = order_search(prompt)
 
     elif st.session_state.rag_tool == "Stolag":
-        uvod = mprompts["rag_self_query"]
-        prompt = uvod + prompt
-        return stolag(SelfQueryDelfi(prompt))
+        context = API_search(graphp(prompt, True) )
 
-    return context, st.session_state.rag_tool
+    return context
 
 
 def main():
@@ -506,8 +504,7 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        # Original processing to generate complete_prompt
-        result, alat = rag_tool_answer(st.session_state.prompt)
+        result = rag_tool_answer(st.session_state.prompt)
         st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
 
         if result=="CALENDLY":
@@ -630,4 +627,5 @@ if deployment_environment == "Streamlit":
     name, authentication_status, username = positive_login(main_wrap_for_st, " ")
 else: 
     if __name__ == "__main__":
-        check_openai_errors(main)
+        main()
+        # check_openai_errors(main)
