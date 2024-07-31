@@ -3,6 +3,7 @@ os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_CHATBOT"
 os.environ["PINECONE_ENVIRONMENT"] = "us-west1-gcp-free"
+os.environ["RAG_SELF_QUERY"] = "DELFI_RAG_SELF_QUERY"
 import base64
 import io
 import mysql

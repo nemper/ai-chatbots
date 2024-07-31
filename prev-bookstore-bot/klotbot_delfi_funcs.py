@@ -433,41 +433,51 @@ def order_search(id_porudzbine):
     
 
 def API_search(matching_sec_ids):
-    # Function to call the API for multiple product_ids in a single batch
-    def get_products_info_batch(token, product_ids):
-        url = "https://www.delfi.rs/api/products/batch"  # Replace with your actual batch API endpoint
+    # Function to call the API for a specific product_id
+    def get_product_info(token, product_id):
+        url = "https://www.delfi.rs/api/products"  # Replace with your actual API endpoint
         params = {
             "token": token,
-            "product_ids": ",".join(map(str, product_ids))  # Assuming the API accepts a comma-separated list
+            "product_id": product_id
         }
         response = requests.get(url, params=params)
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        print(f"API response for product_id {product_id}: {response.content}")  # Debugging line
         return response.content
 
     # Function to parse the XML response and extract required fields
-    def parse_products_info(xml_data):
-        products_info = []
+    def parse_product_info(xml_data):
+        product_info = {}
         try:
             root = ET.fromstring(xml_data)
-            product_nodes = root.findall(".//product")
-            for product_node in product_nodes:
-                product_info = {
-                    'product_id': product_node.findtext('ID'),
-                    'cena': product_node.findtext('cena', 'N/A'),
-                    'lager': product_node.findtext('lager', 'N/A')
-                }
-                products_info.append(product_info)
-            if not products_info:  # No product nodes found
-                print("No product nodes found in XML data")
+            product_node = root.find(".//product")
+            if product_node is not None:
+                cena = product_node.findtext('cena')
+                lager = product_node.findtext('lager')
+                url = product_node.findtext('url')
+                
+                if lager and int(lager) > 2:
+                    product_info = {
+                        'cena': cena,
+                        'lager': lager,
+                        'url': url
+                    }
+                else:
+                    print(f"Skipping product with lager {lager}")  # Debugging line
+            else:
+                print("Product node not found in XML data")  # Debugging line
         except ET.ParseError as e:
             print(f"Error parsing XML: {e}")  # Debugging line
-        return products_info
+        return product_info
 
     # Main function to get info for a list of product IDs
     def get_multiple_products_info(token, product_ids):
-        xml_data = get_products_info_batch(token, product_ids)
-        print(f"XML data for product_ids {product_ids}: {xml_data}")  # Debugging line
-        products_info = parse_products_info(xml_data)
+        products_info = []
+        for product_id in product_ids:
+            xml_data = get_product_info(token, product_id)
+            print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
+            product_info = parse_product_info(xml_data)
+            if product_info:  # Only add if product info is found and lager > 2
+                products_info.append(product_info)
         return products_info
 
     # Replace with your actual token and product IDs
@@ -482,6 +492,7 @@ def API_search(matching_sec_ids):
         output += str(info) + "\n"
     
     return output
+
 
 def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
     """
