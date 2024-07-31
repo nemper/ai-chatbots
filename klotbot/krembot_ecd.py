@@ -7,11 +7,11 @@ import uuid
 from openai import OpenAI
 from streamlit_mic_recorder import mic_recorder
 
-from myfunc.embeddings import rag_tool_answer
 from myfunc.mojafunkcija import positive_login, initialize_session_state, check_openai_errors, read_txts, copy_to_clipboard
 from myfunc.mssql import ConversationDatabase, work_prompts
 from myfunc.pyui_javascript import chat_placeholder_color, st_fixed_container
-from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request
+from myfunc.retrievers import HybridQueryProcessor
+from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 
 mprompts = work_prompts()
 
@@ -113,6 +113,27 @@ apply_background_image(avatar_bg)
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
+
+
+def rag_tool_answer(prompt):
+    context = " "
+    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
+
+    if  st.session_state.rag_tool == "FAQ":
+        processor = HybridQueryProcessor(namespace="ecd-faq")
+        context, scores = processor.process_query_results(prompt)
+        # st.info("Score po chunku:")
+        # st.write(scores)
+        
+    elif  st.session_state.rag_tool == "Uputstva":
+        processor = HybridQueryProcessor(namespace="ecd-uputstva")
+        context, scores = processor.process_query_results(prompt)
+
+    elif  st.session_state.rag_tool == "Blogovi":
+        processor = HybridQueryProcessor(namespace="ecd-blogovi")
+        context, scores = processor.process_query_results(prompt)
+
+    return context
 
 
 def main():
