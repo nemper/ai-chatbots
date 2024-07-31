@@ -132,7 +132,7 @@ def rag_tool_answer(prompt):
     elif  st.session_state.rag_tool == "Blogovi":
         processor = HybridQueryProcessor(namespace="ecd-blogovi")
         context, scores = processor.process_query_results(prompt)
-
+        st.write("Tool used:", st.session_state.rag_tool)
     return context
 
 
