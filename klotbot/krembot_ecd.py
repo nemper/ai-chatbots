@@ -115,7 +115,7 @@ def reset_memory():
     st.session_state.filtered_messages = ""
 
 
-def rag_tool_answer(prompt):
+def rag_tool_answer(prompt, phglob):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
@@ -132,7 +132,8 @@ def rag_tool_answer(prompt):
     elif  st.session_state.rag_tool == "Blogovi":
         processor = HybridQueryProcessor(namespace="ecd-blogovi")
         context, scores = processor.process_query_results(prompt)
-        st.write("Tool used:", st.session_state.rag_tool)
+    st.write("Tool used:", st.session_state.rag_tool)
+    
     return context
 
 
@@ -255,7 +256,7 @@ def main():
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
         result = rag_tool_answer(st.session_state.prompt, phglob)
-        
+        # print(11111111111111111111111, result)
         if result=="CALENDLY":
             full_prompt=""
             full_response=""
