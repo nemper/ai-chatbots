@@ -14,7 +14,7 @@ from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 
 mprompts = work_prompts()
-
+st.write(mprompts)
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
@@ -256,7 +256,7 @@ def main():
     if st.session_state.prompt:
         # Original processing to generate complete_prompt
         result = rag_tool_answer(st.session_state.prompt, phglob)
-        # print(11111111111111111111111, result)
+        st.write(11111111111111111111111, result)
         if result=="CALENDLY":
             full_prompt=""
             full_response=""
