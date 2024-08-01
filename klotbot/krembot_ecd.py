@@ -14,7 +14,7 @@ from myfunc.retrievers import HybridQueryProcessor
 from myfunc.various_tools import play_audio_from_stream_s, predlozeni_odgovori, process_request, get_structured_decision_from_model
 
 mprompts = work_prompts()
-st.write(mprompts)
+
 default_values = {
     "prozor": st.query_params.get('prozor', "d"),
     "_last_speech_to_text_transcript_id": 0,
