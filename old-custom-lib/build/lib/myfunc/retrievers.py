@@ -186,7 +186,7 @@ class HybridQueryProcessor:
             score_list = []
             for item in tematika:
                 if item["score"] > self.score:
-                    uk_teme += item["page_content"] + "\n\n"
+                    uk_teme += f"{item["page_content"]}\n url: {item["source"]}\n\n"
                     score_list.append(item["score"])
                     if self.check_namespace:
                         uk_teme += f"Filename: {item['filename']}\n"
