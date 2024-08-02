@@ -200,8 +200,6 @@ def standard_chunks(dokum,chunk_size, chunk_overlap):
 
                 if dokum is not None and st.session_state.submit_b == True:
                     data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-                    print("AAAA", type(data))
-                    print("AAAA", data)
                     try:
                         text_splitter = CharacterTextSplitter(
                                 separator=text_delimiter,
@@ -210,12 +208,22 @@ def standard_chunks(dokum,chunk_size, chunk_overlap):
                             )
 
                         texts = text_splitter.split_documents(data)
-                        print("BBBB", type(texts))
                     except:
                         texts = data
 
+                    if len(texts) == 0:
+                        print("AAAAAAAAAAAAA")
+                        text_splitter = CharacterTextSplitter(
+                                separator="\n",
+                                chunk_size=chunk_size,
+                                chunk_overlap=chunk_overlap,
+                            )
+
+                        texts = text_splitter.split_documents(data)
+                    if len(texts) == 0:
+                        texts = data
                     # # Create the OpenAI embeddings
-                    st.success(f"Učitano {len(texts)} tekstova")
+                    # st.success(f"Učitano {len(texts)} tekstova")
 
                     # Define a custom method to convert Document to a JSON-serializable format
                     output_json_list = []
