@@ -107,7 +107,7 @@ def callback():
         return st.session_state.my_recorder_output['bytes']
 
 custom_streamlit_style()
-apply_background_image(avatar_bg)
+# apply_background_image(avatar_bg)
 
 
 def reset_memory():
