@@ -351,14 +351,13 @@ def copy_to_clipboard(message):
     """
     components.html(html_content, height=50)
 
-
+import os
 chat_placeholder_color("#f1f1f1")
-
-client_folder = getenv("CLIENT_FOLDER")
-avatar_bg= f"Clients\\{client_folder}\\bg.png" 
-avatar_ai= f"Clients\\{client_folder}\\avatar.jpg" 
-avatar_user = f"Clients\\{client_folder}\\user.webp"
-avatar_sys = f"Clients\\{client_folder}\\logo.png"
+client_folder = os.getenv("CLIENT_FOLDER")
+avatar_bg = os.path.join("Clients", client_folder, "bg.png")
+avatar_ai = os.path.join("Clients", client_folder, "avatar.jpg")
+avatar_user = os.path.join("Clients", client_folder, "user.webp")
+avatar_sys = os.path.join("Clients", client_folder, "logo.png")
 
 # global phglob
 # phglob=st.empty()
