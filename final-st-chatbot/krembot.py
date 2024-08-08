@@ -76,8 +76,6 @@ def handle_feedback():
     except Exception as e:
         st.error(f"Error storing feedback: {e}")
 
-    st.write(f"Feedback received: {feedback_data}")  # Debugging in Streamlit UI
-
 
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
