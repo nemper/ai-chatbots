@@ -3,7 +3,7 @@ import html
 import streamlit as st
 import streamlit.components.v1 as components
 
-from os import getenv
+import os
 from streamlit.components.v1 import html as st_html
 from typing import Literal
 
@@ -351,8 +351,8 @@ def copy_to_clipboard(message):
     """
     components.html(html_content, height=50)
 
-import os
 chat_placeholder_color("#f1f1f1")
+
 client_folder = os.getenv("CLIENT_FOLDER")
 avatar_bg = os.path.join("Clients", client_folder, "bg.png")
 avatar_ai = os.path.join("Clients", client_folder, "avatar.jpg")

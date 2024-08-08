@@ -70,17 +70,17 @@ def rag_tool_answer(prompt):
 
     elif  st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq")
-        context, scores = processor.process_query_results(prompt)
+        context = processor.process_query_results(prompt)
         # st.info("Score po chunku:")
         # st.write(scores)
         
     elif  st.session_state.rag_tool == "Uputstva":
         processor = HybridQueryProcessor(namespace="ecd-uputstva")
-        context, scores = processor.process_query_results(prompt)
+        context = processor.process_query_results(prompt)
 
     elif  st.session_state.rag_tool == "Blogovi":
         processor = HybridQueryProcessor(namespace="ecd-blogovi")
-        context, scores = processor.process_query_results(prompt)
+        context = processor.process_query_results(prompt)
 
     return context
 
