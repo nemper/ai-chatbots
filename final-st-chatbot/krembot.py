@@ -33,7 +33,7 @@ default_values = {
     "filtered_messages": "",
     "selected_question": None,
     "username": "positive",
-    "app_name": "KlotBot",
+    "app_name": getenv("APP_ID"),
     "feedback": {},
     "fb_k": {},
 }
