@@ -227,7 +227,7 @@ def graphp(pitanje, usingAPI):
 
 
     def get_descriptions_from_pinecone(ids):
-        index = connect_to_pinecone()
+        index = connect_to_pinecone(x=0)
 
         results = index.fetch(ids=ids, namespace=namespace)
         descriptions = {}
@@ -330,7 +330,7 @@ def graphp(pitanje, usingAPI):
 
 def pineg(pitanje):
     namespace = 'opisi'
-    index = connect_to_pinecone()
+    index = connect_to_pinecone(x=0)
     driver = connect_to_neo4j()
 
     def run_cypher_query(id):
