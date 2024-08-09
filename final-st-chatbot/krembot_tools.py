@@ -41,7 +41,6 @@ def rag_tool_answer(prompt):
     if  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
-        print(111, context)
 
     elif  st.session_state.rag_tool == "Opisi":
         uvod = mprompts["rag_self_query"]

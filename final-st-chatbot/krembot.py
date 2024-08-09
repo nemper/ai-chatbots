@@ -22,7 +22,7 @@ from krembot_funcs import *
 from streamlit_feedback import streamlit_feedback
 
 mprompts = work_prompts()
-st.write(mprompts)
+#st.write(mprompts)
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
@@ -207,7 +207,8 @@ def main():
     if st.session_state.prompt:
         result, tool = rag_tool_answer(st.session_state.prompt)
         st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
-
+        print(777, result)
+        
         if result=="CALENDLY":
             full_prompt=""
             full_response=""
