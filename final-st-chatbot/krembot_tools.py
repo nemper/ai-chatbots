@@ -27,10 +27,10 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 def connect_to_neo4j():
     return neo4j.GraphDatabase.driver(getenv("NEO4J_URI"), auth=(getenv("NEO4J_USER"), getenv("NEO4J_PASS")))
 
-#https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io
+
 def connect_to_pinecone(x):
     pinecone_api_key = getenv('PINECONE_API_KEY')
-    pinecone_host = x
+    pinecone_host = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io" if x == 0 else "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
 
@@ -39,7 +39,7 @@ def rag_tool_answer(prompt):
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
     if  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(namespace="delfi-podrska")
+        processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
         print(111, context)
 
@@ -69,17 +69,17 @@ def rag_tool_answer(prompt):
         context = intelisale_csv(st.session_state.rag_tool, prompt)
 
     elif  st.session_state.rag_tool == "FAQ":
-        processor = HybridQueryProcessor(namespace="ecd-faq")
+        processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
         context = processor.process_query_results(prompt)
         # st.info("Score po chunku:")
         # st.write(scores)
         
     elif  st.session_state.rag_tool == "Uputstva":
-        processor = HybridQueryProcessor(namespace="ecd-uputstva")
+        processor = HybridQueryProcessor(namespace="ecd-uputstva", delfi_special=1)
         context = processor.process_query_results(prompt)
 
     elif  st.session_state.rag_tool == "Blogovi":
-        processor = HybridQueryProcessor(namespace="ecd-blogovi")
+        processor = HybridQueryProcessor(namespace="ecd-blogovi", delfi_special=1)
         context = processor.process_query_results(prompt)
 
     return context, st.session_state.rag_tool
@@ -662,7 +662,8 @@ class HybridQueryProcessor:
         self.index_name = kwargs.get('index', 'neo-positive')  # Default index is 'positive'
         self.namespace = kwargs.get('namespace', getenv("NAMESPACE"))  
         self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
-        self.index = connect_to_pinecone()
+        self.delfi_special = kwargs.get('delfi_special')
+        self.index = connect_to_pinecone(self.delfi_special)
         self.host = getenv("PINECONE_HOST")
 
     def hybrid_score_norm(self, dense, sparse):
@@ -735,7 +736,7 @@ class HybridQueryProcessor:
         Additionally, returns a list of scores for items that meet the score threshold.
         """
         tematika = self.hybrid_query(upit)
-    
+        print(222, tematika)
         if not dict:
             uk_teme = ""
             
