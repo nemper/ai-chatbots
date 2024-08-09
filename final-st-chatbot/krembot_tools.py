@@ -27,11 +27,10 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 def connect_to_neo4j():
     return neo4j.GraphDatabase.driver(getenv("NEO4J_URI"), auth=(getenv("NEO4J_USER"), getenv("NEO4J_PASS")))
 
-
-@st.cache_resource
-def connect_to_pinecone():
+#https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io
+def connect_to_pinecone(x):
     pinecone_api_key = getenv('PINECONE_API_KEY')
-    pinecone_host = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
+    pinecone_host = x
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
 
@@ -40,8 +39,9 @@ def rag_tool_answer(prompt):
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
     if  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor()
+        processor = HybridQueryProcessor(namespace="delfi-podrska")
         context = processor.process_query_results(prompt)
+        print(111, context)
 
     elif  st.session_state.rag_tool == "Opisi":
         uvod = mprompts["rag_self_query"]
