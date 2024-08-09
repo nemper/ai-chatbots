@@ -2,6 +2,7 @@ aiohttp
 langchain
 langchain-community
 langchain-openai
+lark
 neo4j
 openai
 pandas
