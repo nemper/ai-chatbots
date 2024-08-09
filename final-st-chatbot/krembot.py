@@ -33,7 +33,8 @@ default_values = {
     "filtered_messages": "",
     "selected_question": None,
     "username": "positive",
-    "app_name": getenv("APP_ID"),
+    #"app_name": getenv("APP_ID"),
+    "app_name": "Krembot",
     "feedback": {},
     "fb_k": {},
 }
@@ -200,7 +201,7 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        result = rag_tool_answer(st.session_state.prompt)
+        result, tool = rag_tool_answer(st.session_state.prompt)
         st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
 
         if result=="CALENDLY":
@@ -242,13 +243,14 @@ def main():
         if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
             with st.chat_message("assistant", avatar=avatar_ai):
-                    
+                    cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"] + [temp_full_prompt]
+
                     message_placeholder = st.empty()
                     full_response = ""
                     for response in client.chat.completions.create(
                         model=getenv("OPENAI_MODEL"),
                         temperature=0,
-                        messages=st.session_state.messages[current_thread_id] + [temp_full_prompt],
+                        messages=cc_messages,
                         stream=True,
                         stream_options={"include_usage":True},
                         ):
@@ -262,9 +264,11 @@ def main():
             message_placeholder.markdown(full_response)
             copy_to_clipboard(full_response)
             # Append assistant's response to the conversation
+            st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
             st.session_state.filtered_messages = ""
-            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", 'assistant']]
+            # da pise i tool
+            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", "assistant", "tool"]]
             for item in filtered_data:  # lista za download conversation
                 st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
     

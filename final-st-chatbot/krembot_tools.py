@@ -82,7 +82,7 @@ def rag_tool_answer(prompt):
         processor = HybridQueryProcessor(namespace="ecd-blogovi")
         context = processor.process_query_results(prompt)
 
-    return context
+    return context, st.session_state.rag_tool
 
 
 def get_structured_decision_from_model(user_query):
