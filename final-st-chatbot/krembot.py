@@ -1,5 +1,5 @@
 import os
-os.environ["CLIENT_FOLDER"] = "Positive"
+# os.environ["CLIENT_FOLDER"] = "Positive"
 
 
 import io
@@ -33,8 +33,8 @@ default_values = {
     "filtered_messages": "",
     "selected_question": None,
     "username": "positive",
-    #"app_name": getenv("APP_ID"),
-    "app_name": "Krembot",
+    "app_name": getenv("APP_ID"),
+    # "app_name": "Krembot",
     "feedback": {},
     "fb_k": {},
 }
