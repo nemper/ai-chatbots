@@ -12,6 +12,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
 from openai import OpenAI
+import os
 from os import getenv
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
@@ -476,7 +477,7 @@ def API_search(matching_sec_ids):
                 lager = product_node.findtext('lager')
                 url = product_node.findtext('url')
                 
-                if lager and int(lager) > 2:
+                if lager and int(lager) > 0:
                     product_info = {
                         'cena': cena,
                         'lager': lager,
@@ -768,21 +769,37 @@ class HybridQueryProcessor:
         result = client.embeddings.create(input=[text], model=model).data[0].embedding
        
         return result
-    
 
-def intelisale_csv(query_type, cid):
-    match = re.search(r'\d{1,}', cid)
+
+csv_directory = os.path.join(os.getcwd(), 'Clients', 'Intelisale')
+
+def intelisale_start(cid):
+    match = re.search(r'[Cc]ompany\s+(\d{1,4})', cid)
     if not match:
-        return "No integer found in the prompt."
+        return "No valid Company ID found in the prompt."
     
-    cid = int(match.group())
-    # Get the list of CSV files in the current directory
-    # ["Intelisale_Activities.csv", "Intelisale_Attributes.csv", "Intelisale_Customers.csv", "Intelisale_Notes.csv", "Intelisale_PGP.csv"]
-    customers_df = pd.read_csv("Intelisale_Customers.csv")
-    pgp_df = pd.read_csv("Intelisale_PGP.csv")
-    notes_df = pd.read_csv("Intelisale_Notes.csv")
-    
+    company_number = match.group(1)
+    cid = f"Company {company_number}"
 
+    customers_df = pd.read_csv("Intelisale_Customers.csv")
+
+    company_row = customers_df[customers_df['CompanyName'] == cid]
+    if company_row.empty:
+        return 333
+    
+    cid = company_row.iloc[0]['CustomerId']
+    return cid
+
+
+def intelisale_csv_2(query_type, cid):
+    customers_df = pd.read_csv(os.path.join(csv_directory, "Intelisale_Customers.csv"))
+    pgp_df = pd.read_csv(os.path.join(csv_directory, "Intelisale_PGP.csv"))
+    notes_df = pd.read_csv(os.path.join(csv_directory, "Intelisale_Notes.csv"))
+    
+    cid = intelisale_start(cid)
+    if cid == 333:
+         return "No customer found for the given Company name"
+    
     if query_type == "InteliA":
         filtered_data = customers_df[customers_df['CustomerId'] == cid]
         results = filtered_data[['CustomerId', 'Code', 'TopDivision', 'Division', 'TopBranch', 'Branch', 'BlueCoatsNo']]
@@ -792,7 +809,7 @@ def intelisale_csv(query_type, cid):
         product_potential_data = pgp_df[['Turnover', 'Potential', 'UnusedPotential']]
         
         filtered_customer_plan_data = customer_plan_data[customer_plan_data['CustomerId'] == cid]
-        filtered_product_potential_data = product_potential_data[pgp_df['CustomerId'] == cid]  # Adjust if needed
+        filtered_product_potential_data = product_potential_data[pgp_df['CustomerId'] == cid]
         
         results = {
             'customer_plan_data': filtered_customer_plan_data,
@@ -816,3 +833,23 @@ def intelisale_csv(query_type, cid):
             results = filtered_data_by_customer_id[['Id', 'NoteContent', 'CustomerId']]
 
     return results.to_string()
+
+
+def intelisale_csv(query_type, cid):   
+    cid = intelisale_start(cid) 
+    if cid == 333:
+        return "No customer found for the given Company name"
+    result_dict = {}
+
+    # Go through each CSV in the specified directory and extract matching rows based on CustomerId
+    for file in os.listdir(csv_directory):
+        if file.endswith('.csv'):
+            df = pd.read_csv(os.path.join(csv_directory, file))
+            if 'CustomerId' in df.columns:
+                matching_rows = df[df['CustomerId'] == cid]
+                if not matching_rows.empty:
+                    for _, row in matching_rows.iterrows():
+                        for col in row.index:
+                            result_dict[col] = row[col]
+
+    return result_dict
