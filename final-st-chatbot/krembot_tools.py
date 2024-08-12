@@ -66,8 +66,11 @@ def rag_tool_answer(prompt):
         context = API_search(graphp(prompt, True) )
 
     elif st.session_state.rag_tool in ["InteliA", "InteliB", "InteliC", "InteliD", "InteliE"]:
-        context = intelisale_csv(st.session_state.rag_tool, prompt)
+        context = intelisale_csv_2(st.session_state.rag_tool, prompt)
 
+    elif st.session_state.rag_tool == "Inteli":
+        context = intelisale_csv(st.session_state.rag_tool, prompt)
+        
     elif  st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
         context = processor.process_query_results(prompt)
