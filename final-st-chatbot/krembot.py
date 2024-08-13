@@ -6,8 +6,8 @@ os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["RAG_SELF_QUERY"] = "DELFI_RAG_SELF_QUERY"
 
-import nltk
-nltk.download('punkt')
+#import nltk
+#nltk.download('punkt')
 
 import io
 import streamlit as st
