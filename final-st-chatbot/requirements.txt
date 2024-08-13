@@ -4,6 +4,7 @@ langchain-community
 langchain-openai
 lark
 neo4j
+nltk==3.8.1
 openai
 pandas
 pinecone

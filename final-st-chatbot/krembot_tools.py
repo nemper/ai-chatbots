@@ -5,9 +5,6 @@ import requests
 import streamlit as st
 import xml.etree.ElementTree as ET
 
-import nltk
-nltk.download('punkt')
-
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_community.vectorstores import Pinecone as LangPine
