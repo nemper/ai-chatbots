@@ -1,13 +1,15 @@
+import nltk
 import os
+
+nltk_data_dir = os.path.join(os.getcwd(), 'nltk_data')
+nltk.data.path.append(nltk_data_dir)
+
 os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
 os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["RAG_SELF_QUERY"] = "DELFI_RAG_SELF_QUERY"
-
-#import nltk
-#nltk.download('punkt')
 
 import io
 import streamlit as st
