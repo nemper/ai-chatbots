@@ -68,11 +68,7 @@ class ConversationDatabase:
         - thread_id: The thread identifier (string).
         - new_conversation: The new conversation data to replace as a list of dictionaries.
         """
-
-        # Convert the new conversation to JSON format
         new_conversation_json = json.dumps(new_conversation)
-
-        # Update the record with the new conversation
         update_sql = '''
         UPDATE conversations
         SET conversation = ?
@@ -138,7 +134,6 @@ class ConversationDatabase:
         else:
             self.add_sql_record(app_name, user_name, thread_id, new_conversation)
 
-
     def query_sql_record(self, app_name, user_name, thread_id):
         query_sql = '''
         SELECT conversation FROM conversations 
@@ -193,32 +188,19 @@ class ConversationDatabase:
             print(f"Error adding token record: {e}")
             raise
 
-    def extract_token_sums_between_dates(self, start_date, end_date):
-        query_sql = """
-        SELECT 
-            SUM(embedding_tokens) as total_embedding_tokens, 
-            SUM(prompt_tokens) as total_prompt_tokens, 
-            SUM(completion_tokens) as total_completion_tokens, 
-            SUM(stt_tokens) as total_stt_tokens, 
-            SUM(tts_tokens) as total_tts_tokens 
-        FROM chatbot_token_log 
-        WHERE timestamp BETWEEN ? AND ?
+    def insert_feedback(self, thread_id, app_name, previous_question, given_answer, thumbs, feedback_text):
+        """
+        Inserts feedback data into the Feedback table.
         """
         try:
-            self.cursor.execute(query_sql, (start_date, end_date))
-            result = self.cursor.fetchone()
-            if result:
-                return {
-                    "total_embedding_tokens": int(result[0]),
-                    "total_prompt_tokens": int(result[1]),
-                    "total_completion_tokens": int(result[2]),
-                    "total_stt_tokens": int(result[3]),
-                    "total_tts_tokens": int(result[4]),
-                }
-            else:
-                return None
+            insert_query = """
+            INSERT INTO Feedback (thread_id, app_name, previous_question, given_answer, Thumbs, Feedback_text)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """
+            self.cursor.execute(insert_query, (thread_id, app_name, previous_question, given_answer, thumbs, feedback_text))
+            self.conn.commit()
         except Exception as e:
-            print(f"Error extracting token sums: {e}")
+            print(f"Error inserting feedback into the database: {e}")
             raise
 
     def close(self):
