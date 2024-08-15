@@ -805,10 +805,10 @@ def intelisale_csv_2(query_type, cid):
     
     if query_type == "InteliA":
         filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'Code', 'TopDivision', 'Division', 'TopBranch', 'Branch', 'BlueCoatsNo']]
+        results = filtered_data[['CustomerId', 'Code', 'TopDivision', 'Division', 'TopBranch', 'Branch', 'BlueCoatsNo', 'Name']]
 
     elif query_type == "InteliB":
-        customer_plan_data = customers_df[['CustomerId', 'PlanCurrentYear', 'TurnoverCurrentYear', 'FullfilmentCurrentYear', 'Plan12Months', 'Turnover12Months', 'Fullfilment12Months']]
+        customer_plan_data = customers_df[['CustomerId', 'PlanCurrentYear', 'TurnoverCurrentYear', 'FullfilmentCurrentYear', 'Plan12Months', 'Turnover12Months', 'Fullfilment12Months', 'Name']]
         product_potential_data = pgp_df[['Turnover', 'Potential', 'UnusedPotential']]
         
         filtered_customer_plan_data = customer_plan_data[customer_plan_data['CustomerId'] == cid]
@@ -821,11 +821,11 @@ def intelisale_csv_2(query_type, cid):
 
     elif query_type == "InteliC":
         filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'Plan12Months', 'CalculatedNumberOfVisits', 'CalculatedTimeAtCustomer']]
+        results = filtered_data[['CustomerId', 'Plan12Months', 'CalculatedNumberOfVisits', 'CalculatedTimeAtCustomer', 'Name']]
 
     elif query_type == "InteliD":
         filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'CreditLimit', 'Balance', 'BalanceOutOfLimit', 'BalanceCritical']]
+        results = filtered_data[['CustomerId', 'CreditLimit', 'Balance', 'BalanceOutOfLimit', 'BalanceCritical', 'Name']]
 
     elif query_type == "InteliE":
         filtered_data_by_customer_id = notes_df[notes_df['CustomerId'] == cid]

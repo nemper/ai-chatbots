@@ -1,12 +1,4 @@
 import os
-
-os.environ["CLIENT_FOLDER"] = "Delfi"
-os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
-os.environ["APP_ID"] = "DelfiBot"
-os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o"
-os.environ["RAG_SELF_QUERY"] = "DELFI_RAG_SELF_QUERY"
-
 import io
 import streamlit as st
 import uuid
@@ -26,7 +18,7 @@ mprompts = work_prompts()
 
 with st.expander("Promptovi"):
     st.write(mprompts)
-    
+
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
