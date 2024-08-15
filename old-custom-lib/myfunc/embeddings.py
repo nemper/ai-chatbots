@@ -168,45 +168,50 @@ def read_uploaded_file(uploaded_file):
     return data
 
 
-
 def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
+    text_splitter = RecursiveCharacterTextSplitter(
+        separators=[sep, "\n\n", "\n", " ", ""],
+        keep_separator=keep,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        length_function=len,
+        is_separator_regex=False,
+    )
     
-	text_splitter = RecursiveCharacterTextSplitter(
-    separators=[sep, "\n\n", "\n", " ", ""],
-	keep_separator=keep,
-    chunk_size=chunk_size,
-    chunk_overlap=chunk_overlap,
-    length_function=len,
-    is_separator_regex=False,
-)
-	data = read_uploaded_file(dokum)
-	texts = text_splitter.create_documents([data], metadatas=[{"source":dokum}] )
-	
-	# Define a custom method to convert Document to a JSON-serializable format
-	output_json_list = []
-	current_date = datetime.now()
-	date_string = current_date.strftime('%Y%m%d')
-	# Loop through the Document objects and convert them to JSON
-	i = 0
-	for document in texts:
-		i += 1
-		output_dict = {
-			"id": str(uuid4()),
-			"chunk": i,
-			"text": document.page_content,
-			"source": document.metadata.get("source", ""),
-			"date": int(date_string),
-		}
-
-		output_json_list.append(output_dict)
-	json_string = (
-		"["
-		+ ",\n".join(
-			json.dumps(d, ensure_ascii=False) for d in output_json_list
-		)
-		+ "]"
-	)
-	return json_string
+    # Read the content of the uploaded file
+    data = read_uploaded_file(dokum)
+    
+    # Get a serializable file name or other string identifier
+    source_identifier = dokum.name if isinstance(dokum, UploadedFile) else str(dokum)
+    
+    texts = text_splitter.create_documents([data], metadatas=[{"source": source_identifier}])
+    
+    # Define a custom method to convert Document to a JSON-serializable format
+    output_json_list = []
+    current_date = datetime.now()
+    date_string = current_date.strftime('%Y%m%d')
+    
+    # Loop through the Document objects and convert them to JSON
+    i = 0
+    for document in texts:
+        i += 1
+        output_dict = {
+            "id": str(uuid4()),
+            "chunk": i,
+            "text": document.page_content,
+            "source": document.metadata.get("source", ""),
+            "date": int(date_string),
+        }
+        output_json_list.append(output_dict)
+    
+    json_string = (
+        "["
+        + ",\n".join(
+            json.dumps(d, ensure_ascii=False) for d in output_json_list
+        )
+        + "]"
+    )
+    return json_string
 
 
 # ovo funkcija radi
