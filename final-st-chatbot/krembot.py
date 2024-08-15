@@ -207,8 +207,11 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         result, tool = rag_tool_answer(st.session_state.prompt)
-        st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
-        print(777, result)
+
+        with st.expander("Expand"):
+            st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
+            st.divider()
+            st.write("Odgovor iz alata: \n", result)
         
         if result=="CALENDLY":
             full_prompt=""
@@ -231,11 +234,14 @@ def main():
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
         else:    
-            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""Using the following context:
-                                                              {result}
-                                                              answer the question: 
-                                                              {st.session_state.prompt} :
-                                                                 """}]}
+            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
+                Using the following context:
+                {result}
+                answer the question: 
+                {st.session_state.prompt}
+                If relevant information cannot be found in context, do not provide an answer. Instead, clearly state that the information is not currently available.
+                Do not fabricate or invent information.
+                """}]}
     
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
