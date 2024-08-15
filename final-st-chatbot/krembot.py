@@ -23,7 +23,10 @@ from krembot_funcs import *
 from streamlit_feedback import streamlit_feedback
 
 mprompts = work_prompts()
-#st.write(mprompts)
+
+with st.expander("Promptovi"):
+    st.write(mprompts)
+    
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
