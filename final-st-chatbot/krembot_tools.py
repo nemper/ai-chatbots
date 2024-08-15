@@ -777,7 +777,8 @@ class HybridQueryProcessor:
 csv_directory = os.path.join(os.getcwd(), 'Clients', 'Intelisale')
 
 def intelisale_start(cid):
-    match = re.search(r'[Cc]ompany\s+(\d{1,4})', cid)
+    match = re.search(r'\b\d{1,7}\b', cid)
+
     if not match:
         return "No valid Company ID found in the prompt."
     
