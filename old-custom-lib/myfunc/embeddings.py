@@ -25,7 +25,8 @@ from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.prompts import PromptTemplate
 from langchain.retrievers.multi_query import MultiQueryRetriever
-from langchain.text_splitter import CharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, HTMLHeaderTextSplitter
+from langchain_community.document_loaders import PDFMinerPDFasHTMLLoader
 from langchain_community.document_transformers import LongContextReorder
 from langchain_community.retrievers import PineconeHybridSearchRetriever
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -41,8 +42,6 @@ from myfunc.mssql import work_prompts
 
 import markdown
 import pypandoc
-from langchain_text_splitters import HTMLHeaderTextSplitter
-from langchain_community.document_loaders import PDFMinerPDFasHTMLLoader
 from langchain.docstore.document import Document
 
 mprompts = work_prompts()
@@ -156,119 +155,52 @@ class DocumentConverter:
             cur_idx += 1
         return semantic_snippets
 
-def standard_chunks(dokum,chunk_size, chunk_overlap):
-    _, ext = os.path.splitext(dokum.name)
-    if ext == ".json" or ext == ".JSON":
-        st.error(".json is not supported.")
-        return
-    with st.form(key="my_form_prepare", clear_on_submit=False):
-            text_delimiter = st.text_input(
-                "Unesite delimiter: ",
-                help="Delimiter se koristi za podelu dokumenta na delove za indeksiranje. Prazno za paragraf",
-            )
-            # define prefix
-            text_prefix = st.text_input(
-                "Unesite prefiks za tekst: ",
-                help="Prefiks se dodaje na početak teksta pre podela na delove za indeksiranje",
-            )
-            col11, col12 = st.columns(2)
-            with col11:
-                add_schema = st.radio(
-                    "Da li želite da dodate Metadata (Dodaje ime i temu u metadata): ",
-                    ("Ne", "Da"),
-                    key="add_schema_doc",
-                    horizontal=True,
-                    help="Dodaje u metadata ime i temu",
-                )
-            with col12:    
-                add_pitanje = st.radio(
-                    "Da li želite da dodate pitanje: ",
-                    ("Ne", "Da"),
-                    horizontal=True,
-                    key="add_pitanje_doc",
-                    help="Dodaje pitanje u text",
-                )
-        
-            st.session_state.submit_b = st.form_submit_button(
-                label="Submit",
-                help="Pokreće podelu dokumenta na delove za indeksiranje",
-            )
-            with st.spinner(f"Radim Standard"): 
-                st.info(f"Chunk veličina: {chunk_size}, chunk preklapanje: {chunk_overlap}")
-                if len(text_prefix) > 0:
-                    text_prefix = text_prefix + " "
 
-                if dokum is not None and st.session_state.submit_b == True:
-                    data=pinecone_utility.read_uploaded_file(dokum, text_delimiter)
-                    try:
-                        text_splitter = CharacterTextSplitter(
-                                separator=text_delimiter,
-                                chunk_size=chunk_size,
-                                chunk_overlap=chunk_overlap,
-                            )
+def read_uploaded_file(file_path):
+	with open(file_path, encoding="utf-8") as f:
+		data = f.read()
+	return data
 
-                        texts = text_splitter.split_documents(data)
-                    except:
-                        texts = data
 
-                    if len(texts) == 0:
-                        print("AAAAAAAAAAAAA")
-                        text_splitter = CharacterTextSplitter(
-                                separator="\n",
-                                chunk_size=chunk_size,
-                                chunk_overlap=chunk_overlap,
-                            )
-
-                        texts = text_splitter.split_documents(data)
-                    if len(texts) == 0:
-                        texts = data
-                    # # Create the OpenAI embeddings
-                    # st.success(f"Učitano {len(texts)} tekstova")
-
-                    # Define a custom method to convert Document to a JSON-serializable format
-                    output_json_list = []
-                    current_date = datetime.now()
-                    date_string = current_date.strftime('%Y%m%d')
-                    # Loop through the Document objects and convert them to JSON
-                    i = 0
-                    for document in texts:
-                        i += 1
-                        if add_pitanje=="Da":
-                            pitanje = text_processor.add_question(document.page_content) + " "
-                            st.info(f"Dodajem pitanje u tekst {i}")
-                        else:
-                            pitanje = ""
+def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
     
-                        output_dict = {
-                            "id": str(uuid4()),
-                            "chunk": i,
-                            "text": text_processor.format_output_text(text_prefix, pitanje, document.page_content),
-                            "source": document.metadata.get("source", ""),
-                            "date": int(date_string),
-                        }
+	text_splitter = RecursiveCharacterTextSplitter(
+    separators=[sep, "\n\n", "\n", " ", ""],
+	keep_separator=keep,
+    chunk_size=chunk_size,
+    chunk_overlap=chunk_overlap,
+    length_function=len,
+    is_separator_regex=False,
+)
+	data = read_uploaded_file(dokum)
+	texts = text_splitter.create_documents([data], metadatas=[{"source":dokum}] )
+	
+	# Define a custom method to convert Document to a JSON-serializable format
+	output_json_list = []
+	current_date = datetime.now()
+	date_string = current_date.strftime('%Y%m%d')
+	# Loop through the Document objects and convert them to JSON
+	i = 0
+	for document in texts:
+		i += 1
+		output_dict = {
+			"id": str(uuid4()),
+			"chunk": i,
+			"text": document.page_content,
+			"source": document.metadata.get("source", ""),
+			"date": int(date_string),
+		}
 
-                        if add_schema == "Da":
-                            try:
-                                person_name, topic = text_processor.add_self_data(document.page_content)
-                            except Exception as e:
-                                st.write(f"An error occurred: {e}")
-                                person_name, topic = "John Doe", "Any"
-    
-                            output_dict["person_name"] = person_name
-                            output_dict["topic"] = topic
-                            st.success(f"Processing {i} of {len(texts)}, {person_name}, {topic}")
-                        output_json_list.append(output_dict)
-                
+		output_json_list.append(output_dict)
+	json_string = (
+		"["
+		+ ",\n".join(
+			json.dumps(d, ensure_ascii=False) for d in output_json_list
+		)
+		+ "]"
+	)
+	return json_string
 
-                    # # Specify the file name where you want to save the JSON data
-                        json_string = (
-                            "["
-                            + ",\n".join(
-                                json.dumps(d, ensure_ascii=False) for d in output_json_list
-                            )
-                            + "]"
-                        )
-                    return json_string
 
 # ovo funkcija radi
 def semantic_chunks(sadrzaj, source):
