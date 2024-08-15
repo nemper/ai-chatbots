@@ -155,11 +155,18 @@ class DocumentConverter:
             cur_idx += 1
         return semantic_snippets
 
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-def read_uploaded_file(file_path):
-	with open(file_path, encoding="utf-8") as f:
-		data = f.read()
-	return data
+def read_uploaded_file(uploaded_file):
+    if isinstance(uploaded_file, UploadedFile):
+        # Streamlit's UploadedFile needs to be read directly
+        data = uploaded_file.read().decode("utf-8-sig")
+    else:
+        # Handle as a regular file path
+        with open(uploaded_file, encoding="utf-8-sig") as f:
+            data = f.read()
+    return data
+
 
 
 def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
