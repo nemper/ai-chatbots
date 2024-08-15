@@ -821,7 +821,7 @@ def intelisale_csv_2(query_type, cid):
 
     elif query_type == "InteliC":
         filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'Turnover12Months', 'CalculatedNumberOfVisits', 'CalculatedTimeAtCustomer']]
+        results = filtered_data[['CustomerId', 'Plan12Months', 'CalculatedNumberOfVisits', 'CalculatedTimeAtCustomer']]
 
     elif query_type == "InteliD":
         filtered_data = customers_df[customers_df['CustomerId'] == cid]
