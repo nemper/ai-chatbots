@@ -1,6 +1,6 @@
 import csv, json, re
 import neo4j
-import pandas as pd
+import pyodbc
 import requests
 import streamlit as st
 import xml.etree.ElementTree as ET
@@ -38,7 +38,11 @@ def rag_tool_answer(prompt):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
-    if  st.session_state.rag_tool == "Hybrid":
+    if os.getenv("APP_ID") == "InteliBot":
+        context = intelisale(prompt)
+        return context, "Intelisale"
+
+    elif  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
 
@@ -64,12 +68,6 @@ def rag_tool_answer(prompt):
     elif st.session_state.rag_tool == "Stolag":
         context = API_search(graphp(prompt, True) )
 
-    elif st.session_state.rag_tool in ["InteliA", "InteliB", "InteliC", "InteliD", "InteliE"]:
-        context = intelisale_csv_2(st.session_state.rag_tool, prompt)
-
-    elif st.session_state.rag_tool == "Inteli":
-        context = intelisale_csv(st.session_state.rag_tool, prompt)
-        
     elif  st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
         context = processor.process_query_results(prompt)
@@ -773,86 +771,139 @@ class HybridQueryProcessor:
         return result
 
 
-csv_directory = os.path.join(os.getcwd(), 'Clients', 'Intelisale')
+def intelisale(query):
+    # Povezivanje na bazu podataka
+    server = os.getenv('MSSQL_HOST')
+    database = 'IntelisaleTest'
+    username = os.getenv('MSSQL_USER')
+    password = os.getenv('MSSQL_PASS')
 
-def intelisale_start(cid):
-    match = re.search(r'\b\d{1,7}\b', cid)
-
-    if not match:
-        return "No valid Company ID found in the prompt."
+    connection_string = (
+        f'DRIVER={{ODBC Driver 18 for SQL Server}};'
+        f'SERVER={server};'
+        f'DATABASE={database};'
+        f'UID={username};'
+        f'PWD={password};'
+        'Encrypt=yes;'
+        'TrustServerCertificate=yes;'
+    )
     
-    company_number = match.group(1)
-    cid = f"Company {company_number}"
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()
 
-    customers_df = pd.read_csv("Intelisale_Customers.csv")
-
-    company_row = customers_df[customers_df['Name'] == cid]
-    if company_row.empty:
-        return 333
+    # Unos korisnika
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0.0,
+        messages=[
+            {
+                "role": "system",
+                "content": """Your only task is to return the client name from the user query.
+                Client name that you return should only be in the form: 'Customer x', where x is the integer that will appear in the user query.
+                So the user might call it 'Customer 15' right away, or maybe 'Company 133', or 'klijent 44', or maybe even just a number like '123', but you always return in the same format: 'Customer x'."""
+            },
+            {
+                "role": "user",
+                "content": query
+            }
+        ])
     
-    cid = company_row.iloc[0]['CustomerId']
-    return cid
+    client_name = response.choices[0].message.content.strip()
+
+    query = """
+    SELECT 
+        c.Code, 
+        c.Name as cn,
+        c.CustomerId, 
+        c.Branch, 
+        c.BlueCoatsNo, 
+        c.PlanCurrentYear, 
+        c.TurnoverCurrentYear, 
+        c.FullfilmentCurrentYear, 
+        CASE 
+            WHEN c.CalculatedNumberOfVisits = 0 OR c.CalculatedNumberOfVisits IS NULL THEN 0
+            ELSE c.Plan12Months / 12 / NULLIF(c.CalculatedNumberOfVisits, 0)
+        END AS [PlaniraniIznosPoPoseti],
+        c.CalculatedNumberOfVisits,
+        c.PaymentAvgDays, 
+        c.BalanceOutOfLimit, 
+        c.BalanceCritical,
+        ac.ActivityLogNoteContent AS [PoslednjaBeleska]
+    FROM 
+        customers c
+    LEFT JOIN 
+        (
+            SELECT 
+                ac.CustomerID, 
+                ac.ActivityLogNoteContent
+            FROM 
+                activities ac
+            WHERE 
+                ac.VisitStartDayTypeDescription = 'Poseta'
+            AND 
+                ac.VisitArrivalTime = (
+                    SELECT MAX(VisitArrivalTime)
+                    FROM activities
+                    WHERE CustomerID = ac.CustomerID
+                    AND VisitStartDayTypeDescription = 'Poseta'
+                )
+        ) ac ON c.CustomerId = ac.CustomerID
+    WHERE 
+        c.Name = ?
+    """
+
+    cursor.execute(query, client_name)
+    rows = cursor.fetchall()
+
+    output = "Rezultati pretrage:\n"
+    for row in rows:
+        output += (
+            f"CustomerId: {row.CustomerId}, "
+            f"Name: {row.cn}, "
+            f"Code: {row.Code}, "
+            f"Branch: {row.Branch}, "
+            f"BlueCoatsNo: {row.BlueCoatsNo}, "
+            f"PlanCurrentYear: {row.PlanCurrentYear}, "
+            f"TurnoverCurrentYear: {row.TurnoverCurrentYear}, "
+            f"FullfilmentCurrentYear: {row.FullfilmentCurrentYear}, "
+            f"CalculatedNumberOfVisits: {row.CalculatedNumberOfVisits}, "
+            f"PaymentAvgDays: {row.PaymentAvgDays}, "
+            f"BalanceOutOfLimit: {row.BalanceOutOfLimit}, "
+            f"BalanceCritical: {row.BalanceCritical}, "
+            f"Planirani iznos po poseti: {row.PlaniraniIznosPoPoseti}, "
+            f"Poslednja beleška: {row.PoslednjaBeleska}"
+        )
+
+    conn.close()
 
 
-def intelisale_csv_2(query_type, cid):
-    customers_df = pd.read_csv(os.path.join(csv_directory, "Intelisale_Customers.csv"))
-    pgp_df = pd.read_csv(os.path.join(csv_directory, "Intelisale_PGP.csv"))
-    notes_df = pd.read_csv(os.path.join(csv_directory, "Intelisale_Notes.csv"))
-    
-    cid = intelisale_start(cid)
-    if cid == 333:
-         return "No customer found for the given Company name"
-    
-    if query_type == "InteliA":
-        filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'Code', 'TopDivision', 'Division', 'TopBranch', 'Branch', 'BlueCoatsNo', 'Name']]
+    def generate_defined_report(data):
+        prompt = f"Generate report from the given data: {data}"
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.0,
+            messages=[
+                {
+            "role": "system",
+            "content": (
+                """Traženi podaci za izveštaj su sledeći:
+                    •   Naziv kupca (Name)
+                    •	Šifra kupca, naziv branše i broj plavih mantila 
+                    •	Plan kupca i trenutno ostvarenje (promet i %)
+                    •	Planirani iznos po poseti, ukupan broj poseta
+                    •	Prosečni dani plaćanja, dugovanje izvan valute i kritični saldo
+                    •	Beleška sa prethodne posete
 
-    elif query_type == "InteliB":
-        customer_plan_data = customers_df[['CustomerId', 'PlanCurrentYear', 'TurnoverCurrentYear', 'FullfilmentCurrentYear', 'Plan12Months', 'Turnover12Months', 'Fullfilment12Months', 'Name']]
-        product_potential_data = pgp_df[['Turnover', 'Potential', 'UnusedPotential']]
+                    Izveštaj mora biti na srpskom jeziku.
+                    Ne treba da sadrži rezime, već samo tražene podatke.
+                """
+            )
+        },
+                {"role": "user", "content": prompt}
+            ]
+        )
         
-        filtered_customer_plan_data = customer_plan_data[customer_plan_data['CustomerId'] == cid]
-        filtered_product_potential_data = product_potential_data[pgp_df['CustomerId'] == cid]
-        
-        results = {
-            'customer_plan_data': filtered_customer_plan_data,
-            'product_potential_data': filtered_product_potential_data
-        }
-
-    elif query_type == "InteliC":
-        filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'Plan12Months', 'CalculatedNumberOfVisits', 'CalculatedTimeAtCustomer', 'Name']]
-
-    elif query_type == "InteliD":
-        filtered_data = customers_df[customers_df['CustomerId'] == cid]
-        results = filtered_data[['CustomerId', 'CreditLimit', 'Balance', 'BalanceOutOfLimit', 'BalanceCritical', 'Name']]
-
-    elif query_type == "InteliE":
-        filtered_data_by_customer_id = notes_df[notes_df['CustomerId'] == cid]
-        if filtered_data_by_customer_id.empty:
-            filtered_data_by_id = notes_df[notes_df['Id'] == cid]
-            results = filtered_data_by_id[['Id', 'NoteContent', 'CustomerId']]
-        else:
-            results = filtered_data_by_customer_id[['Id', 'NoteContent', 'CustomerId']]
-
-    return results.to_string()
-
-
-def intelisale_csv(query_type, cid):   
-    cid = intelisale_start(cid) 
-    if cid == 333:
-        return "No customer found for the given Company name"
-    result_dict = {}
-
-    # Go through each CSV in the specified directory and extract matching rows based on CustomerId
-    for file in os.listdir(csv_directory):
-        if file.endswith('.csv'):
-            df = pd.read_csv(os.path.join(csv_directory, file))
-            if 'CustomerId' in df.columns:
-                matching_rows = df[df['CustomerId'] == cid]
-                if not matching_rows.empty:
-                    for _, row in matching_rows.iterrows():
-                        for col in row.index:
-                            result_dict[col] = row[col]
-
-    return result_dict
+        return response.choices[0].message.content
+    
+    fin_output = generate_defined_report(output)
+    return fin_output
