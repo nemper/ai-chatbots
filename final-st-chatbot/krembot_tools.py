@@ -787,7 +787,7 @@ def intelisale_start(cid):
 
     customers_df = pd.read_csv("Intelisale_Customers.csv")
 
-    company_row = customers_df[customers_df['CompanyName'] == cid]
+    company_row = customers_df[customers_df['Name'] == cid]
     if company_row.empty:
         return 333
     
