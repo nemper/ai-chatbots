@@ -1,8 +1,15 @@
-import os
 import io
 import streamlit as st
 import uuid
-
+_ = """
+import os
+os.environ["CLIENT_FOLDER"] = "Delfi"
+os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
+os.environ["APP_ID"] = "DelfiBot"
+os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["RAG_SELF_QUERY"] = "DELFI_RAG_SELF_QUERY"
+"""
 from openai import OpenAI
 from os import getenv
 from streamlit_mic_recorder import mic_recorder

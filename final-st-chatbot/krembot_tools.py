@@ -24,7 +24,6 @@ from krembot_db import work_prompts
 mprompts = work_prompts()
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
-@st.cache_resource
 def connect_to_neo4j():
     return neo4j.GraphDatabase.driver(getenv("NEO4J_URI"), auth=(getenv("NEO4J_USER"), getenv("NEO4J_PASS")))
 
@@ -465,7 +464,7 @@ def order_search(id_porudzbine):
     
 
 def API_search(matching_sec_ids):
-
+    print(f"Matching sec_ids: {matching_sec_ids}")
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
