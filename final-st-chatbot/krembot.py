@@ -1,7 +1,6 @@
 import io
 import streamlit as st
 import uuid
-
 _ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Intelisale"
@@ -56,7 +55,7 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 file_reader = FileReader()
 
 custom_streamlit_style()
-apply_background_image(avatar_bg)
+# apply_background_image(avatar_bg)
 
 def handle_feedback():
     feedback = st.session_state.get("fb_k", {})
