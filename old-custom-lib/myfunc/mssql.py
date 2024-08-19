@@ -188,16 +188,16 @@ class ConversationDatabase:
             print(f"Error adding token record: {e}")
             raise
 
-    def insert_feedback(self, thread_id, app_name, previous_question, given_answer, thumbs, feedback_text):
+    def insert_feedback(self, thread_id, app_name, previous_question, tool_answer, given_answer, thumbs, feedback_text):
         """
         Inserts feedback data into the Feedback table.
         """
         try:
             insert_query = """
-            INSERT INTO Feedback (thread_id, app_name, previous_question, given_answer, Thumbs, Feedback_text)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO Feedback (thread_id, app_name, previous_question, tool_answer, given_answer, Thumbs, Feedback_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
-            self.cursor.execute(insert_query, (thread_id, app_name, previous_question, given_answer, thumbs, feedback_text))
+            self.cursor.execute(insert_query, (thread_id, app_name, previous_question, tool_answer, given_answer, thumbs, feedback_text))
             self.conn.commit()
         except Exception as e:
             print(f"Error inserting feedback into the database: {e}")
