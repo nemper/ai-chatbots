@@ -40,7 +40,7 @@ def rag_tool_answer(prompt):
 
     if os.getenv("APP_ID") == "InteliBot":
         context = intelisale(prompt)
-        return context, "Intelisale22"
+        st.session_state.rag_tool = "Intelisale"
 
     elif  st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)

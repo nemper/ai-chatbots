@@ -244,7 +244,7 @@ def main():
                 answer the question: 
                 {st.session_state.prompt}
                 If relevant information cannot be found in context, do not provide an answer. Instead, clearly state that the information is not currently available.
-                Do not fabricate or invent information.
+                Do not fabricate or invent information. Always write in Serbian.
                 """}]}
     
             # Append only the user's original prompt to the actual conversation log
@@ -259,8 +259,8 @@ def main():
         if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
             with st.chat_message("assistant", avatar=avatar_ai):
-                    cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"] + [temp_full_prompt]
-
+                    cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
+                    print(1234, cc_messages)
                     message_placeholder = st.empty()
                     full_response = ""
                     for response in client.chat.completions.create(
@@ -280,7 +280,7 @@ def main():
             message_placeholder.markdown(full_response)
             copy_to_clipboard(full_response)
             # Append assistant's response to the conversation
-            st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
+            # st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
             st.session_state.filtered_messages = ""
             # da pise i tool
