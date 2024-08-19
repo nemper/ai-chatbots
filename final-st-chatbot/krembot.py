@@ -23,8 +23,8 @@ from streamlit_feedback import streamlit_feedback
 
 mprompts = work_prompts()
 
-with st.expander("Promptovi"):
-    st.write(mprompts)
+#with st.expander("Promptovi"):
+#    st.write(mprompts)
 
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
@@ -63,6 +63,7 @@ def handle_feedback():
     feedback_text = feedback.get('text', '')
     feedback_data = {
         "previous_question": st.session_state.get("previous_question", ""),
+        "tool_answer": st.session_state.get("tool_answer", ""),
         "given_answer": st.session_state.get("given_answer", ""),
         "feedback_type": "Good" if feedback.get('score') == "👍" else "Bad",
         "optional_text": feedback_text
@@ -76,6 +77,7 @@ def handle_feedback():
                 thread_id=st.session_state.thread_id,
                 app_name=st.session_state.app_name,
                 previous_question=feedback_data["previous_question"],
+                tool_answer=feedback_data["tool_answer"],
                 given_answer=feedback_data["given_answer"],
                 thumbs=feedback_data["feedback_type"],
                 feedback_text=feedback_data["optional_text"]
@@ -209,7 +211,7 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         result, tool = rag_tool_answer(st.session_state.prompt)
-
+        st.session_state.tool_answer = result
         with st.expander("Expand"):
             st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
             st.divider()
@@ -282,7 +284,7 @@ def main():
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
             st.session_state.filtered_messages = ""
             # da pise i tool
-            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", "assistant", "tool"]]
+            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", "assistant"]]
             for item in filtered_data:  # lista za download conversation
                 st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
     
