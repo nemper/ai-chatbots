@@ -354,7 +354,7 @@ def copy_to_clipboard(message):
 chat_placeholder_color("#f1f1f1")
 
 client_folder = os.getenv("CLIENT_FOLDER")
-avatar_bg = os.path.join("Clients", client_folder, "bg.png")
+# avatar_bg = os.path.join("Clients", client_folder, "bg.png")
 avatar_ai = os.path.join("Clients", client_folder, "avatar.png")
 avatar_user = os.path.join("Clients", client_folder, "user.webp")
 avatar_sys = os.path.join("Clients", client_folder, "logo.png")
