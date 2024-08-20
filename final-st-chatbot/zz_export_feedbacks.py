@@ -18,13 +18,13 @@ def get_app_names():
 def get_feedback_records(app_name):
     with ConversationDatabase() as db:
         query = """
-        SELECT thread_id, app_name, previous_question, given_answer, Thumbs, Feedback_text
+        SELECT thread_id, app_name, previous_question, tool_answer, given_answer, Thumbs, Feedback_text
         FROM Feedback
         WHERE app_name = ?
         """
         db.cursor.execute(query, app_name)
         records = db.cursor.fetchall()
-        columns = ['thread_id', 'app_name', 'previous_question', 'given_answer', 'Thumbs', 'Feedback_text']
+        columns = ['thread_id', 'app_name', 'previous_question', 'tool_answer', 'given_answer', 'Thumbs', 'Feedback_text']
     return records, columns
 
 # Fetch app names and display in a dropdown
