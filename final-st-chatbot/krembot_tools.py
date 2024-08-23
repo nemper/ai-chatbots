@@ -37,7 +37,7 @@ def connect_to_pinecone(x):
 def rag_tool_answer(prompt):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
-
+    print(f"RAG TOOL: {st.session_state.rag_tool}")
     if os.getenv("APP_ID") == "InteliBot":
         context = intelisale(prompt)
         st.session_state.rag_tool = "Intelisale"
@@ -57,16 +57,13 @@ def rag_tool_answer(prompt):
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
         
     elif  st.session_state.rag_tool == "Graphp": 
-        context = graphp(prompt, False)
+        context = graphp(prompt)
 
     elif st.session_state.rag_tool == "Pineg":
         context = pineg(prompt)
 
     elif st.session_state.rag_tool == "CSV":
         context = order_search(prompt)
-
-    elif st.session_state.rag_tool == "Stolag":
-        context = API_search(graphp(prompt, True) )
 
     elif  st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
@@ -82,6 +79,7 @@ def rag_tool_answer(prompt):
         processor = HybridQueryProcessor(namespace="ecd-blogovi", delfi_special=1)
         context = processor.process_query_results(prompt)
 
+    print(f"Context CONTEXT CONTEXT: {context}")
     return context, st.session_state.rag_tool
 
 
@@ -117,9 +115,9 @@ def get_structured_decision_from_model(user_query):
     return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
 
 
-def graphp(pitanje, usingAPI):
+def graphp(pitanje):
     driver = connect_to_neo4j()
-    namespace = 'opisi'
+
     def run_cypher_query(driver, query):
         with driver.session() as session:
             results = session.run(query)
@@ -155,6 +153,15 @@ def graphp(pitanje, usingAPI):
                     max_record_length = record_length
                 if record_length < min_record_length:
                     min_record_length = record_length
+        
+        number_of_records = len(cleaned_results)
+        # average_characters_per_record = total_characters / number_of_records if number_of_records > 0 else 0
+
+        print(f"Number of records: {number_of_records}")
+        print(f"Total number of characters: {total_characters}")
+        # print(f"Average characters per record: {average_characters_per_record}")
+        # print(f"Longest record length: {max_record_length}")
+        # print(f"Shortest record length: {min_record_length}")
 
         return cleaned_results
         
@@ -171,34 +178,37 @@ def graphp(pitanje, usingAPI):
                 "The database has 3 node types: Author, Book, Genre, and 2 relationship types: BELONGS_TO and WROTE."
                 "Only Book nodes have properties: id, oldProductId, category, title, price, quantity, pages, and eBook."
                 "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
-                "Genre names are also capitalized (e.g., Drama, Fantastika). Please ensure that the generated Cypher query uses these exact capitalizations."
+                "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci). Please ensure that the generated Cypher query uses these exact capitalizations."
                 "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
-                "For recommendations, ensure to return just the title and the author of the recommended books."
-                "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the seatched term."
+                "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the searched term."
                 "When generating the Cypher query, ensure to handle inflected forms properly. For example, if the user asks for books by 'Tolkiena,' generate a query for 'Tolkien' instead, removing any inflections."
-                "When returning some properties of books, ensure to return the title too."
-                "Ensure that the Cypher query returns only the requested data. If the user does not specify which properties they want to retrieve, return only the title and the author."
+                "When returning some properties of books, ensure to always return the oldProductId and the title too."
+                "Ensure to limit the number of records returned to 10."
 
                 "Here is an example user question and the corresponding Cypher query: "
                 "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Da Vinčijev kod') RETURN b"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Da Vinčijev kod') AND b.quantity > 0 RETURN b LIMIT 10"
+
+                "Example user question: 'O čemu se radi u knjizi Memoari jedne gejše?' "
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Memoari jedne gejše') RETURN b LIMIT 10"
 
                 "Example user question: 'Interesuje me knjiga Piramide.' "
-                "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Piramide') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author"
+                "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Piramide') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author LIMIT 10"
                 
                 "Example user question: 'Preporuci mi knjige slicne knjizi Krhotine.' "
-                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, b.category AS category, a.name AS author"
+                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, b.category AS category, a.name AS author LIMIT 10"
 
                 "Example user question: 'Koja je cena za Autostoperski vodič kroz galaksiju?' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Autostoperski vodič kroz galaksiju') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, b.price AS price"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Autostoperski vodič kroz galaksiju') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
 
                 "Example user question: 'Da li imate anu karenjinu na stanju' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Ana Karenjina') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Ana Karenjina') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
 
+                "Example user question: 'Intresuju me fantastika. Preporuči mi neke knjige' "
+                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre {name: 'Fantastika'}) RETURN b, a.name LIMIT 10"
+                
                 "Example user question: 'Da li imate mobi dik na stanju, treba mi 27 komada?' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category"
-
-                "ALWAYS return oldProductId ID, regardless of the user's question."
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
             )
         },
                 {"role": "user", "content": prompt}
@@ -206,33 +216,32 @@ def graphp(pitanje, usingAPI):
         )
         cypher_query = response.choices[0].message.content.strip()
 
+        # Uklanjanje nepotrebnog teksta oko upita
         if '```cypher' in cypher_query:
             cypher_query = cypher_query.split('```cypher')[1].split('```')[0].strip()
         
+        # Uklanjanje tačke ako je prisutna na kraju
         if cypher_query.endswith('.'):
             cypher_query = cypher_query[:-1].strip()
 
         return cypher_query
 
-    def create_product_links(products):
-        static_url = 'https://delfi.rs/'
-        updated_products = []
-        
-        for product in products:
-            if 'oldProductId' in product and 'category' in product:
-                product['link'] = static_url + product['category'].lower().replace(' ', '_') + '/' + str(product.pop('oldProductId'))
-            updated_products.append(product)
-        
-        return updated_products
-
-
     def get_descriptions_from_pinecone(ids):
+        print(f"IDs: {ids}")
+        # Initialize Pinecone
+        # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
         index = connect_to_pinecone(x=0)
-
-        results = index.fetch(ids=ids, namespace=namespace)
+        print(11112)
+        # Fetch the vectors by IDs
+        try:
+            results = index.fetch(ids=ids, namespace="opisi")
+        except Exception as e:
+            print(f"Error fetching vectors: {e}")
+            return {}
         descriptions = {}
-
+        print(11113)
         for id in ids:
+            print(11114)
             if id in results['vectors']:
                 vector_data = results['vectors'][id]
                 if 'metadata' in vector_data:
@@ -241,48 +250,56 @@ def graphp(pitanje, usingAPI):
                     descriptions[id] = 'Metadata not found in vector data.'
             else:
                 descriptions[id] = 'Nemamo opis za ovaj artikal.'
+        
+        print(2222)
+        print(3333, descriptions)
         return descriptions
 
     def combine_data(book_data, descriptions):
+        # print(f"Book Data: {book_data}")
+        # print(f"Descriptions: {descriptions}")
         combined_data = []
 
         for book in book_data:        
-            print(f"Book: {book}")
-            book_id = book.get('id', None)
+            book_id = book.get('oldProductId', None)
             
-            print(f"Book ID: {book_id}")
-            description = descriptions.get(book_id, 'No description available')
+            # Konvertuj book_id u string da bi se mogao porediti sa ključevima u descriptions
+            book_id_str = str(book_id)
+
+            description = descriptions.get(book_id_str, 'No description available')
             combined_entry = {**book, 'description': description}
             combined_data.append(combined_entry)
         
+        # print(f"Combined Data: {combined_data}")
         return combined_data
 
     def display_results(combined_data):
-        output = " "
+        x = ""
         for data in combined_data:
             if 'title' in data:
-                output += f"Title: {data['title']}\n"
+                x += f"Naslov: {data['title']}\n"
             if 'category' in data:
-                output += f"Category: {data['category']}\n"
-            if 'price' in data:
-                output += f"Price: {data['price']}\n"
-            if 'quantity' in data:
-                output += f"Quantity: {data['quantity']}\n"
+                x += f"Kategorija: {data['category']}\n"
+            if 'cena' in data:
+                x += f"Cena: {data['cena']}\n"
+            if 'lager' in data:
+                x += f"Količina: {data['lager']}\n"
             if 'pages' in data:
-                output += f"Pages: {data['pages']}\n"
+                x += f"Broj strana: {data['pages']}\n"
             if 'eBook' in data:
-                output += f"eBook: {data['eBook']}\n"
+                x += f"eBook: {data['eBook']}\n"
             if 'description' in data:
-                output += f"Description: {data['description']}\n"
-            if 'link' in data:
-                output += f"Link: {data['link']}\n"
+                x += f"Opis: {data['description']}\n"
+            if 'url' in data:
+                x += f"Link: {data['url']}\n"
+
+        return x
+
 
     def is_valid_cypher(cypher_query):
         # Provera validnosti Cypher upita (osnovna provera)
         if not cypher_query or "MATCH" not in cypher_query.upper():
-            # print("Cypher upit nije validan.")
             return False
-        # print("Cypher upit je validan.")
         return True
 
     def formulate_answer_with_llm(question, graph_data):
@@ -296,36 +313,68 @@ def graphp(pitanje, usingAPI):
             ]
         )
         return response.choices[0].message.content.strip()
+    
 
     cypher_query = generate_cypher_query(pitanje)
+    print(f"Generated Cypher Query: {cypher_query}")
     
     if is_valid_cypher(cypher_query):
         try:
-            cleaned_data = run_cypher_query(driver, cypher_query)
-            book_data = create_product_links(cleaned_data)
-            pattern = r"'(?:b\.)?id': '([^']+)'"
+            book_data = run_cypher_query(driver, cypher_query)
 
-            if usingAPI:
-                return [re.search(r'/(\d+)$', item['link']).group(1) for item in book_data]
+            print(f"Book Data: {book_data}")
 
-            book_ids = []
             try:
-                for data in book_data:
-                    match = re.search(pattern, str(data))
-                    if match:
-                        book_ids.append(match.group(1))
-            except Exception as e:
-                print(f"An error occurred: {e}")
-            
-            if not book_ids:
-                print("Vraćeni podaci ne sadrže 'id' polje.")
-                return formulate_answer_with_llm(pitanje, book_data)
-            
-            descriptionsDict = get_descriptions_from_pinecone(book_ids)
+                oldProductIds = [item['oldProductId'] for item in book_data]
+            except KeyError:
+                print("Nema 'oldProductId'.")
+                oldProductIds = []
 
-            return display_results(combine_data(book_data, descriptionsDict))
+            # Define the regex pattern to match both 'id' and 'b.id'
+            # pattern = r"'(?:b\.)?id': '([^']+)'"
+
+            # Filtrirana lista koja će sadržati samo relevantne knjige
+            filtered_book_data = []
+
+            if not oldProductIds:
+                filtered_book_data = book_data
+                answer = formulate_answer_with_llm(pitanje, filtered_book_data)
+                print(answer)
+            else:
+                api_podaci = API_search(oldProductIds)
+                print(f"API Podaci: {api_podaci}")
+                # Kreiranje mape id za brže pretraživanje
+                products_info_map = {int(product['id']): product for product in api_podaci}
+
+                # Iteracija kroz book_data i dodavanje relevantnih podataka
+                for book in book_data:
+                    old_id = book['oldProductId']
+                    if old_id in products_info_map:
+                        product = products_info_map[old_id]
+                        # Dodavanje relevantnih podataka u book data
+                        book['cena'] = product['cena']
+                        book['lager'] = product['lager']
+                        book['url'] = product['url']
+                        # Dodavanje knjige u filtriranu listu
+                        filtered_book_data.append(book)
+            
+                # print("******Gotov api deo!!!")
+
+                oldProductIds_str = [str(id) for id in oldProductIds]
+
+                descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
+                # print("******Gotov Pinecone deo!!!")
+                print(4444)
+                combined_data = combine_data(filtered_book_data, descriptionsDict)
+                print(5555)
+                x = display_results(combined_data)
+                return x
+            print(6666)
+            
         except Exception as e:
-            print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
+            st.write(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
+    else:
+        st.write("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
 
 
 def pineg(pitanje):
@@ -462,7 +511,7 @@ def order_search(id_porudzbine):
     
 
 def API_search(matching_sec_ids):
-    print(f"Matching sec_ids: {matching_sec_ids}")
+    print(1111)
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
@@ -476,12 +525,14 @@ def API_search(matching_sec_ids):
                 cena = product_node.findtext('cena')
                 lager = product_node.findtext('lager')
                 url = product_node.findtext('url')
+                id = product_node.findtext('ID')
                 
                 if lager and int(lager) > 0:
                     product_info = {
                         'cena': cena,
                         'lager': lager,
-                        'url': url
+                        'url': url,
+                        'id': id
                     }
                 else:
                     print(f"Skipping product with lager {lager}")  # Debugging line
@@ -495,14 +546,17 @@ def API_search(matching_sec_ids):
     def get_multiple_products_info(token, product_ids):
         products_info = []
         for product_id in product_ids:
+            print(f"Product IDs: {product_id}")
             xml_data = get_product_info(token, product_id)
-            print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
+            # print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
+            # print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
             product_info = parse_product_info(xml_data)
             if product_info:  # Only add if product info is found and lager > 2
                 products_info.append(product_info)
         return products_info
 
     # Replace with your actual token and product IDs
+    # token = getenv("DELFI_API_KEY")
     token = getenv("DELFI_API_KEY")
     product_ids = matching_sec_ids
 
@@ -511,10 +565,10 @@ def API_search(matching_sec_ids):
     except:
         products_info = "No products found for the given IDs."
     print(f"Products Info: {products_info}")
-    output = "Data returned from API for each searched id: \n"
-    for info in products_info:
-        output += str(info) + "\n"
-    return output
+    # output = "Data returned from API for each searched id: \n"
+    # for info in products_info:
+    #     output += str(info) + "\n"
+    return products_info
 
 
 def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
