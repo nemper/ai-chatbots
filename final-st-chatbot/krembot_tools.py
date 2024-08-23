@@ -235,7 +235,11 @@ def graphp(pitanje):
         index = connect_to_pinecone(x=0)
         print(11112)
         # Fetch the vectors by IDs
-        results = index.query(ids=ids, namespace="opisi")
+        try:
+            results = index.fetch(ids=ids, namespace="opisi")
+        except Exception as e:
+            print(f"Error fetching vectors: {e}")
+            return {}
         descriptions = {}
         print(11113)
         for id in ids:
