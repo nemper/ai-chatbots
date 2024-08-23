@@ -8,6 +8,7 @@ os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
 os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 #"""
 from openai import OpenAI
 from os import getenv

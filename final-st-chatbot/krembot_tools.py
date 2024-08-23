@@ -231,14 +231,15 @@ def graphp(pitanje):
     def get_descriptions_from_pinecone(ids):
         print(f"IDs: {ids}")
         # Initialize Pinecone
-        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
-        index = pc.Index(host=os.getenv("PINECONE_HOST"))
-
+        # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
+        index = connect_to_pinecone(x=0)
+        print(11112)
         # Fetch the vectors by IDs
-        results = index.fetch(ids=ids, namespace="opisi")
+        results = index.query(ids=ids, namespace="opisi")
         descriptions = {}
-
+        print(11113)
         for id in ids:
+            print(11114)
             if id in results['vectors']:
                 vector_data = results['vectors'][id]
                 if 'metadata' in vector_data:
@@ -247,6 +248,9 @@ def graphp(pitanje):
                     descriptions[id] = 'Metadata not found in vector data.'
             else:
                 descriptions[id] = 'Nemamo opis za ovaj artikal.'
+        
+        print(2222)
+        print(3333, descriptions)
         return descriptions
 
     def combine_data(book_data, descriptions):
@@ -358,7 +362,9 @@ def graphp(pitanje):
 
                 descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
                 # print("******Gotov Pinecone deo!!!")
+                print(4444)
                 combined_data = combine_data(filtered_book_data, descriptionsDict)
+                print(5555)
                 return display_results(combined_data)
         except Exception as e:
             st.write(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
@@ -500,7 +506,7 @@ def order_search(id_porudzbine):
     
 
 def API_search(matching_sec_ids):
-
+    print(1111)
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
