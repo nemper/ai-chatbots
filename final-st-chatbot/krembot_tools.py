@@ -231,7 +231,6 @@ def graphp(pitanje):
         # Initialize Pinecone
         # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
         index = connect_to_pinecone(x=0)
-        print(11112)
         # Fetch the vectors by IDs
         try:
             results = index.fetch(ids=ids, namespace="opisi")
@@ -239,9 +238,7 @@ def graphp(pitanje):
             print(f"Error fetching vectors: {e}")
             return {}
         descriptions = {}
-        print(11113)
         for id in ids:
-            print(11114)
             if id in results['vectors']:
                 vector_data = results['vectors'][id]
                 if 'metadata' in vector_data:
@@ -251,8 +248,6 @@ def graphp(pitanje):
             else:
                 descriptions[id] = 'Nemamo opis za ovaj artikal.'
         
-        print(2222)
-        print(3333, descriptions)
         return descriptions
 
     def combine_data(book_data, descriptions):
@@ -378,12 +373,11 @@ def graphp(pitanje):
 
 
 def pineg(pitanje):
-    namespace = 'opisi'
     index = connect_to_pinecone(x=0)
-    driver = connect_to_neo4j()
 
     def run_cypher_query(id):
-        query = f"MATCH (b:Book) WHERE b.id = '{id}' RETURN b"
+        driver = connect_to_neo4j()
+        query = f"MATCH (b:Book)-[:WROTE]-(a:Author), (b)-[:BELONGS_TO]-(g:Genre) WHERE b.oldProductId = {id} AND b.quantity > 0 RETURN b, a.name AS author, g.name AS genre"
         with driver.session() as session:
             result = session.run(query)
             book_data = []
@@ -393,12 +387,15 @@ def pineg(pitanje):
                     'id': book_node['id'],
                     'oldProductId': book_node['oldProductId'],
                     'title': book_node['title'],
+                    'author': record['author'],
                     'category': book_node['category'],
+                    'genre': record['genre'],
                     'price': book_node['price'],
                     'quantity': book_node['quantity'],
                     'pages': book_node['pages'],
                     'eBook': book_node['eBook']
                 })
+            print(f"Book Data: {book_data}")
             return book_data
 
     def get_embedding(text, model="text-embedding-3-large"):
@@ -406,11 +403,13 @@ def pineg(pitanje):
             input=[text],
             model=model
         ).data[0].embedding
-        
+        # print(f"Embedding Response: {response}")
         return response
 
-    def dense_query(query, top_k=5, filter=None, namespace=namespace):
+    def dense_query(query, top_k=5, filter=None, namespace="opisi"):
+        # Get embedding for the query
         dense = get_embedding(text=query)
+        # print(f"Dense: {dense}")
 
         query_params = {
             'top_k': top_k,
@@ -418,96 +417,95 @@ def pineg(pitanje):
             'include_metadata': True,
             'namespace': namespace
         }
-
         response = index.query(**query_params)
         matches = response.to_dict().get('matches', [])
+        # print(f"Matches: {matches}")
 
         return matches
 
-    def search_pinecone(query: str, top_k: int = 5) -> List[Dict]:
-        query_embedding = dense_query(query)
+    def search_pinecone(query: str, top_k: int = 1) -> List[Dict]:
+        # Dobij embedding za query
+        query_embedding = dense_query(query, top_k=6)
+        # print(f"Results: {query_embedding}")
+
+        # Ekstraktuj id i text iz metapodataka rezultata
         matches = []
         for match in query_embedding:
             metadata = match['metadata']
             matches.append({
                 'id': metadata['id'],
+                'sec_id': int(metadata['sec_id']),
                 'text': metadata['text']
             })
         
-        # print(f"Matches: {matches}")
         return matches
 
-    def create_product_links(products):
-        static_url = 'https://delfi.rs/'
-        updated_products = []
-        
-        for product in products:
-            if 'oldProductId' in product and 'category' in product:
-                product['link'] = static_url + product['category'].lower().replace(' ', '_') + '/' + str(product.pop('oldProductId'))
-            updated_products.append(product)
-        
-        return updated_products
-
-    def combine_data(book_data, descriptions):
+    def combine_data(api_data, book_data, description):
         combined_data = []
         for book in book_data:
-            combined_entry = {**book, 'description': descriptions}
+            # Pronađi odgovarajući unos u api_data na osnovu oldProductId
+            matching_api_entry = next((item for item in api_data if str(item['id']) == str(book['oldProductId'])), None)
+            
+            if matching_api_entry:
+                # Uzmemo samo potrebna polja iz book_data
+                selected_book_data = {
+                    'title': book.get('title'),
+                    'author': book.get('author'),
+                    'category': book.get('category'),
+                    'genre': book.get('genre'),
+                    'pages': book.get('pages'),
+                    'eBook': book.get('eBook')
+                }
+                combined_entry = {
+                    **selected_book_data,  # Dodaj samo potrebna polja iz book_data
+                    **matching_api_entry,  # Dodaj sve podatke iz api_data
+                    'description': description  # Dodaj opis
+                }
+            
             combined_data.append(combined_entry)
-            print(f"Combined Entry: {combined_entry}")
+
         return combined_data
 
     def display_results(combined_data):
-        output = " "
+        x = ""
         for data in combined_data:
-            output += f"Title: {data['title']}\n"
-            output += f"Category: {data['category']}\n"
-            output += f"Price: {data['price']}\n"
-            output += f"Quantity: {data['quantity']}\n"
-            output += f"Pages: {data['pages']}\n"
-            output += f"eBook: {data['eBook']}\n"
-            output += f"Description: {data['description']}\n"
-            output += f"Link: {data['link']}\n"
-        return output
+            x += f"\tNaslov: {data['title']}\n"
+            x += f"Autor: {data['author']}\n"
+            x += f"Kategorija: {data['category']}\n"
+            x += f"Žanr: {data['genre']}\n"
+            x += f"Cena: {data['cena']}\n"
+            x += f"Dostupnost: {data['lager']}\n"
+            x += f"Broj stranica: {data['pages']}\n"
+            x += f"eBook: {data['eBook']}\n"
+            x += f"Opis: {data['description']}\n"
+            x += f"Link: {data['url']}\n"
+            x += "\n\n"
+        return x
 
     search_results = search_pinecone(pitanje)
-
+    print(f"Search Results: {search_results}")
     combined_results = []
 
-    for result in search_results:
+    y = ""
+    for result in search_results: 
+        api_data = API_search([result['sec_id']])
+        # print(f"API Data: {api_data}")
+
+         # Proveri da li je api_data prazan
+        if not api_data:
+            continue  # Preskoči ako je api_data prazan
+
+        data = run_cypher_query(result['sec_id'])
+        # print(f"Data: {data}")
+
+        combined_data = combine_data(api_data, data, result['text'])
+        # print(f"Combined Data: {combined_data}")
         
-        try:
-            data = run_cypher_query(result['id'])
-        except:
-            sleep(0.1)
-            data = run_cypher_query(result['id'])
-        additional_data = create_product_links(data)
-        print(f"Additional Data: {additional_data}")
-        
-        combined_data = combine_data(additional_data, result['text'])
         combined_results.append(combined_data)
-
-    return display_results(combined_data)
-
-
-def order_search(id_porudzbine):
-    match = re.search(r'\d{5,}', id_porudzbine)
-    if not match:
-        return "No integer found in the prompt."
     
-    order_number = int(match.group())
-
-    try:
-        with open('orders.csv', mode='r', encoding='utf-8-sig') as file:
-            csv_reader = csv.reader(file)
-            next(csv_reader)
-            for row in csv_reader:
-                if int(row[0]) == order_number:
-                    return ", ".join(row)
-        return f"Order number {order_number} not found in the CSV file."
-    except FileNotFoundError:
-        return "The file 'orders.csv' does not exist."
-    except Exception as e:
-        return f"An error occurred: {e}"
+        y += display_results(combined_data)
+        
+    return y
     
 
 def API_search(matching_sec_ids):
