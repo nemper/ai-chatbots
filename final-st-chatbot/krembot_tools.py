@@ -1,4 +1,4 @@
-import csv, json, re
+import json
 import neo4j
 import pyodbc
 import requests
@@ -16,7 +16,6 @@ import os
 from os import getenv
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
-from time import sleep
 from typing import List, Dict
 
 from krembot_db import work_prompts
@@ -42,8 +41,12 @@ def rag_tool_answer(prompt):
         context = intelisale(prompt)
         st.session_state.rag_tool = "Intelisale"
 
-    elif  st.session_state.rag_tool == "Hybrid":
+    if os.getenv("APP_ID") == "DentyBot":
         processor = HybridQueryProcessor(delfi_special=1)
+        context = processor.process_query_results(prompt)
+
+    elif  st.session_state.rag_tool == "Hybrid":
+        processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=0)
         context = processor.process_query_results(prompt)
 
     elif  st.session_state.rag_tool == "Opisi":
@@ -61,9 +64,6 @@ def rag_tool_answer(prompt):
 
     elif st.session_state.rag_tool == "Pineg":
         context = pineg(prompt)
-
-    elif st.session_state.rag_tool == "CSV":
-        context = order_search(prompt)
 
     elif  st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
