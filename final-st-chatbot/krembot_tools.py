@@ -43,7 +43,7 @@ def rag_tool_answer(prompt):
         st.session_state.rag_tool = "Intelisale"
 
     elif  st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(delfi_special=0)
+        processor = HybridQueryProcessor(delfi_special=1)
         context = processor.process_query_results(prompt)
 
     elif  st.session_state.rag_tool == "Opisi":
