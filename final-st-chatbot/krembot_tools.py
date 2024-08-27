@@ -36,7 +36,7 @@ def connect_to_pinecone(x):
 def rag_tool_answer(prompt):
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
-    print(f"RAG TOOL: {st.session_state.rag_tool}")
+    # print(f"RAG TOOL: {st.session_state.rag_tool}")
     if os.getenv("APP_ID") == "InteliBot":
         context = intelisale(prompt)
         st.session_state.rag_tool = "Intelisale"
@@ -79,7 +79,6 @@ def rag_tool_answer(prompt):
         processor = HybridQueryProcessor(namespace="ecd-blogovi", delfi_special=1)
         context = processor.process_query_results(prompt)
 
-    print(f"Context CONTEXT CONTEXT: {context}")
     return context, st.session_state.rag_tool
 
 
@@ -156,9 +155,6 @@ def graphp(pitanje):
         
         number_of_records = len(cleaned_results)
         # average_characters_per_record = total_characters / number_of_records if number_of_records > 0 else 0
-
-        print(f"Number of records: {number_of_records}")
-        print(f"Total number of characters: {total_characters}")
         # print(f"Average characters per record: {average_characters_per_record}")
         # print(f"Longest record length: {max_record_length}")
         # print(f"Shortest record length: {min_record_length}")
@@ -227,7 +223,6 @@ def graphp(pitanje):
         return cypher_query
 
     def get_descriptions_from_pinecone(ids):
-        print(f"IDs: {ids}")
         # Initialize Pinecone
         # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
         index = connect_to_pinecone(x=0)
@@ -311,7 +306,7 @@ def graphp(pitanje):
     
 
     cypher_query = generate_cypher_query(pitanje)
-    print(f"Generated Cypher Query: {cypher_query}")
+    # print(f"Generated Cypher Query: {cypher_query}")
     
     if is_valid_cypher(cypher_query):
         try:
@@ -333,8 +328,8 @@ def graphp(pitanje):
 
             if not oldProductIds:
                 filtered_book_data = book_data
-                answer = formulate_answer_with_llm(pitanje, filtered_book_data)
-                print(answer)
+                # answer = formulate_answer_with_llm(pitanje, filtered_book_data)
+                # print(answer)
             else:
                 api_podaci = API_search(oldProductIds)
                 print(f"API Podaci: {api_podaci}")
@@ -352,19 +347,14 @@ def graphp(pitanje):
                         book['url'] = product['url']
                         # Dodavanje knjige u filtriranu listu
                         filtered_book_data.append(book)
-            
-                # print("******Gotov api deo!!!")
 
                 oldProductIds_str = [str(id) for id in oldProductIds]
 
                 descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
-                # print("******Gotov Pinecone deo!!!")
-                print(4444)
+
                 combined_data = combine_data(filtered_book_data, descriptionsDict)
-                print(5555)
                 x = display_results(combined_data)
                 return x
-            print(6666)
             
         except Exception as e:
             st.write(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
@@ -585,7 +575,6 @@ def pineg(pitanje):
     
 
 def API_search(matching_sec_ids):
-    print(1111)
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
@@ -620,7 +609,7 @@ def API_search(matching_sec_ids):
     def get_multiple_products_info(token, product_ids):
         products_info = []
         for product_id in product_ids:
-            print(f"Product IDs: {product_id}")
+            # print(f"Product IDs: {product_id}")
             xml_data = get_product_info(token, product_id)
             # print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
             # print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
@@ -638,7 +627,7 @@ def API_search(matching_sec_ids):
         products_info = get_multiple_products_info(token, product_ids)
     except:
         products_info = "No products found for the given IDs."
-    print(f"Products Info: {products_info}")
+    # print(f"Products Info: {products_info}")
     # output = "Data returned from API for each searched id: \n"
     # for info in products_info:
     #     output += str(info) + "\n"
@@ -729,7 +718,7 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
                 f"ID: {str(metadata['id'])}\n"
                 f"Content: {str(doc.page_content)}\n\n"
             )
-        print(result)
+        # print(result)
         return result.strip()
 
     except Exception as e:
@@ -864,7 +853,6 @@ class HybridQueryProcessor:
         Additionally, returns a list of scores for items that meet the score threshold.
         """
         tematika = self.hybrid_query(upit)
-        print(222, tematika)
         if not dict:
             uk_teme = ""
             
