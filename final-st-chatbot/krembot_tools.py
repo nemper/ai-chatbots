@@ -383,19 +383,34 @@ def pineg(pitanje):
             book_data = []
             for record in result:
                 book_node = record['b']
-                book_data.append({
-                    'id': book_node['id'],
-                    'oldProductId': book_node['oldProductId'],
-                    'title': book_node['title'],
-                    'author': record['author'],
-                    'category': book_node['category'],
-                    'genre': record['genre'],
-                    'price': book_node['price'],
-                    'quantity': book_node['quantity'],
-                    'pages': book_node['pages'],
-                    'eBook': book_node['eBook']
+                existing_book = next((book for book in book_data if book['id'] == book_node['id']), None)
+                if existing_book:
+                    # Proveri da li su 'author' i 'genre' liste, ako nisu, konvertuj ih
+                    if not isinstance(existing_book['author'], list):
+                        existing_book['author'] = [existing_book['author']]
+                    if not isinstance(existing_book['genre'], list):
+                        existing_book['genre'] = [existing_book['genre']]
+
+                    # Ako postoji, dodaj autora i žanr u postojeće liste ako nisu već tamo
+                    if record['author'] not in existing_book['author']:
+                        existing_book['author'].append(record['author'])
+                    if record['genre'] not in existing_book['genre']:
+                        existing_book['genre'].append(record['genre'])
+                else:
+                    # Ako ne postoji, dodaj novi zapis sa autorom i žanrom kao liste
+                    book_data.append({
+                        'id': book_node['id'],
+                        'oldProductId': book_node['oldProductId'],
+                        'title': book_node['title'],
+                        'author': record['author'],
+                        'category': book_node['category'],
+                        'genre': record['genre'],
+                        'price': book_node['price'],
+                        'quantity': book_node['quantity'],
+                        'pages': book_node['pages'],
+                        'eBook': book_node['eBook']
                 })
-            print(f"Book Data: {book_data}")
+            # print(f"Book Data: {book_data}")
             return book_data
 
     def get_embedding(text, model="text-embedding-3-large"):
@@ -404,9 +419,10 @@ def pineg(pitanje):
             model=model
         ).data[0].embedding
         # print(f"Embedding Response: {response}")
+        
         return response
 
-    def dense_query(query, top_k=5, filter=None, namespace="opisi"):
+    def dense_query(query, top_k, filter, namespace="opisi"):
         # Get embedding for the query
         dense = get_embedding(text=query)
         # print(f"Dense: {dense}")
@@ -415,17 +431,20 @@ def pineg(pitanje):
             'top_k': top_k,
             'vector': dense,
             'include_metadata': True,
+            'filter': filter,
             'namespace': namespace
         }
+
         response = index.query(**query_params)
+
         matches = response.to_dict().get('matches', [])
         # print(f"Matches: {matches}")
 
         return matches
 
-    def search_pinecone(query: str, top_k: int = 1) -> List[Dict]:
+    def search_pinecone(query: str) -> List[Dict]:
         # Dobij embedding za query
-        query_embedding = dense_query(query, top_k=6)
+        query_embedding = dense_query(query, top_k=15, filter=None)
         # print(f"Results: {query_embedding}")
 
         # Ekstraktuj id i text iz metapodataka rezultata
@@ -435,9 +454,33 @@ def pineg(pitanje):
             matches.append({
                 'id': metadata['id'],
                 'sec_id': int(metadata['sec_id']),
-                'text': metadata['text']
+                'text': metadata['text'],
+                'authors': metadata['authors'],
+                'title': metadata['title']
             })
         
+        return matches
+
+    def search_pinecone_second_set(title: str, authors: str ) -> List[Dict]:
+        # Dobij embedding za query
+        query = "Nađi knjigu"
+        filter = {"title" : {"$eq" : title}, "authors" : {"$in" : authors}}
+        query_embedding_2 = dense_query(query, top_k=10, filter=filter)
+        # print(f"Results: {query_embedding}")
+
+        # Ekstraktuj id i text iz metapodataka rezultata
+        matches = []
+        for match in query_embedding_2:
+            metadata = match['metadata']
+            matches.append({
+                'id': metadata['id'],
+                'sec_id': int(metadata['sec_id']),
+                'text': metadata['text'],
+                'authors': metadata['authors'],
+                'title': metadata['title']
+            })
+        
+        # print(f"Matches: {matches}")
         return matches
 
     def combine_data(api_data, book_data, description):
@@ -450,9 +493,9 @@ def pineg(pitanje):
                 # Uzmemo samo potrebna polja iz book_data
                 selected_book_data = {
                     'title': book.get('title'),
-                    'author': book.get('author'),
+                    'author': book.get('author', []),
                     'category': book.get('category'),
-                    'genre': book.get('genre'),
+                    'genre': book.get('genre', []),
                     'pages': book.get('pages'),
                     'eBook': book.get('eBook')
                 }
@@ -469,43 +512,76 @@ def pineg(pitanje):
     def display_results(combined_data):
         x = ""
         for data in combined_data:
-            x += f"\tNaslov: {data['title']}\n"
-            x += f"Autor: {data['author']}\n"
+            x += f"Naslov: {data['title']}\n"
+            x += f"Autor: {(data['author'])}\n"
             x += f"Kategorija: {data['category']}\n"
-            x += f"Žanr: {data['genre']}\n"
+            x += f"Žanr: {(data['genre'])}\n"
             x += f"Cena: {data['cena']}\n"
             x += f"Dostupnost: {data['lager']}\n"
             x += f"Broj stranica: {data['pages']}\n"
             x += f"eBook: {data['eBook']}\n"
             x += f"Opis: {data['description']}\n"
             x += f"Link: {data['url']}\n"
-            x += "\n\n"
+        
         return x
 
     search_results = search_pinecone(pitanje)
-    print(f"Search Results: {search_results}")
+
     combined_results = []
+    duplicate_filter = []
+    counter = 0
 
-    y = ""
-    for result in search_results: 
-        api_data = API_search([result['sec_id']])
-        # print(f"API Data: {api_data}")
+    for result in search_results:
+        if result['sec_id'] in duplicate_filter:
+            continue
+        else:
+            if counter < 3:
+                api_data = API_search([result['sec_id']])
+                # print(f"API Data: {api_data}")
+                if api_data:
+                    counter += 1
+                    # print(f"Counter: {counter}")
+                else:
+                    # print(f"API Data is empty for sec_id: {result['sec_id']}")
+                    title = result['title']
+                    authors = result['authors']
+                    search_results_2 = search_pinecone_second_set(title, authors)
+                    for result_2 in search_results_2:
+                        if result_2['sec_id'] in duplicate_filter:
+                            continue
+                        else:
+                            api_data = API_search([result_2['sec_id']])
+                            # print(f"API Data 2: {api_data}")
+                            if api_data:
+                                counter += 1
+                                # print(f"Counter 2: {counter}")
+                                data = run_cypher_query(result_2['sec_id'])
+                                # print(f"Data: {data}")
 
-         # Proveri da li je api_data prazan
-        if not api_data:
-            continue  # Preskoči ako je api_data prazan
+                                combined_data = combine_data(api_data, data, result_2['text'])
+                                # print(f"Combined Data: {combined_data}")
+                                duplicate_filter.append(result_2['sec_id'])
+                                
+                                combined_results.append(combined_data)
+                            
+                                display_results(combined_data)
+                                break
 
-        data = run_cypher_query(result['sec_id'])
-        # print(f"Data: {data}")
+                    continue # Preskoči ako je api_data prazan
 
-        combined_data = combine_data(api_data, data, result['text'])
-        # print(f"Combined Data: {combined_data}")
-        
-        combined_results.append(combined_data)
-    
-        y += display_results(combined_data)
-        
-    return y
+                data = run_cypher_query(result['sec_id'])
+                # print(f"Data: {data}")
+
+                combined_data = combine_data(api_data, data, result['text'])
+                # print(f"Combined Data: {combined_data}")
+                duplicate_filter.append(result['sec_id'])
+                
+                combined_results.append(combined_data)
+            
+                return display_results(combined_data)
+            else:
+                break
+    # print(f"Combined Results: {combined_results}")
     
 
 def API_search(matching_sec_ids):
