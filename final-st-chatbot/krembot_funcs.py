@@ -172,7 +172,7 @@ async def handle_async_tasks(client, user_message, full_response, api_key):
     # Fetch spoken response and suggestions concurrently
     audio_data, odgovor = await asyncio.gather(
         fetch_spoken_response(client, user_message, full_response, api_key),
-        suggest_questions(system_message=system_message, user_message=user_message, api_key=api_key),
+        suggest_questions(prompt=user_message, api_key=api_key),
     )
     
     try:
@@ -190,10 +190,15 @@ async def handle_async_tasks(client, user_message, full_response, api_key):
     if 'selected_question' in st.session_state:
         st.session_state.prompt = st.session_state.selected_question
         st.session_state['selected_question'] = None
-    await play_audio_from_stream(audio_data)
+    
+    # Get the audio data and samplerate
+    audio_base64, samplerate = play_audio_from_stream(audio_data)
+    
+    # Display the audio in the Streamlit app
+    st.audio(f"data:audio/wav;base64,{audio_base64}", format="audio/wav")
 
 
-def play_audio_from_stream(spoken_response):
+def play_audio_from_stream22(spoken_response):
     """
     Reads audio data from a spoken response stream and returns it as a base64-encoded string.
 
@@ -217,6 +222,35 @@ def play_audio_from_stream(spoken_response):
     with sf.SoundFile(wav_buffer, 'w', samplerate=samplerate, channels=1, format='WAV') as wav_file:
         wav_file.write(data)
 
+
+    # Encode the WAV data to base64
+    wav_buffer.seek(0)
+    audio_base64 = base64.b64encode(wav_buffer.read()).decode('utf-8')
+
+    return audio_base64, samplerate
+
+
+def play_audio_from_stream(spoken_response):
+    """
+    Reads audio data from a spoken response and returns it as a base64-encoded string.
+
+    Parameters:
+    - spoken_response: A bytes object containing the audio data.
+
+    Returns:
+    - A base64-encoded string of the audio data.
+    """
+    buffer = io.BytesIO(spoken_response)  # Directly pass the bytes object to BytesIO
+    buffer.seek(0)
+
+    with sf.SoundFile(buffer, 'r') as sound_file:
+        data = sound_file.read(dtype='int16')
+        samplerate = sound_file.samplerate
+
+    # Create a new buffer to save the audio in WAV format
+    wav_buffer = io.BytesIO()
+    with sf.SoundFile(wav_buffer, 'w', samplerate=samplerate, channels=1, format='WAV') as wav_file:
+        wav_file.write(data)
 
     # Encode the WAV data to base64
     wav_buffer.seek(0)
