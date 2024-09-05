@@ -338,66 +338,68 @@ def graphp(pitanje):
         )
         return response.choices[0].message.content.strip()
     
-    while True:
-        cypher_query = generate_cypher_query(pitanje)
-        print(f"Generated Cypher Query: {cypher_query}")
-        
-        if is_valid_cypher(cypher_query):
+    cypher_query = generate_cypher_query(pitanje)
+    print(f"Generated Cypher Query: {cypher_query}")
+    
+    if is_valid_cypher(cypher_query):
+        try:
+            print(5555555)
+            book_data = run_cypher_query(driver, cypher_query)
+
+            print(f"Book Data: {book_data}")
+
             try:
-                book_data = run_cypher_query(driver, cypher_query)
+                oldProductIds = [item['oldProductId'] for item in book_data]
+                print(f"Old Product IDs: {oldProductIds}")
+            except KeyError:
+                print("Nema 'oldProductId'.")
+                oldProductIds = []
 
-                print(f"Book Data: {book_data}")
+            # Define the regex pattern to match both 'id' and 'b.id'
+            pattern = r"'(?:b\.)?id': '([^']+)'"
 
-                try:
-                    oldProductIds = [item['oldProductId'] for item in book_data]
-                    print(f"Old Product IDs: {oldProductIds}")
-                except KeyError:
-                    print("Nema 'oldProductId'.")
-                    oldProductIds = []
+            # Filtrirana lista koja će sadržati samo relevantne knjige
+            filtered_book_data = []
 
-                # Define the regex pattern to match both 'id' and 'b.id'
-                pattern = r"'(?:b\.)?id': '([^']+)'"
+            if not oldProductIds:
+                filtered_book_data = book_data
+                return formulate_answer_with_llm(pitanje, filtered_book_data)
 
-                # Filtrirana lista koja će sadržati samo relevantne knjige
-                filtered_book_data = []
+            else:
+                print(2222)
+                api_podaci = API_search(oldProductIds)
+                # print(f"API Data: {api_podaci}")
+                print(3333)
 
-                if not oldProductIds:
-                    filtered_book_data = book_data
-                    return formulate_answer_with_llm(pitanje, filtered_book_data)
+                # Kreiranje mape id za brže pretraživanje
+                products_info_map = {int(product['id']): product for product in api_podaci}
 
-                else:
-                    api_podaci = API_search(oldProductIds)
-                    # print(f"API Data: {api_podaci}")
+                # Iteracija kroz book_data i dodavanje relevantnih podataka
+                for book in book_data:
+                    old_id = book['oldProductId']
+                    if old_id in products_info_map:
+                        product = products_info_map[old_id]
+                        # Spojite dva rečnika - podaci iz products_info_map ažuriraju book
+                        book.update(products_info_map[old_id])
+                        # Dodavanje knjige u filtriranu listu
+                        filtered_book_data.append(book)
 
-                    # Kreiranje mape id za brže pretraživanje
-                    products_info_map = {int(product['id']): product for product in api_podaci}
+                    # print(f"Filtered Book Data: {filtered_book_data}")
 
-                    # Iteracija kroz book_data i dodavanje relevantnih podataka
-                    for book in book_data:
-                        old_id = book['oldProductId']
-                        if old_id in products_info_map:
-                            product = products_info_map[old_id]
-                            # Spojite dva rečnika - podaci iz products_info_map ažuriraju book
-                            book.update(products_info_map[old_id])
-                            # Dodavanje knjige u filtriranu listu
-                            filtered_book_data.append(book)
+                # print("******Gotov api deo!!!")
 
-                        # print(f"Filtered Book Data: {filtered_book_data}")
+                oldProductIds_str = [str(id) for id in oldProductIds]
 
-                    # print("******Gotov api deo!!!")
-
-                    oldProductIds_str = [str(id) for id in oldProductIds]
-
-                    descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
-                    # print("******Gotov Pinecone deo!!!")
-                    combined_data = combine_data(filtered_book_data, descriptionsDict)
-                    print(f"Combined Data: {combined_data}")
-                    display_results(combined_data)
-                    return
-            except Exception as e:
-                print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
-        else:
-            print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
+                descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
+                # print("******Gotov Pinecone deo!!!")
+                combined_data = combine_data(filtered_book_data, descriptionsDict)
+                print(f"Combined Data: {combined_data}")
+                display_results(combined_data)
+                return
+        except Exception as e:
+            print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
+    else:
+        print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
 
 
 def pineg(pitanje):
@@ -924,20 +926,21 @@ def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', nam
         result = ""
         doc_result = retriever.get_relevant_documents(upit)
         for doc in doc_result:
+            print("DOC: ", doc)
             metadata = doc.metadata
+            print("METADATA: ", metadata)
             result += (
-                f"Sec_id: {str(metadata['sec_id'])}\n"
-                f"Title: {str(metadata['title'])}\n"
-                f"Authors: {', '.join(map(str, metadata['authors']))}\n"
-                f"Chunk: {str(metadata['chunk'])}\n"
-                f"Date: {str(metadata['date'])}\n"
-                f"eBook: {str(metadata['eBook'])}\n"
-                f"Genres: {', '.join(map(str, metadata['genres']))}\n"
-                f"URL: https://delfi.rs/{str(metadata['category'])}/{str(metadata['sec_id'])}\n"
-                f"ID: {str(metadata['id'])}\n"
-                f"Content: {str(doc.page_content)}\n\n"
+                (f"Sec_id: {str(metadata['sec_id'])}\n" if 'sec_id' in metadata else "") +
+                (f"Category: {str(metadata['category'])}\n" if 'category' in metadata else "") +
+                (f"Custom ID: {str(metadata['custom_id'])}\n" if 'custom_id' in metadata else "") +
+                (f"Date: {str(int(metadata['date']))}\n" if 'date' in metadata else "") +
+                (f"Image URL: {str(metadata['slika'])}\n" if 'slika' in metadata else "") +
+                (f"Authors: {str(metadata.get('book_author', 'Unknown'))}\n" if 'book_author' in metadata else "") +
+                (f"Title: {str(metadata.get('book_name', 'Untitled'))}\n" if 'book_name' in metadata else "") +
+                (f"Cover Description: {str(metadata.get('book_cover_description', 'No description'))}\n" if 'book_cover_description' in metadata else "") +
+                (f"Content: {str(doc.page_content)}\n\n" if doc.page_content else "")
             )
-        # print(result)
+            print("RESULT", result)
         return result.strip()
 
     except Exception as e:
@@ -1039,7 +1042,6 @@ class HybridQueryProcessor:
             query_params['filter'] = filter
 
         response = self.index.query(**query_params)
-        print(f"RESPONSE: {response}")
         matches = response.to_dict().get('matches', [])
         results = []
 
@@ -1072,7 +1074,6 @@ class HybridQueryProcessor:
         Additionally, returns a list of scores for items that meet the score threshold.
         """
         tematika = self.hybrid_query(upit)
-        print("TEMATIKA: ", tematika)
         if not dict:
             uk_teme = ""
             
