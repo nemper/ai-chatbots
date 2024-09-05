@@ -638,6 +638,7 @@ def pineg(pitanje):
 
 
 def API_search_2(order_ids):
+
     def get_order_info(order_id):
         url = f"http://185.22.145.64:3003/api/order-info/{order_id}"
         headers = {
@@ -648,23 +649,24 @@ def API_search_2(order_ids):
     # Function to parse the JSON response and extract required fields
     def parse_order_info(json_data):
         order_info = {}
-        if json_data:
+        if 'orderData' in json_data:
+            data = json_data['orderData']
             # Extract required fields from the order info
-            order_info['id'] = json_data.get('id', 'N/A')
-            order_info['type'] = json_data.get('type', 'N/A')
-            order_info['status'] = json_data.get('status', 'N/A')
-            order_info['delivery_service'] = json_data.get('delivery_service', 'N/A')
-            order_info['delivery_time'] = json_data.get('delivery_time', 'N/A')
-            order_info['payment_type'] = json_data.get('payment_type', 'N/A')
+            order_info['id'] = data.get('id', 'N/A')
+            order_info['type'] = data.get('type', 'N/A')
+            order_info['status'] = data.get('status', 'N/A')
+            order_info['delivery_service'] = data.get('delivery_service', 'N/A')
+            order_info['delivery_time'] = data.get('delivery_time', 'N/A')
+            order_info['payment_type'] = data.get('payment_detail', {}).get('payment_type', 'N/A')
 
             # Extract package info if available
-            packages = json_data.get('packages', [])
+            packages = data.get('packages', [])
             if packages:
                 package_status = packages[0].get('status', 'N/A')
                 order_info['package_status'] = package_status
 
             # Extract order items info if available
-            order_items = json_data.get('order_items', [])
+            order_items = data.get('order_items', [])
             if order_items:
                 item_type = order_items[0].get('type', 'N/A')
                 order_info['order_item_type'] = item_type
@@ -676,6 +678,7 @@ def API_search_2(order_ids):
         orders_info = []
         for order_id in order_ids:
             json_data = get_order_info(order_id)
+            print(json_data)  # Debugging print to see raw JSON response
             order_info = parse_order_info(json_data)
             if order_info:
                 orders_info.append(order_info)
