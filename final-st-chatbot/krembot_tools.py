@@ -45,40 +45,40 @@ def rag_tool_answer(prompt):
         processor = HybridQueryProcessor(delfi_special=1)
         context = processor.process_query_results(prompt)
 
-    elif  st.session_state.rag_tool == "Hybrid":
+    elif st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=0)
         context = processor.process_query_results(prompt)
 
-    elif  st.session_state.rag_tool == "Opisi":
+    elif st.session_state.rag_tool == "Opisi":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(prompt)
 
-    elif  st.session_state.rag_tool == "Korice":
+    elif st.session_state.rag_tool == "Korice":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
         
-    elif  st.session_state.rag_tool == "Graphp": 
+    elif st.session_state.rag_tool == "Graphp": 
         context = graphp(prompt)
 
     elif st.session_state.rag_tool == "Pineg":
         context = pineg(prompt)
 
-    elif  st.session_state.rag_tool == "Orders":
+    elif st.session_state.rag_tool == "Orders":
         context = order_delfi(prompt)
 
-    elif  st.session_state.rag_tool == "FAQ":
+    elif st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
         context = processor.process_query_results(prompt)
         # st.info("Score po chunku:")
         # st.write(scores)
         
-    elif  st.session_state.rag_tool == "Uputstva":
+    elif st.session_state.rag_tool == "Uputstva":
         processor = HybridQueryProcessor(namespace="ecd-uputstva", delfi_special=1)
         context = processor.process_query_results(prompt)
 
-    elif  st.session_state.rag_tool == "Blogovi":
+    elif st.session_state.rag_tool == "Blogovi":
         processor = HybridQueryProcessor(namespace="ecd-blogovi", delfi_special=1)
         context = processor.process_query_results(prompt)
 
@@ -540,16 +540,26 @@ def pineg(pitanje):
     def display_results(combined_data):
         x = ""
         for data in combined_data:
-            x += f"Naslov: {data['title']}\n"
-            x += f"Autor: {(data['author'])}\n"
-            x += f"Kategorija: {data['category']}\n"
-            x += f"Žanr: {(data['genre'])}\n"
-            x += f"Cena: {data['cena']}\n"
-            x += f"Dostupnost: {data['lager']}\n"
-            x += f"Broj stranica: {data['pages']}\n"
-            x += f"eBook: {data['eBook']}\n"
-            x += f"Opis: {data['description']}\n"
-            x += f"Link: {data['url']}\n"
+            if "Naziv" in data:
+                x += f"Naslov: {data['title']}\n"
+            if "Autor" in data:
+                x += f"Autor: {data['author']}\n"
+            if "Kategorija" in data:
+                x += f"Kategorija: {data['category']}\n"
+            if "Žanr" in data:
+                x += f"Žanr: {(data['genre'])}\n"
+            if "Cena" in data:
+                x += f"Cena: {data['cena']}\n"
+            if "Dostupnost" in data:
+                x += f"Dostupnost: {data['lager']}\n"
+            if "Broj stranica" in data:
+                x += f"Broj stranica: {data['pages']}\n"
+            if "eBook" in data:
+                x += f"eBook: {data['eBook']}\n"
+            if "Opis" in data:
+                x += f"Opis: {data['description']}\n"
+            if "Link" in data:
+                x += f"Link: {data['url']}\n"
             if 'cena sa redovnim popustom' in data:
                 x += f"Cena sa redovnim popustom: {data['cena sa redovnim popustom']}\n"
             if 'cena sa redovnim popustom na količinu' in data:
