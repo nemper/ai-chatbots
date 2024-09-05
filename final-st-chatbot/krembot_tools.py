@@ -46,7 +46,7 @@ def rag_tool_answer(prompt):
         context = processor.process_query_results(prompt)
 
     elif st.session_state.rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=0)
+        processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
 
     elif st.session_state.rag_tool == "Opisi":
@@ -1039,7 +1039,7 @@ class HybridQueryProcessor:
             query_params['filter'] = filter
 
         response = self.index.query(**query_params)
-
+        print(f"RESPONSE: {response}")
         matches = response.to_dict().get('matches', [])
         results = []
 
@@ -1072,6 +1072,7 @@ class HybridQueryProcessor:
         Additionally, returns a list of scores for items that meet the score threshold.
         """
         tematika = self.hybrid_query(upit)
+        print("TEMATIKA: ", tematika)
         if not dict:
             uk_teme = ""
             
