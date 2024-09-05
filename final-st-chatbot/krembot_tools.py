@@ -229,16 +229,18 @@ def graphp(pitanje):
 
         return cypher_query
 
-    def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
-        # print(f"IDs: {ids}")
+
+    def get_descriptions_from_pinecone(ids):
         # Initialize Pinecone
-        pc = Pinecone(api_key=api_key, environment=environment)
-        index = pc.Index(name=index_name)
-
+        # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
+        index = connect_to_pinecone(x=0)
         # Fetch the vectors by IDs
-        results = index.fetch(ids=ids, namespace=namespace)
+        try:
+            results = index.fetch(ids=ids, namespace="opisi")
+        except Exception as e:
+            print(f"Error fetching vectors: {e}")
+            return {}
         descriptions = {}
-
         for id in ids:
             if id in results['vectors']:
                 vector_data = results['vectors'][id]
@@ -248,6 +250,7 @@ def graphp(pitanje):
                     descriptions[id] = 'Metadata not found in vector data.'
             else:
                 descriptions[id] = 'Nemamo opis za ovaj artikal.'
+        
         return descriptions
     
 
@@ -385,7 +388,7 @@ def graphp(pitanje):
 
                     oldProductIds_str = [str(id) for id in oldProductIds]
 
-                    descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str, pinecone_api_key, pinecone_environment, index_name, namespace)
+                    descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
                     # print("******Gotov Pinecone deo!!!")
                     combined_data = combine_data(filtered_book_data, descriptionsDict)
                     print(f"Combined Data: {combined_data}")
