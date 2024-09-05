@@ -65,6 +65,9 @@ def rag_tool_answer(prompt):
     elif st.session_state.rag_tool == "Pineg":
         context = pineg(prompt)
 
+    elif  st.session_state.rag_tool == "Orders":
+        context = order_delfi(prompt)
+
     elif  st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
         context = processor.process_query_results(prompt)
@@ -155,12 +158,16 @@ def graphp(pitanje):
         
         number_of_records = len(cleaned_results)
         # average_characters_per_record = total_characters / number_of_records if number_of_records > 0 else 0
+
+        print(f"Number of records: {number_of_records}")
+        print(f"Total number of characters: {total_characters}")
         # print(f"Average characters per record: {average_characters_per_record}")
         # print(f"Longest record length: {max_record_length}")
         # print(f"Shortest record length: {min_record_length}")
 
         return cleaned_results
         
+
     def generate_cypher_query(question):
         prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
         response = client.chat.completions.create(
@@ -174,7 +181,7 @@ def graphp(pitanje):
                 "The database has 3 node types: Author, Book, Genre, and 2 relationship types: BELONGS_TO and WROTE."
                 "Only Book nodes have properties: id, oldProductId, category, title, price, quantity, pages, and eBook."
                 "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
-                "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci). Please ensure that the generated Cypher query uses these exact capitalizations."
+                "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci, Knjige za decu). Please ensure that the generated Cypher query uses these exact capitalizations."
                 "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
                 "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the searched term."
                 "When generating the Cypher query, ensure to handle inflected forms properly. For example, if the user asks for books by 'Tolkiena,' generate a query for 'Tolkien' instead, removing any inflections."
@@ -222,17 +229,16 @@ def graphp(pitanje):
 
         return cypher_query
 
-    def get_descriptions_from_pinecone(ids):
+    def get_descriptions_from_pinecone(ids, api_key, environment, index_name, namespace):
+        # print(f"IDs: {ids}")
         # Initialize Pinecone
-        # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
-        index = connect_to_pinecone(x=0)
+        pc = Pinecone(api_key=api_key, environment=environment)
+        index = pc.Index(name=index_name)
+
         # Fetch the vectors by IDs
-        try:
-            results = index.fetch(ids=ids, namespace="opisi")
-        except Exception as e:
-            print(f"Error fetching vectors: {e}")
-            return {}
+        results = index.fetch(ids=ids, namespace=namespace)
         descriptions = {}
+
         for id in ids:
             if id in results['vectors']:
                 vector_data = results['vectors'][id]
@@ -242,8 +248,8 @@ def graphp(pitanje):
                     descriptions[id] = 'Metadata not found in vector data.'
             else:
                 descriptions[id] = 'Nemamo opis za ovaj artikal.'
-        
         return descriptions
+    
 
     def combine_data(book_data, descriptions):
         # print(f"Book Data: {book_data}")
@@ -263,6 +269,7 @@ def graphp(pitanje):
         # print(f"Combined Data: {combined_data}")
         return combined_data
 
+
     def display_results(combined_data):
         x = ""
         for data in combined_data:
@@ -270,8 +277,10 @@ def graphp(pitanje):
                 x += f"Naslov: {data['title']}\n"
             if 'category' in data:
                 x += f"Kategorija: {data['category']}\n"
-            if 'cena' in data:
-                x += f"Cena: {data['cena']}\n"
+            if 'puna cena' in data:
+                x += f"Puna cena: {data['puna cena']}\n"
+            if 'author' in data:
+                x += f"Autor: {data['author']}\n"
             if 'lager' in data:
                 x += f"Količina: {data['lager']}\n"
             if 'pages' in data:
@@ -282,7 +291,29 @@ def graphp(pitanje):
                 x += f"Opis: {data['description']}\n"
             if 'url' in data:
                 x += f"Link: {data['url']}\n"
-
+            if 'cena sa redovnim popustom' in data:
+                x += f"Cena sa redovnim popustom: {data['cena sa redovnim popustom']}\n"
+            if 'cena sa redovnim popustom na količinu' in data:
+                x += f"Cena sa redovnim popustom na količinu: {data['cena sa redovnim popustom na količinu']}\n"
+            if 'limit za količinski popust' in data:
+                x += f"Limit za količinski popust: {data['limit za količinski popust']}\n"
+            if 'cena sa premium popustom' in data:
+                x += f"Cena sa premium popustom: {data['cena sa premium popustom']}\n"
+            if 'cena sa premium popustom na količinu' in data:
+                x += f"Cena sa premium popustom na količinu: {data['cena sa premium popustom na količinu']}\n"
+            if 'limit za količinski premium popust' in data:
+                x += f"Limit za količinski premium popust: {data['limit za količinski premium popust']}\n"
+            if 'naziv akcije' in data:
+                x += f"Naziv akcije: {data['naziv akcije']}\n"
+            if 'početak akcije' in data:
+                x += f"Početak akcije: {data['početak akcije']}\n"
+            if 'kraj akcije' in data:
+                x += f"Kraj akcije: {data['kraj akcije']}\n"
+            if 'eksponencijalni procenti' in data:
+                x += f"Eksponencijalni procenti: {data['eksponencijalni procenti']}\n"
+            if 'eksponencijalni procenti na kolicinu' in data:
+                x += f"Eksponencijalni procenti na kolicinu: {data['eksponencijalni procenti na kolicinu']}\n"
+            x += "\n\n"
         return x
 
 
@@ -304,69 +335,73 @@ def graphp(pitanje):
         )
         return response.choices[0].message.content.strip()
     
-
-    cypher_query = generate_cypher_query(pitanje)
-    # print(f"Generated Cypher Query: {cypher_query}")
-    
-    if is_valid_cypher(cypher_query):
-        try:
-            book_data = run_cypher_query(driver, cypher_query)
-
-            print(f"Book Data: {book_data}")
-
+    while True:
+        cypher_query = generate_cypher_query(pitanje)
+        print(f"Generated Cypher Query: {cypher_query}")
+        
+        if is_valid_cypher(cypher_query):
             try:
-                oldProductIds = [item['oldProductId'] for item in book_data]
-            except KeyError:
-                print("Nema 'oldProductId'.")
-                oldProductIds = []
+                book_data = run_cypher_query(driver, cypher_query)
 
-            # Define the regex pattern to match both 'id' and 'b.id'
-            # pattern = r"'(?:b\.)?id': '([^']+)'"
+                print(f"Book Data: {book_data}")
 
-            # Filtrirana lista koja će sadržati samo relevantne knjige
-            filtered_book_data = []
+                try:
+                    oldProductIds = [item['oldProductId'] for item in book_data]
+                    print(f"Old Product IDs: {oldProductIds}")
+                except KeyError:
+                    print("Nema 'oldProductId'.")
+                    oldProductIds = []
 
-            if not oldProductIds:
-                filtered_book_data = book_data
-                # answer = formulate_answer_with_llm(pitanje, filtered_book_data)
-                # print(answer)
-            else:
-                api_podaci = API_search(oldProductIds)
-                print(f"API Podaci: {api_podaci}")
-                # Kreiranje mape id za brže pretraživanje
-                products_info_map = {int(product['id']): product for product in api_podaci}
+                # Define the regex pattern to match both 'id' and 'b.id'
+                pattern = r"'(?:b\.)?id': '([^']+)'"
 
-                # Iteracija kroz book_data i dodavanje relevantnih podataka
-                for book in book_data:
-                    old_id = book['oldProductId']
-                    if old_id in products_info_map:
-                        product = products_info_map[old_id]
-                        # Dodavanje relevantnih podataka u book data
-                        book['cena'] = product['cena']
-                        book['lager'] = product['lager']
-                        book['url'] = product['url']
-                        # Dodavanje knjige u filtriranu listu
-                        filtered_book_data.append(book)
+                # Filtrirana lista koja će sadržati samo relevantne knjige
+                filtered_book_data = []
 
-                oldProductIds_str = [str(id) for id in oldProductIds]
+                if not oldProductIds:
+                    filtered_book_data = book_data
+                    return formulate_answer_with_llm(pitanje, filtered_book_data)
 
-                descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
+                else:
+                    api_podaci = API_search(oldProductIds)
+                    # print(f"API Data: {api_podaci}")
 
-                combined_data = combine_data(filtered_book_data, descriptionsDict)
-                x = display_results(combined_data)
-                return x
-            
-        except Exception as e:
-            st.write(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
-    else:
-        st.write("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
+                    # Kreiranje mape id za brže pretraživanje
+                    products_info_map = {int(product['id']): product for product in api_podaci}
+
+                    # Iteracija kroz book_data i dodavanje relevantnih podataka
+                    for book in book_data:
+                        old_id = book['oldProductId']
+                        if old_id in products_info_map:
+                            product = products_info_map[old_id]
+                            # Spojite dva rečnika - podaci iz products_info_map ažuriraju book
+                            book.update(products_info_map[old_id])
+                            # Dodavanje knjige u filtriranu listu
+                            filtered_book_data.append(book)
+
+                        # print(f"Filtered Book Data: {filtered_book_data}")
+
+                    # print("******Gotov api deo!!!")
+
+                    oldProductIds_str = [str(id) for id in oldProductIds]
+
+                    descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str, pinecone_api_key, pinecone_environment, index_name, namespace)
+                    # print("******Gotov Pinecone deo!!!")
+                    combined_data = combine_data(filtered_book_data, descriptionsDict)
+                    print(f"Combined Data: {combined_data}")
+                    display_results(combined_data)
+                    return
+            except Exception as e:
+                print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
+        else:
+            print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
 
 
 def pineg(pitanje):
     index = connect_to_pinecone(x=0)
+    driver = connect_to_neo4j()
 
     def run_cypher_query(id):
-        driver = connect_to_neo4j()
         query = f"MATCH (b:Book)-[:WROTE]-(a:Author), (b)-[:BELONGS_TO]-(g:Genre) WHERE b.oldProductId = {id} AND b.quantity > 0 RETURN b, a.name AS author, g.name AS genre"
         with driver.session() as session:
             result = session.run(query)
@@ -512,7 +547,20 @@ def pineg(pitanje):
             x += f"eBook: {data['eBook']}\n"
             x += f"Opis: {data['description']}\n"
             x += f"Link: {data['url']}\n"
-        
+            if 'cena sa redovnim popustom' in data:
+                x += f"Cena sa redovnim popustom: {data['cena sa redovnim popustom']}\n"
+            if 'cena sa redovnim popustom na količinu' in data:
+                x += f"Cena sa redovnim popustom na količinu: {data['cena sa redovnim popustom na količinu']}\n"
+            if 'limit za količinski popust' in data:
+                x += f"Limit za količinski popust: {data['limit za količinski popust']}\n"
+            if 'cena sa premium popustom' in data:
+                x += f"Cena sa premium popustom: {data['cena sa premium popustom']}\n"
+            if 'cena sa premium popustom na količinu' in data:
+                x += f"Cena sa premium popustom na količinu: {data['cena sa premium popustom na količinu']}\n"
+            if 'limit za količinski premium popust' in data:
+                x += f"Limit za količinski premium popust: {data['limit za količinski premium popust']}\n"
+            x += "\n\n"
+
         return x
 
     search_results = search_pinecone(pitanje)
@@ -572,9 +620,82 @@ def pineg(pitanje):
             else:
                 break
     # print(f"Combined Results: {combined_results}")
-    
+
+
+def API_search_2(order_ids):
+    def get_order_info(order_id):
+        url = f"http://185.22.145.64:3003/api/order-info/{order_id}"
+        headers = {
+            'x-api-key': getenv("DELFI_ORDER_API_KEY")
+        }
+        return requests.get(url, headers=headers).json()
+
+    # Function to parse the JSON response and extract required fields
+    def parse_order_info(json_data):
+        order_info = {}
+        if json_data:
+            # Extract required fields from the order info
+            order_info['id'] = json_data.get('id', 'N/A')
+            order_info['type'] = json_data.get('type', 'N/A')
+            order_info['status'] = json_data.get('status', 'N/A')
+            order_info['delivery_service'] = json_data.get('delivery_service', 'N/A')
+            order_info['delivery_time'] = json_data.get('delivery_time', 'N/A')
+            order_info['payment_type'] = json_data.get('payment_type', 'N/A')
+
+            # Extract package info if available
+            packages = json_data.get('packages', [])
+            if packages:
+                package_status = packages[0].get('status', 'N/A')
+                order_info['package_status'] = package_status
+
+            # Extract order items info if available
+            order_items = json_data.get('order_items', [])
+            if order_items:
+                item_type = order_items[0].get('type', 'N/A')
+                order_info['order_item_type'] = item_type
+
+        return order_info
+
+    # Main function to get info for a list of order IDs
+    def get_multiple_orders_info(order_ids):
+        orders_info = []
+        for order_id in order_ids:
+            json_data = get_order_info(order_id)
+            order_info = parse_order_info(json_data)
+            if order_info:
+                orders_info.append(order_info)
+        return orders_info
+
+    # Retrieve order information for all provided order IDs
+    try:
+        orders_info = get_multiple_orders_info(order_ids)
+    except Exception as e:
+        print(f"Error retrieving order information: {e}")
+        orders_info = "No orders found for the given IDs."
+
+    return orders_info
+
+
+import re
+def order_delfi(prompt):
+    def extract_orders_from_string(text):
+        # Define a regular expression pattern to match 5 or more digit integers
+        pattern = r'\b\d{5,}\b'
+        
+        # Use re.findall to extract all matching patterns
+        orders = re.findall(pattern, text)
+        
+        # Convert the matched strings to integers
+        orders = [int(order) for order in orders]
+    order_ids = extract_orders_from_string(prompt)
+    if len(order_ids) > 0:
+        return API_search_2(order_ids)
+    else:
+        return "Morate uneti tačan broj porudžbine/a."
+
 
 def API_search(matching_sec_ids):
+
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
@@ -585,18 +706,105 @@ def API_search(matching_sec_ids):
             root = ET.fromstring(xml_data)
             product_node = root.find(".//product")
             if product_node is not None:
-                cena = product_node.findtext('cena')
+                # cena = product_node.findtext('cena')
                 lager = product_node.findtext('lager')
                 url = product_node.findtext('url')
                 id = product_node.findtext('ID')
+
+                action_node = product_node.find('action')
+                if action_node is not None:
+                    print(f"Action node found!")  # Debugging line
+                    type = action_node.find('type').text
+                    if type == "fixedPrice" or type == "fixedDiscount":
+                        title = action_node.find('title').text
+                        start_at = action_node.find('startAt').text
+                        end_at = action_node.find('endAt').text
+                        price_regular_standard = float(action_node.find('priceRegularStandard').text)
+                        price_regular_premium = float(action_node.find('priceRegularPremium').text)
+                        price_quantity_standard = float(action_node.find('priceQuantityStandard').text)
+                        price_quantity_premium = float(action_node.find('priceQuantityPremium').text)
+
+                        akcija = {
+                            'naziv akcije': title,
+                            'početak akcije': start_at,
+                            'kraj akcije': end_at,
+                            'cena sa redovnim popustom': price_regular_standard,
+                            'cena sa premium popustom': price_regular_premium,
+                            'cena sa redovnim količinskim popustom': price_quantity_standard,
+                            'cena sa premium količinskim popustom': price_quantity_premium
+                        }
+                    elif type == "exponentialDiscount":
+                        title = action_node.find('title').text
+                        start_at = action_node.find('startAt').text
+                        end_at = action_node.find('endAt').text
+                        eksponencijalni_procenti = action_node.find('levelPercentages')
+                        eksponencijalne_cene = action_node.find('levelPrices')
+
+                        akcija = {
+                            'naziv akcije': title,
+                            'početak akcije': start_at,
+                            'kraj akcije': end_at,
+                            'eksponencijalni procenti': eksponencijalni_procenti,
+                            'eksponencijalne cene': eksponencijalne_cene
+                        }
+                    elif type == "quantityDiscount" or type == "quantityDiscount2":
+                        title = action_node.find('title').text
+                        start_at = action_node.find('startAt').text
+                        end_at = action_node.find('endAt').text
+                        price_quantity_standard_d2 = float(action_node.find('priceQuantityStandard').text)
+                        price_quantity_premium_d2 = float(action_node.find('priceQuantityPremium').text)
+                        quantity_discount_limit = int(action_node.find('quantityDiscountLimit').text)
+
+                        akcija = {
+                            'naziv akcije': title,
+                            'početak akcije': start_at,
+                            'kraj akcije': end_at,
+                            'cena sa redovnim količinskim popustom': price_quantity_standard_d2,
+                            'cena sa premium količinskim popustom': price_quantity_premium_d2,
+                            'limit za količinski popust': quantity_discount_limit
+                        }
+                else:
+                    print("Action node not found, taking regular price")  # Debugging line
+                    # Pristupanje priceList elementu
+                price_list = product_node.find('priceList')
+                if price_list is not None:
+                    collection_price = float(price_list.find('collectionFullPrice').text)
+                    full_price = float(price_list.find('fullPrice').text)
+                    eBook_price = float(price_list.find('eBookPrice').text)
+                    regular_discount_price = float(price_list.find('regularDiscountPrice').text)
+                    regular_discount_percentage = float(price_list.find('regularDiscountPercentage').text)
+                    quantity_discount_price = float(price_list.find('quantityDiscountPrice').text)
+                    quantity_discount_percentage = float(price_list.find('quantityDiscountPercentage').text)
+                    quantity_discount_limit = int(price_list.find('quantityDiscountLimit').text)
+                    premium_discount_price = float(price_list.find('regularDiscountPremiumPrice').text)
+                    premium_discount_percentage = float(price_list.find('regularDiscountPremiumPercentage').text)
+                    premium_quantity_discount_price = float(price_list.find('quantityDiscountPremiumPrice').text)
+                    premium_quantity_discount_percentage = float(price_list.find('quantityDiscountPremiumPercentage').text)
+                    premium_quantity_discount_limit = int(price_list.find('quantityDiscountPremiumLimit').text)
+
+                    cene = {
+                        'cena kolekcije': collection_price,
+                        'cena sa redovnim popustom': regular_discount_price,
+                        'cena sa redovnim popustom na količinu': quantity_discount_price,
+                        'limit za količinski popust': quantity_discount_limit,
+                        'cena sa premium popustom': premium_discount_price,
+                        'cena sa premium popustom na količinu': premium_quantity_discount_price,
+                        'limit za količinski premium popust': premium_quantity_discount_limit
+                    }
                 
-                if lager and int(lager) > 0:
+                # if lager and int(lager) > 0:
+                if int(lager) > 0:
                     product_info = {
-                        'cena': cena,
+                        'puna cena': full_price,
+                        'eBook cena': eBook_price,
                         'lager': lager,
                         'url': url,
                         'id': id
                     }
+                    if action_node is None:
+                        product_info.update(cene)
+                    else:
+                        product_info.update(akcija)
                 else:
                     print(f"Skipping product with lager {lager}")  # Debugging line
             else:
@@ -609,25 +817,23 @@ def API_search(matching_sec_ids):
     def get_multiple_products_info(token, product_ids):
         products_info = []
         for product_id in product_ids:
-            # print(f"Product IDs: {product_id}")
+            # print(f"Product ID: {product_id}")
             xml_data = get_product_info(token, product_id)
             # print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
-            # print(f"XML data for product_id {product_id}: {xml_data}")  # Debugging line
             product_info = parse_product_info(xml_data)
-            if product_info:  # Only add if product info is found and lager > 2
+            if product_info:
                 products_info.append(product_info)
         return products_info
 
     # Replace with your actual token and product IDs
-    # token = getenv("DELFI_API_KEY")
-    token = getenv("DELFI_API_KEY")
+    token = os.getenv("DELFI_API_KEY")
     product_ids = matching_sec_ids
 
     try:
         products_info = get_multiple_products_info(token, product_ids)
     except:
         products_info = "No products found for the given IDs."
-    # print(f"Products Info: {products_info}")
+    # print(f"API Info: {products_info}")
     # output = "Data returned from API for each searched id: \n"
     # for info in products_info:
     #     output += str(info) + "\n"
