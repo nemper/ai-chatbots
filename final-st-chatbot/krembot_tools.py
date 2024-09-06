@@ -326,17 +326,17 @@ def graphp(pitanje):
             return False
         return True
 
-    def formulate_answer_with_llm(question, graph_data):
-        input_text = f"Pitanje: '{question}'\nPodaci iz grafa: {graph_data}\nMolimo formulišite odgovor na osnovu ovih podataka."
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            temperature=0.0,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that formulates answers based on given data. You have been provided with a user question and data returned from a graph database. Please formulate an answer based on these inputs."},
-                {"role": "user", "content": input_text}
-            ]
-        )
-        return response.choices[0].message.content.strip()
+    # def formulate_answer_with_llm(question, graph_data):
+    #     input_text = f"Pitanje: '{question}'\nPodaci iz grafa: {graph_data}\nMolimo formulišite odgovor na osnovu ovih podataka."
+    #     response = client.chat.completions.create(
+    #         model="gpt-4o",
+    #         temperature=0.0,
+    #         messages=[
+    #             {"role": "system", "content": "You are a helpful assistant that formulates answers based on given data. You have been provided with a user question and data returned from a graph database. Please formulate an answer based on these inputs."},
+    #             {"role": "user", "content": input_text}
+    #         ]
+    #     )
+    #     return response.choices[0].message.content.strip()
     
     cypher_query = generate_cypher_query(pitanje)
     print(f"Generated Cypher Query: {cypher_query}")
@@ -363,7 +363,7 @@ def graphp(pitanje):
 
             if not oldProductIds:
                 filtered_book_data = book_data
-                return formulate_answer_with_llm(pitanje, filtered_book_data)
+                # return formulate_answer_with_llm(pitanje, filtered_book_data)
 
             else:
                 print(2222)
@@ -393,14 +393,15 @@ def graphp(pitanje):
                 descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
                 # print("******Gotov Pinecone deo!!!")
                 combined_data = combine_data(filtered_book_data, descriptionsDict)
-                print(f"Combined Data: {combined_data}")
+                
                 display_results(combined_data)
-                return
+                # return
         except Exception as e:
             print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
     else:
         print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
-
+    print(f"Combined Data: {combined_data}")
+    return combined_data
 
 def pineg(pitanje):
     index = connect_to_pinecone(x=0)
@@ -542,25 +543,27 @@ def pineg(pitanje):
     def display_results(combined_data):
         x = ""
         for data in combined_data:
-            if "Naziv" in data:
+            print(f"Data iz display_results: {data}")
+            if "title" in data:
+                print(f"Naziv: {data['title']}")
                 x += f"Naslov: {data['title']}\n"
-            if "Autor" in data:
+            if "author" in data:
                 x += f"Autor: {data['author']}\n"
-            if "Kategorija" in data:
+            if "category" in data:
                 x += f"Kategorija: {data['category']}\n"
-            if "Žanr" in data:
+            if "genre" in data:
                 x += f"Žanr: {(data['genre'])}\n"
-            if "Cena" in data:
-                x += f"Cena: {data['cena']}\n"
-            if "Dostupnost" in data:
+            if "puna cena" in data:
+                x += f"Cena: {data['puna cena']}\n"
+            if "lager" in data:
                 x += f"Dostupnost: {data['lager']}\n"
-            if "Broj stranica" in data:
+            if "pages" in data:
                 x += f"Broj stranica: {data['pages']}\n"
             if "eBook" in data:
                 x += f"eBook: {data['eBook']}\n"
-            if "Opis" in data:
+            if "description" in data:
                 x += f"Opis: {data['description']}\n"
-            if "Link" in data:
+            if "url" in data:
                 x += f"Link: {data['url']}\n"
             if 'cena sa redovnim popustom' in data:
                 x += f"Cena sa redovnim popustom: {data['cena sa redovnim popustom']}\n"
@@ -579,13 +582,16 @@ def pineg(pitanje):
         return x
 
     search_results = search_pinecone(pitanje)
+    print(f"Search Results: {search_results}")
 
     combined_results = []
     duplicate_filter = []
     counter = 0
 
     for result in search_results:
+        print(f"Result: {result}")
         if result['sec_id'] in duplicate_filter:
+            print(f"Duplicate Filter: {duplicate_filter}")
             continue
         else:
             if counter < 3:
@@ -593,9 +599,9 @@ def pineg(pitanje):
                 # print(f"API Data: {api_data}")
                 if api_data:
                     counter += 1
-                    # print(f"Counter: {counter}")
+                    print(f"Counter: {counter}")
                 else:
-                    # print(f"API Data is empty for sec_id: {result['sec_id']}")
+                    print(f"API Data is empty for sec_id: {result['sec_id']}")
                     title = result['title']
                     authors = result['authors']
                     search_results_2 = search_pinecone_second_set(title, authors)
@@ -617,25 +623,30 @@ def pineg(pitanje):
                                 
                                 combined_results.append(combined_data)
                             
-                                display_results(combined_data)
+                                # display_results(combined_data)
                                 break
 
                     continue # Preskoči ako je api_data prazan
 
                 data = run_cypher_query(result['sec_id'])
-                # print(f"Data: {data}")
+                print(f"Data: {data}")
 
                 combined_data = combine_data(api_data, data, result['text'])
-                # print(f"Combined Data: {combined_data}")
+                print(f"Combined Data: {combined_data}")
                 duplicate_filter.append(result['sec_id'])
+                print(f"Duplicate Filter: {duplicate_filter}")
                 
                 combined_results.append(combined_data)
-            
-                return display_results(combined_data)
+                # print(f"Combined Results: {combined_results}")
+                
+                
+                # return display_results(combined_data)
             else:
                 break
-    # print(f"Combined Results: {combined_results}")
-
+    display_results(combined_data)
+    print(f"Combined Results: {combined_results}")
+    print(f"Display Results: {display_results(combined_results)}")
+    return combined_results
 
 def API_search_2(order_ids):
 
