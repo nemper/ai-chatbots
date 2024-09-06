@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'klot-test-new-yml-method'
           slot-name: 'production'
-          publish-profile: ${{ secrets.AzureAppService_PublishProfile_1234 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5A1232365C114CF9A67BB704A1AF5B1B }}
