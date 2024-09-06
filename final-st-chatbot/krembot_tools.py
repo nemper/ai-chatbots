@@ -276,6 +276,7 @@ def graphp(pitanje):
     def display_results(combined_data):
         x = ""
         for data in combined_data:
+            print(f"Data iz display_results: {data}")
             if 'title' in data:
                 x += f"Naslov: {data['title']}\n"
             if 'category' in data:
