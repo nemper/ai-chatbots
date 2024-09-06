@@ -15,6 +15,7 @@ from myfunc.varvars_dicts import work_prompts, work_vars
 mprompts = work_prompts()
 client=OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 processor = HybridQueryProcessor() # namespace moze i iz env
+# testing
 
 default_values = {
     "client": client,
