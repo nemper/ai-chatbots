@@ -107,9 +107,9 @@ def rag_tool_answer(prompt):
 
         device = response.choices[0].message.content.strip()
         if device not in denty_tools_2:
-            return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo."
+            return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
         else:
-            return str(search_pinecone_second_set(prompt, device))
+            return str(search_pinecone_second_set(prompt, device)), "DentyBot"
         
 
     elif st.session_state.rag_tool == "Hybrid":
