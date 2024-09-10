@@ -35,7 +35,7 @@ def connect_to_pinecone(x):
 
 def rag_tool_answer(prompt):
     st.session_state.rag_tool = "ClientDirect"
-    # print(f"RAG TOOL: {st.session_state.rag_tool}")
+
     if os.getenv("APP_ID") == "InteliBot":
         return intelisale(prompt), st.session_state.rag_tool
 
@@ -71,8 +71,6 @@ def rag_tool_answer(prompt):
     elif st.session_state.rag_tool == "FAQ":
         processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
         context = processor.process_query_results(prompt)
-        # st.info("Score po chunku:")
-        # st.write(scores)
         
     elif st.session_state.rag_tool == "Uputstva":
         processor = HybridQueryProcessor(namespace="ecd-uputstva", delfi_special=1)
@@ -238,9 +236,6 @@ def graphp(pitanje):
 
         print(f"Number of records: {number_of_records}")
         print(f"Total number of characters: {total_characters}")
-        # print(f"Average characters per record: {average_characters_per_record}")
-        # print(f"Longest record length: {max_record_length}")
-        # print(f"Shortest record length: {min_record_length}")
 
         return cleaned_results
         
