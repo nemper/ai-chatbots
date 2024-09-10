@@ -34,91 +34,17 @@ def connect_to_pinecone(x):
 
 
 def rag_tool_answer(prompt):
-    context = " "
-    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
     # print(f"RAG TOOL: {st.session_state.rag_tool}")
     if os.getenv("APP_ID") == "InteliBot":
-        context = intelisale(prompt)
-        st.session_state.rag_tool = "Intelisale"
+        return intelisale(prompt), "Intelisale"
 
-    if os.getenv("APP_ID") == "DentyBot":
-        index = connect_to_pinecone(x=0)
-
-        def get_embedding(text, model="text-embedding-3-large"):
-            response = client.embeddings.create(
-                input=[text],
-                model=model
-            ).data[0].embedding
-            
-            return response
-
-        def dense_query(query, top_k, filter, namespace="servis"):
-            # Get embedding for the query
-            dense = get_embedding(text=query)
-
-            query_params = {
-                'top_k': top_k,
-                'vector': dense,
-                'include_metadata': True,
-                'filter': filter,
-                'namespace': namespace
-            }
-
-            response = index.query(**query_params)
-
-            matches = response.to_dict().get('matches', [])
-            return matches
-
-        def search_pinecone_second_set(device: str) -> List[Dict]:
-            # Define the query text and filter for the new metadata structure
-            query = "Find device"
-            filter = {"device": {"$eq": device}}
-            
-            query_embedding_2 = dense_query(query, top_k=5, filter=filter)
-            
-            # Extract metadata and map it to the new structure
-            matches = []
-            for match in query_embedding_2:
-                metadata = match['metadata']
-                matches.append({
-                    'url': metadata['url'],
-                    'text': metadata['text'],
-                    'device': metadata['device'],
-                })
-            
-            return matches
+    elif os.getenv("APP_ID") == "DentyBot":
+        return dentyWF(prompt), "Denty"
         
-        denty_tools = "T3T4 Racer, ORTHOPHOS XG 3, SIROTorque L+, inEos X5, inLab MC X5, M1+C2+, TENEO, SIVISION 3, Sivision Digital"
-        denty_tools_2 = ["T3T4 Racer", "ORTHOPHOS XG 3", "SIROTorque L+", "inEos X5", "inLab MC X5", "M1+C2+", "TENEO", "SIVISION 3", "Sivision Digital"]
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.0,
-            messages=[
-                {"role": "system", "content": f"""
-                 You are a helpful assistant that chooses the most appropriate tool based on a given user query. Your output is only the tool name.
-                 These are the possible tools: {denty_tools}
-                """},
-                {"role": "user", "content": prompt}
-            ]
-        )
+    context = " "
+    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
-        device = response.choices[0].message.content.strip()
-        print(3333, device)
-        if device not in denty_tools_2:
-            return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
-        
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            temperature=0.0,
-            messages=[
-                {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context, for the given user query. Only use the provided context (it's included the user message) to generate the answer. The context is about the device: {device}"},
-                {"role": "user", "content": f"User query: {prompt}, /n/n context: {search_pinecone_second_set(device)}"}
-            ]
-        )
-        return response.choices[0].message.content.strip(), "DentyBot"
-        
-
-    elif st.session_state.rag_tool == "Hybrid":
+    if st.session_state.rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
 
@@ -188,6 +114,83 @@ def get_structured_decision_from_model(user_query):
     data_dict = json.loads(json_string)
     # Access the 'tool' value
     return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
+
+
+def dentyWF(prompt):
+    index = connect_to_pinecone(x=0)
+
+    def get_embedding(text, model="text-embedding-3-large"):
+        response = client.embeddings.create(
+            input=[text],
+            model=model
+        ).data[0].embedding
+        
+        return response
+
+    def dense_query(query, top_k, filter, namespace="servis"):
+        # Get embedding for the query
+        dense = get_embedding(text=query)
+
+        query_params = {
+            'top_k': top_k,
+            'vector': dense,
+            'include_metadata': True,
+            'filter': filter,
+            'namespace': namespace
+        }
+
+        response = index.query(**query_params)
+
+        matches = response.to_dict().get('matches', [])
+        return matches
+
+    def search_pinecone_second_set(device: str) -> List[Dict]:
+        # Define the query text and filter for the new metadata structure
+        query = "Find device"
+        filter = {"device": {"$eq": device}}
+        
+        query_embedding_2 = dense_query(query, top_k=5, filter=filter)
+        
+        # Extract metadata and map it to the new structure
+        matches = []
+        for match in query_embedding_2:
+            metadata = match['metadata']
+            matches.append({
+                'url': metadata['url'],
+                'text': metadata['text'],
+                'device': metadata['device'],
+            })
+        
+        return matches
+    
+    denty_tools = "T3T4 Racer, ORTHOPHOS XG 3, SIROTorque L+, inEos X5, inLab MC X5, M1+C2+, TENEO, SIVISION 3, Sivision Digital"
+    denty_tools_2 = ["T3T4 Racer", "ORTHOPHOS XG 3", "SIROTorque L+", "inEos X5", "inLab MC X5", "M1+C2+", "TENEO", "SIVISION 3", "Sivision Digital"]
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0.0,
+        messages=[
+            {"role": "system", "content": f"""
+                You are a helpful assistant that chooses the most appropriate tool based on a given user query. Your output is only the tool name.
+                These are the possible tools: {denty_tools}
+            """},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    device = response.choices[0].message.content.strip()
+    print(3333, device)
+    if device not in denty_tools_2:
+        return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "Denty"
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        temperature=0.0,
+        messages=[
+            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context, for the given user query. Only use the provided context (it's included the user message) to generate the answer. The context is about the device: {device}"},
+            {"role": "user", "content": f"User query: {prompt}, /n/n context: {search_pinecone_second_set(device)}"}
+        ]
+    )
+    return response.choices[0].message.content.strip(), "DentyBot"
 
 
 def graphp(pitanje):
