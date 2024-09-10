@@ -292,6 +292,19 @@ def scrape(url: str):
 
 
 # in myfunc.various_tools.py
+def openai_for_scraper(text):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0.0,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that checks for any writing issues in the text, most importantly: if two words are combined (no space in-between). You do not change or edit anything else, only fix the errors in the text."},
+            {"role": "user", "content": text}
+        ]
+    )
+    return response.choices[0].message.content
+
+
+# in myfunc.various_tools.py
 def main_scraper(chunk_size, chunk_overlap):
     """
     Scrapes a website for text content and prepares it for embedding.
@@ -434,11 +447,10 @@ def main_scraper(chunk_size, chunk_overlap):
                         kl = int(odstol / stol * 100)
                         progress_barl.progress(procenatl, text=progress_text)
                         ph2.text(f"Učitano {odstol} od {stol} chunkova što je {kl} % ")
-
                         chunks.append(
                             {
                                 "id": str(uuid4()),
-                                "text": f"{text_prefix}  {texts[il]}",
+                                "text": f"{text_prefix}  {openai_for_scraper(texts[il])}",
                                 "source": record["url"],
                                 "date": datetime.datetime.now().strftime("%d.%m.%Y")
                             }
