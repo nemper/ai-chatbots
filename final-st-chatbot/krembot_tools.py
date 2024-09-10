@@ -34,12 +34,13 @@ def connect_to_pinecone(x):
 
 
 def rag_tool_answer(prompt):
+    st.session_state.rag_tool = "ClientDirect"
     # print(f"RAG TOOL: {st.session_state.rag_tool}")
     if os.getenv("APP_ID") == "InteliBot":
-        return intelisale(prompt), "Intelisale"
+        return intelisale(prompt), st.session_state.rag_tool
 
     elif os.getenv("APP_ID") == "DentyBot":
-        return dentyWF(prompt), "Denty"
+        return dentyWF(prompt), st.session_state.rag_tool
         
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
