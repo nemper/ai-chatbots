@@ -198,8 +198,8 @@ def graphp(pitanje):
                 "Example user question: 'Interesuje me knjiga Piramide.' "
                 "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Piramide') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author LIMIT 10"
                 
-                "Example user question: 'Preporuci mi knjige slicne knjizi Krhotine.' "
-                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, b.category AS category, a.name AS author LIMIT 10"
+                "Example user question: 'Preporuci mi knjige istog žanra kao Krhotine.' "
+                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, b.category AS category, a.name AS author, g.name AS genre LIMIT 10"
 
                 "Example user question: 'Koja je cena za Autostoperski vodič kroz galaksiju?' "
                 "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Autostoperski vodič kroz galaksiju') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
@@ -208,10 +208,13 @@ def graphp(pitanje):
                 "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Ana Karenjina') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
 
                 "Example user question: 'Intresuju me fantastika. Preporuči mi neke knjige' "
-                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre {name: 'Fantastika'}) RETURN b, a.name LIMIT 10"
+                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre {name: 'Fantastika'}) RETURN b, a.name, g.name LIMIT 10"
                 
                 "Example user question: 'Da li imate mobi dik na stanju, treba mi 27 komada?' "
                 "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
+            
+                "Example user question: 'preporuči mi knjige slične Oladi malo od Sare Najt' "
+                "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Oladi malo') AND toLower(a.name) CONTAINS toLower('Sara Najt') WITH b MATCH (b)-[:BELONGS_TO]->(g:Genre) WITH g, b MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b) WHERE rec.quantity > 0 AND NOT toLower(rec.title) CONTAINS toLower('Oladi malo') WITH rec, COLLECT(DISTINCT g.name) AS genres MATCH (rec)-[:WROTE]-(recAuthor:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, rec.category AS category, recAuthor.name AS author, genres AS genre LIMIT 6"
             )
         },
                 {"role": "user", "content": prompt}
@@ -344,10 +347,9 @@ def graphp(pitanje):
     
     if is_valid_cypher(cypher_query):
         try:
-            print(5555555)
             book_data = run_cypher_query(driver, cypher_query)
 
-            print(f"Book Data: {book_data}")
+            # print(f"Book Data: {book_data}")
 
             try:
                 oldProductIds = [item['oldProductId'] for item in book_data]
@@ -364,13 +366,11 @@ def graphp(pitanje):
 
             if not oldProductIds:
                 filtered_book_data = book_data
-                # return formulate_answer_with_llm(pitanje, filtered_book_data)
+                return filtered_book_data
 
             else:
-                print(2222)
                 api_podaci = API_search(oldProductIds)
                 # print(f"API Data: {api_podaci}")
-                print(3333)
 
                 # Kreiranje mape id za brže pretraživanje
                 products_info_map = {int(product['id']): product for product in api_podaci}
@@ -385,9 +385,9 @@ def graphp(pitanje):
                         # Dodavanje knjige u filtriranu listu
                         filtered_book_data.append(book)
 
-                    # print(f"Filtered Book Data: {filtered_book_data}")
+                    print(f"Filtered Book Data: {filtered_book_data}")
 
-                # print("******Gotov api deo!!!")
+                print("******Gotov api deo!!!")
 
                 oldProductIds_str = [str(id) for id in oldProductIds]
 
@@ -401,7 +401,7 @@ def graphp(pitanje):
             print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
     else:
         print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
-    print(f"Combined Data: {combined_data}")
+    # print(f"Combined Data: {combined_data}")
     return combined_data
 
 def pineg(pitanje):

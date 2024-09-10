@@ -246,6 +246,7 @@ def main():
                 If relevant information cannot be found in context, do not provide an answer. Instead, clearly state that the information is not currently available.
                 Do not fabricate or invent information. Always write in Serbian.
                 """}]}
+            print(f"temp_full_prompt: {temp_full_prompt}")
     
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
