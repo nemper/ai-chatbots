@@ -3,10 +3,10 @@ import streamlit as st
 import uuid
 _ = """
 import os
-os.environ["CLIENT_FOLDER"] = "Denty"
-os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
-os.environ["APP_ID"] = "DentyBot"
-os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
+os.environ["CLIENT_FOLDER"] = "Delfi"
+os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
+os.environ["APP_ID"] = "DelfiBot"
+os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
@@ -147,6 +147,10 @@ def main():
                 elif message["role"] == "user":         
                     with st.chat_message(message["role"], avatar=avatar_user):
                         st.markdown(message["content"])
+                elif message["role"] == "tool":
+                    print(1111111111111111111111)
+                    with st.chat_message(message["role"], avatar=avatar_ai):
+                        st.markdown(message["content"])
                 elif message["role"] == "system":
                     pass
                 else:         
@@ -213,9 +217,11 @@ def main():
         result, tool = rag_tool_answer(st.session_state.prompt)
         st.session_state.tool_answer = result
         with st.expander("Expand"):
-            st.write("Alat koji je koriscen: ", st.session_state.rag_tool)
+            st.write("Alat koji je koriscen: ", tool)
             st.divider()
             st.write("Odgovor iz alata: \n", result)
+            st.divider()
+            st.write("Istorija konverzacije: \n", st.session_state.messages[current_thread_id])
         
         if result=="CALENDLY":
             full_prompt=""
@@ -259,6 +265,9 @@ def main():
         # mislim da sve ovo ide samo ako nije kalendly
         if result!="CALENDLY":    
         # Generate and display the assistant's response using the temporary messages list
+            with st.chat_message("tool", avatar=avatar_ai):
+                st.markdown(str(tool))
+
             with st.chat_message("assistant", avatar=avatar_ai):
                     cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
                     message_placeholder = st.empty()
@@ -280,11 +289,11 @@ def main():
             message_placeholder.markdown(full_response)
             copy_to_clipboard(full_response)
             # Append assistant's response to the conversation
-            # st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
+            st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
             st.session_state.filtered_messages = ""
             # da pise i tool
-            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", "assistant"]]
+            filtered_data = [entry for entry in st.session_state.messages[current_thread_id] if entry['role'] in ["user", "assistant", "tool"]]
             for item in filtered_data:  # lista za download conversation
                 st.session_state.filtered_messages += (f"{item['role']}: {item['content']}\n")  
     
@@ -312,10 +321,9 @@ def main():
     
             if st.session_state.vrsta:
                 st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
-            #with ConversationDatabase() as db:   #cuva konverzaciju i sql bazu i tokene
-            #    db.update_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id, st.session_state.messages[current_thread_id])
 
-            with col2:    # cuva konverzaciju u txt fajl
+
+            with col2:
                 with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
                     st.download_button(
                         "⤓ Preuzmi", 
