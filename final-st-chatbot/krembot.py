@@ -1,7 +1,7 @@
 import io
 import streamlit as st
 import uuid
-#_ = """
+_ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Denty"
 os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
@@ -9,7 +9,7 @@ os.environ["APP_ID"] = "DentyBot"
 os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
-#"""
+"""
 from openai import OpenAI
 from os import getenv
 from streamlit_mic_recorder import mic_recorder
