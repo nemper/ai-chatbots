@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'analyze-logs'
           slot-name: 'production'
-          publish-profile: ${{ secrets.AzureAppService_PublishProfile_1234 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A67C3088BFAB4AC6875D1B924A617768 }}
