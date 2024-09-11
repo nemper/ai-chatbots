@@ -256,7 +256,7 @@ def graphp(pitanje):
                 "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci, Knjige za decu). Please ensure that the generated Cypher query uses these exact capitalizations."
                 "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
                 "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the searched term."
-                "When generating the Cypher query, ensure to handle inflected forms properly. For example, if the user asks for books by 'Tolkiena,' generate a query for 'Tolkien' instead, removing any inflections."
+                "When generating the Cypher query, ensure to handle inflected forms properly by converting all names to their nominative form. For example, if the user asks for books by 'Adrijana Čajkovskog,' the query should be generated for 'Adrijan Čajkovski,' ensuring that the search is performed using the base form of the author's name."
                 "When returning some properties of books, ensure to always return the oldProductId and the title too."
                 "Ensure to limit the number of records returned to 10."
 
@@ -351,7 +351,7 @@ def graphp(pitanje):
     def display_results(combined_data):
         x = ""
         for data in combined_data:
-            print(f"Data iz display_results: {data}")
+            # print(f"Data iz display_results: {data}")
             if 'title' in data:
                 x += f"Naslov: {data['title']}\n"
             if 'category' in data:
@@ -469,12 +469,12 @@ def graphp(pitanje):
                 
                 display_results(combined_data)
                 # return
+                # print(f"Combined Data: {combined_data}")
+                return combined_data
         except Exception as e:
             print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
     else:
         print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
-    # print(f"Combined Data: {combined_data}")
-    return combined_data
 
 def pineg(pitanje):
     index = connect_to_pinecone(x=0)
@@ -702,12 +702,12 @@ def pineg(pitanje):
                     continue # Preskoči ako je api_data prazan
 
                 data = run_cypher_query(result['sec_id'])
-                print(f"Data: {data}")
+                # print(f"Data: {data}")
 
                 combined_data = combine_data(api_data, data, result['text'])
-                print(f"Combined Data: {combined_data}")
+                # print(f"Combined Data: {combined_data}")
                 duplicate_filter.append(result['sec_id'])
-                print(f"Duplicate Filter: {duplicate_filter}")
+                # print(f"Duplicate Filter: {duplicate_filter}")
                 
                 combined_results.append(combined_data)
                 # print(f"Combined Results: {combined_results}")
@@ -717,8 +717,8 @@ def pineg(pitanje):
             else:
                 break
     display_results(combined_data)
-    print(f"Combined Results: {combined_results}")
-    print(f"Display Results: {display_results(combined_results)}")
+    # print(f"Combined Results: {combined_results}")
+    # print(f"Display Results: {display_results(combined_results)}")
     return combined_results
 
 def API_search_2(order_ids):

@@ -3,10 +3,10 @@ import streamlit as st
 import uuid
 _ = """
 import os
-os.environ["CLIENT_FOLDER"] = "Denty"
-os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
-os.environ["APP_ID"] = "DentyBot"
-os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
+os.environ["CLIENT_FOLDER"] = "Delfi"
+os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
+os.environ["APP_ID"] = "DelfiBot"
+os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
@@ -54,7 +54,7 @@ if st.session_state.thread_id not in st.session_state.messages:
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 file_reader = FileReader()
 
-custom_streamlit_style()
+# custom_streamlit_style()
 # apply_background_image(avatar_bg)
 
 def handle_feedback():
