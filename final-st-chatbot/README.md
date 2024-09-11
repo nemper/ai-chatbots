@@ -53,12 +53,18 @@ This Python script is used to create a chatbot application with Streamlit, power
    - Streamlit components such as chat messages, buttons, and columns are used to build the UI.
    - A fixed container at the bottom of the interface provides options like submitting audio recordings or downloading conversation history.
 
+**Specialized Tools Include**:
+   - Database Connections: It connects to a Neo4j graph database, Pinecone vector database, and Microsoft SQL Server.
+   - Natural Language Queries: Converts user queries into Cypher queries to fetch data from Neo4j or executes dense and sparse vector searches in Pinecone using OpenAI models.
+   - Query Processing: Depending on the query type, different tools and methods are used, such as HybridQueryProcessor, SelfQueryDelfi, and intelisale.
+   - OpenAI Integration: Uses GPT-4 models to handle natural language processing, query formulation, and even generate structured decisions about which tool to use for different tasks.
+   - Hybrid Querying: Combines dense (semantic) and sparse (keyword) search techniques using Pinecone's BM25 encoder for hybrid vector searches.
+   - Customer Reporting: Integrates with Microsoft SQL Server to generate customer reports, processes customer-related queries, and retrieves detailed information about customers from the database.
+   - API Integrations: To retrieve additional information related to orders, books, or products.
+
 ## Setup Instructions
 
 1. Install dependencies:
-   ```bash
-   pip install streamlit openai streamlit_mic_recorder krembot_tools streamlit_feedback
-   ```
 
 2. Set up environment variables (you can add these to a `.env` file or export them directly in your environment):
    ```bash
