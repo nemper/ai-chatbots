@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'ecd-test'
           slot-name: 'production'
-          publish-profile: ${{ secrets.AzureAppService_PublishProfile_1234 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A85C41A2D6784C51A41C9F56042F347D }}
