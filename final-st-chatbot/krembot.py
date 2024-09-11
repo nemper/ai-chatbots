@@ -54,7 +54,7 @@ if st.session_state.thread_id not in st.session_state.messages:
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 file_reader = FileReader()
 
-custom_streamlit_style()
+# custom_streamlit_style()
 # apply_background_image(avatar_bg)
 
 def handle_feedback():
