@@ -55,6 +55,10 @@ def get_conversation_records(app_name, user_name):
         columns = ['thread_id', 'conversation']
     return records, columns
 
+def extract_feedback_by_thread_id(thread_id, records):
+    # Filter records by the given thread_id
+    return [record for record in records if record[0] == thread_id]
+
 def extract_conversation_by_thread_id(thread_id):
     with ConversationDatabase() as db:
         query = """
@@ -112,6 +116,30 @@ if selected_app_name:
     if view_option == "Feedbacks":
         # Fetch feedback records for the selected app name
         records, columns = get_feedback_records(selected_app_name)
+
+        if records:
+            df = pd.DataFrame.from_records(records, columns=columns)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # Entry field for thread_id after showing the DataFrame
+            selected_thread_id = st.text_input("Enter the Thread ID to filter feedback")
+
+            if selected_thread_id:
+                # Filter feedback by the provided thread_id
+                filtered_feedback = extract_feedback_by_thread_id(selected_thread_id, records)
+
+                if filtered_feedback:
+                    feedback = filtered_feedback[0]  # Assume only one record will match
+                    st.write(f"**USER:** {feedback[1]}")        # previous_question
+                    st.divider()
+                    st.write(f"**TOOL:** {feedback[2]}")        # tool_answer
+                    st.divider()
+                    st.write(f"**ASSISTANT:** {feedback[3]}")   # given_answer
+                else:
+                    st.write(f"No feedback found for Thread ID: {selected_thread_id}")
+        else:
+            st.write("No feedback records found for the selected application name.")
+
     else:
         # Fetch user names for the selected app name
         user_names = get_user_names(selected_app_name)
@@ -124,24 +152,23 @@ if selected_app_name:
             # Filter out system-only conversations
             records = filter_out_system_only_conversations(records)
 
-    if 'records' in locals() and records:  # Ensure records exist
-        df = pd.DataFrame.from_records(records, columns=columns)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+            if records:
+                df = pd.DataFrame.from_records(records, columns=columns)
+                st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # Only show the text input for thread_id in Conversations
-        if view_option == "Conversations":
-            # Entry field for thread_id
-            selected_thread_id = st.text_input("Enter the Thread ID to extract the conversation")
+                # Entry field for thread_id in Conversations
+                selected_thread_id = st.text_input("Enter the Thread ID to extract the conversation")
 
-            # Fetch and display conversation based on thread_id input
-            if selected_thread_id:
-                conversation_text = extract_conversation_by_thread_id(selected_thread_id)
-                
-                if conversation_text:
-                    st.write(f"Conversation for Thread ID: {selected_thread_id}")
-                    parse_and_display_conversation(conversation_text)
-                else:
-                    st.write(f"No conversation found for Thread ID: {selected_thread_id}")
+                # Fetch and display conversation based on thread_id input
+                if selected_thread_id:
+                    conversation_text = extract_conversation_by_thread_id(selected_thread_id)
 
-    elif 'records' in locals() and not records:
-        st.write(f"No {view_option.lower()} records found for the selected application name.")
+                    if conversation_text:
+                        st.write(f"Conversation for Thread ID: {selected_thread_id}")
+                        parse_and_display_conversation(conversation_text)
+                    else:
+                        st.write(f"No conversation found for Thread ID: {selected_thread_id}")
+            else:
+                st.write(f"No conversation records found for the selected user.")
+else:
+    st.write("Please select an application name to proceed.")
