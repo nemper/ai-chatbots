@@ -2,13 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.79",
+    version="2.0.79a",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
         'azure-core==1.30.2',
         'azure-storage-blob==12.21.0',
         'beautifulsoup4==4.12.3',
+        'chardet==5.2.0',
         'cohere==5.6.2',
         'html2docx==1.6.0',
         'langchain',

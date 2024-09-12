@@ -1,5 +1,6 @@
 # in myfunc.embeddings.py
 import ast
+import chardet
 import cohere
 import json
 import logging
@@ -157,14 +158,29 @@ class DocumentConverter:
 
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+
 def read_uploaded_file(uploaded_file):
     if isinstance(uploaded_file, UploadedFile):
         # Streamlit's UploadedFile needs to be read directly
-        data = uploaded_file.read().decode("utf-8-sig")
+        raw_data = uploaded_file.read()
+        # Detect encoding using chardet
+        result = chardet.detect(raw_data)
+        encoding = result['encoding']
+        try:
+            data = raw_data.decode(encoding, errors="replace")  # Handle unknown characters gracefully
+        except (UnicodeDecodeError, TypeError):
+            data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
     else:
         # Handle as a regular file path
-        with open(uploaded_file, encoding="utf-8-sig") as f:
-            data = f.read()
+        try:
+            with open(uploaded_file, 'rb') as f:  # Read file as binary
+                raw_data = f.read()
+            # Detect encoding using chardet
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+            data = raw_data.decode(encoding, errors="replace")
+        except (UnicodeDecodeError, TypeError):
+            data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
     return data
 
 
