@@ -103,6 +103,46 @@ def filter_out_system_only_conversations(records):
     
     return filtered_records
 
+def filter_feedbacks_by_text(records, search_text):
+    """Filter feedback records where search_text is found in previous_question, tool_answer, or given_answer."""
+    filtered_records = []
+    for record in records:
+        previous_question = record[1] if record[1] else ""
+        tool_answer = record[2] if record[2] else ""
+        given_answer = record[3] if record[3] else ""
+
+        # Check if search_text is in any of the relevant columns (case-insensitive)
+        if (search_text.lower() in previous_question.lower() or
+            search_text.lower() in tool_answer.lower() or
+            search_text.lower() in given_answer.lower()):
+            filtered_records.append(record)
+
+    return filtered_records
+
+
+def filter_conversations_by_text(records, search_text):
+    """Filter records where search_text is found in any message content in conversation."""
+    filtered_records = []
+    for record in records:
+        conversation_json = record[1]
+        
+        # Check if the conversation_json is empty or None
+        if not conversation_json:
+            continue  # Skip this record if conversation_json is empty
+
+        try:
+            conversation = json.loads(conversation_json)
+        except json.JSONDecodeError:
+            # If JSON is invalid, skip this record
+            continue
+
+        # Check if search_text is in any content field
+        for msg in conversation:
+            if search_text.lower() in msg['content'].lower():
+                filtered_records.append(record)
+                break  # No need to check further messages in this conversation
+    return filtered_records
+
 # Determine the table to fetch application names from based on the selected option
 if view_option == "Feedbacks":
     app_names = get_app_names("Feedback")
@@ -116,6 +156,13 @@ if selected_app_name:
     if view_option == "Feedbacks":
         # Fetch feedback records for the selected app name
         records, columns = get_feedback_records(selected_app_name)
+
+        # Text input for filtering by content in feedback columns
+        search_text = st.text_input("Enter text to search in feedback questions/answers")
+
+        # Apply text filter to feedback records
+        if search_text:
+            records = filter_feedbacks_by_text(records, search_text)
 
         if records:
             df = pd.DataFrame.from_records(records, columns=columns)
@@ -131,9 +178,7 @@ if selected_app_name:
                 if filtered_feedback:
                     feedback = filtered_feedback[0]  # Assume only one record will match
                     st.write(f"**USER:** {feedback[1]}")        # previous_question
-                    st.divider()
                     st.write(f"**TOOL:** {feedback[2]}")        # tool_answer
-                    st.divider()
                     st.write(f"**ASSISTANT:** {feedback[3]}")   # given_answer
                 else:
                     st.write(f"No feedback found for Thread ID: {selected_thread_id}")
@@ -151,6 +196,13 @@ if selected_app_name:
 
             # Filter out system-only conversations
             records = filter_out_system_only_conversations(records)
+
+            # Text input for filtering by content in conversation
+            search_text = st.text_input("Enter text to search in conversation")
+
+            # Apply text filter to conversation records
+            if search_text:
+                records = filter_conversations_by_text(records, search_text)
 
             if records:
                 df = pd.DataFrame.from_records(records, columns=columns)
