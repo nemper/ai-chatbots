@@ -8,7 +8,8 @@ import os
 import streamlit as st
 import io
 import re
-
+import nltk
+nltk.download('punkt')
 from datetime import datetime
 from bs4 import BeautifulSoup
 

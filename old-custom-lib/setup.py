@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.79c",
+    version="2.0.80",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
@@ -21,6 +21,7 @@ setup(
         'mysql-connector-python',
         'neo4j',
         'networkx==3.3',
+        'nltk==3.8.1',
         'openai',
         'pandas',
         'pdfkit==1.0.0',
@@ -31,6 +32,7 @@ setup(
         'pyodbc==5.1.0',
         'pypandoc==1.13',
         'python-docx==1.1.2',
+        'python-magic-bin==0.4.14',
         'PyPDF2==3.0.1',
         'PyYAML==6.0.1',
         'requests==2.32.3',
