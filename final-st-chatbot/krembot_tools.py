@@ -148,7 +148,7 @@ def dentyWF(prompt):
         query = "Find device"
         filter = {"device": {"$eq": device}}
         
-        query_embedding_2 = dense_query(query, top_k=5, filter=filter)
+        query_embedding_2 = dense_query(query, top_k=25, filter=filter)
         
         # Extract metadata and map it to the new structure
         matches = []
