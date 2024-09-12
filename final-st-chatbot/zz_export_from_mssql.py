@@ -60,7 +60,7 @@ def filter_out_system_only_conversations(records):
     """Filter out conversations that only contain system prompts."""
     filtered_records = []
     for record in records:
-        conversation_json = record[1]  # Assuming conversation is in the second column
+        conversation_json = record[1]
         conversation = json.loads(conversation_json)
 
         # Check if there are any non-system messages
@@ -69,6 +69,39 @@ def filter_out_system_only_conversations(records):
         if non_system_messages:  # Keep conversations with user/assistant messages
             filtered_records.append(record)
 
+    return filtered_records
+
+def filter_feedbacks_by_text(records, search_text):
+    """Filter feedback records by text found in previous_question, tool_answer, or given_answer."""
+    filtered_records = []
+    for record in records:
+        previous_question = record[1] or ""
+        tool_answer = record[2] or ""
+        given_answer = record[3] or ""
+        feedback_text = record[5] or ""
+        
+        # Search in all three columns (case-insensitive)
+        if (search_text.lower() in previous_question.lower() or
+            search_text.lower() in tool_answer.lower() or
+            search_text.lower() in given_answer.lower() or
+            search_text.lower() in feedback_text.lower()):
+            filtered_records.append(record)
+    
+    return filtered_records
+
+def filter_conversations_by_text(records, search_text):
+    """Filter conversation records by text found in any message content."""
+    filtered_records = []
+    for record in records:
+        conversation_json = record[1]
+        conversation = json.loads(conversation_json)
+
+        # Search in all message contents (case-insensitive)
+        for msg in conversation:
+            if search_text.lower() in msg['content'].lower():
+                filtered_records.append(record)
+                break  # No need to check further once a match is found
+    
     return filtered_records
 
 def extract_feedback_by_thread_id(thread_id, records):
@@ -116,10 +149,17 @@ selected_app_name = st.selectbox("Select Application Name", [''] + app_names)
 
 if selected_app_name:
     if view_option == "Feedbacks":
+        # Text input for filtering feedbacks
+        search_text = st.text_input("Enter text to filter by:")
+
         # Fetch feedback records for the selected app name
         records, columns = get_feedback_records(selected_app_name)
 
         if records:
+            # Apply text filter
+            if search_text:
+                records = filter_feedbacks_by_text(records, search_text)
+
             # Convert records to DataFrame for display in AgGrid
             df = pd.DataFrame.from_records(records, columns=columns)
 
@@ -152,6 +192,8 @@ if selected_app_name:
                     st.write(f"**TOOL:** {feedback[2]}")        # tool_answer
                     st.divider()
                     st.write(f"**ASSISTANT:** {feedback[3]}")   # given_answer
+                    st.divider()
+                    st.write(f"**FEEDBACK:** {feedback[5]}")    # feedback text
                 else:
                     st.write(f"No feedback found for Thread ID: {selected_thread_id}")
         else:
@@ -163,11 +205,18 @@ if selected_app_name:
         selected_user_name = st.selectbox("Select User Name", [''] + user_names)
 
         if selected_user_name:
+            # Text input for filtering conversations
+            search_text = st.text_input("Enter text to filter by:")
+
             # Fetch conversation records for the selected app name and user name
             records, columns = get_conversation_records(selected_app_name, selected_user_name)
 
             # Filter out conversations that contain only system prompts
             filtered_records = filter_out_system_only_conversations(records)
+
+            # Apply text filter
+            if search_text:
+                filtered_records = filter_conversations_by_text(filtered_records, search_text)
 
             if filtered_records:
                 # Convert filtered records to DataFrame for display in AgGrid

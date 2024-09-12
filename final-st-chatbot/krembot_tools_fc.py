@@ -54,13 +54,13 @@ def rag_tool_answer(user_query):
     # Call the model to process the query and decide on the tool to use
     response = client.chat.completions.create(
         model=getenv("OPENAI_MODEL"),
-        temperature=0,
+        temperature=0.0,
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that chooses the most appropriate tool based on the user query."},
+            {"role": "system", "content": "You are a helpful assistant that chooses the most appropriate tool based on the user query. You must choose exactly one tool."},
             {"role": "user", "content": user_query}
         ],
         tools=yyy,  # Provide the tool list
-        tool_choice="auto"  # Allow the model to choose the tool automatically
+        tool_choice="required"  # Allow the model to choose the tool automatically
     )
 
     # Check if the model made a tool call
@@ -68,6 +68,26 @@ def rag_tool_answer(user_query):
         tool_call = response.choices[0].message.tool_calls[0]
         tool_name = tool_call.function.name
         tool_result = tool_call.function.arguments
+
+        tool_arguments = json.loads(tool_result)
+
+        if tool_name == "graphp":
+            tool_result = graphp(user_query)
+        elif tool_name == "hybrid_query_processor":
+            processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
+            tool_result = processor.process_query_results(user_query)
+        elif tool_name == "SelfQueryDelfi":
+            if "namespace" in tool_arguments:
+                tool_result = SelfQueryDelfi(upit=tool_arguments['upit'], namespace=tool_arguments['namespace'])
+            else:
+                tool_result = SelfQueryDelfi(user_query)
+        elif tool_name == "pineg":
+            tool_result = pineg(user_query)
+        elif tool_name == "order_delfi":
+            tool_result = order_delfi(user_query)
+        else:
+            tool_result = "Tool not found or not implemented"
+
         return tool_result, tool_name
     else:
         # Handle cases where no tool was called, return a default response
