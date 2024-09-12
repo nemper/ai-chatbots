@@ -163,6 +163,22 @@ def is_binary(data):
     text_characters = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)))
     return bool(data.translate(None, text_characters))
 
+import PyPDF2
+from docx import Document
+from io import BytesIO
+def handle_docx_file(raw_data):
+    doc = Document(BytesIO(raw_data))
+    text = []
+    for para in doc.paragraphs:
+        text.append(para.text)
+    return "\n".join(text)
+
+def handle_pdf_file(raw_data):
+    reader = PyPDF2.PdfReader(BytesIO(raw_data))
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text()
+    return text
 
 def read_uploaded_file(uploaded_file):
     if isinstance(uploaded_file, UploadedFile):
@@ -170,8 +186,16 @@ def read_uploaded_file(uploaded_file):
         raw_data = uploaded_file.read()
 
         if is_binary(raw_data):
-            st.write("Binary file detected. Unable to process as text.")
-        # Detect encoding using chardet
+            # Determine if it's a DOCX or PDF file by checking the file extension
+            if uploaded_file.name.endswith(".docx"):
+                return handle_docx_file(raw_data)
+            elif uploaded_file.name.endswith(".pdf"):
+                return handle_pdf_file(raw_data)
+            else:
+                st.write("Binary file detected but unsupported format for text extraction.")
+                return None
+
+        # Handle text files by detecting encoding
         result = chardet.detect(raw_data)
         encoding = result['encoding']
         try:
@@ -183,7 +207,18 @@ def read_uploaded_file(uploaded_file):
         try:
             with open(uploaded_file, 'rb') as f:  # Read file as binary
                 raw_data = f.read()
-            # Detect encoding using chardet
+            
+            if is_binary(raw_data):
+                # Determine if it's a DOCX or PDF file
+                if uploaded_file.endswith(".docx"):
+                    return handle_docx_file(raw_data)
+                elif uploaded_file.endswith(".pdf"):
+                    return handle_pdf_file(raw_data)
+                else:
+                    st.write("Binary file detected but unsupported format for text extraction.")
+                    return None
+
+            # Handle text files by detecting encoding
             result = chardet.detect(raw_data)
             encoding = result['encoding']
             data = raw_data.decode(encoding, errors="replace")
