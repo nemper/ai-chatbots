@@ -159,10 +159,18 @@ class DocumentConverter:
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
+def is_binary(data):
+    text_characters = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)))
+    return bool(data.translate(None, text_characters))
+
+
 def read_uploaded_file(uploaded_file):
     if isinstance(uploaded_file, UploadedFile):
         # Streamlit's UploadedFile needs to be read directly
         raw_data = uploaded_file.read()
+
+        if is_binary(raw_data):
+            st.write("Binary file detected. Unable to process as text.")
         # Detect encoding using chardet
         result = chardet.detect(raw_data)
         encoding = result['encoding']
