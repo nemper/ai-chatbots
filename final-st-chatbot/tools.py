@@ -3,7 +3,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "hybrid_query_processor",
-            "description": "Processes hybrid queries using Pinecone to retrieve and rank information based on dense and sparse vector searches. Supports multiple namespaces for different contexts like Hybrid, FAQ, Uputstva, and Blogovi.",
+            "description": "Use this tool to provide users with quick customer support to the most common concerns and questions. FAQs can cover a variety of topics, such as technical issues, shipping cost, delivery, payment methods, delivery time frames, gifts, discounts and membership benefits, inforrmation about order cancellation and modification, complaints and returns, customer service hours, terms and conditions of use, and other relevant information.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -26,7 +26,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "SelfQueryDelfi",
-            "description": "Executes a query against a Pinecone vector database using metadata self-querying. Supports namespaces such as 'opisi' and 'korice' for different types of document retrieval.",
+            "description": "Executes a query against a Pinecone vector database using metadata self-querying. Supports namespaces such as 'opisi' and 'korice' for different types of document retrieval. Use this tool when user gives you any kind of book covers OR content (summary) description, no matter how shallow or brief it is. ALWAYS PROVIDE CORRESPONDING LINK!!! Example: „Ne znam koja knjiga je u pitanju, ali imala je plave korice i siluetu zene“ „Knjiga u kojoj se zena baca pod voz“ ",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -49,7 +49,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "graphp",
-            "description": "Executes a Neo4j Cypher query based on a user's natural language question, retrieves data from the database, and combines it with additional metadata from Pinecone and an external API.",
+            "description": "Use this tool when you are asked to recommend simmilar books based on genre, author, number of pages, price etc. and when you find those provide brief description for them. So this is recomendation based on details. Examples: „Intresuju me fantastika. Preporuči mi neke knjige“ „Koja je cena knjige Deca zla?“ „Koliko strana ima knjiga Mali princ?“ „Preporuci mi knjigu ispod 200 strana.“ „Imate li na stanju Krhotine?“  „preporuči mi 3 dramska dela“  „trnova ruzica“  „preporuci mi knjige istog zanra kao oladi malo“  „Preporuci mi 5 knjiga od Donata Karizija.“  „Preporuci mi knjigu ispod 200 strana.“  „Volim da citam Dostojevskog, preporuci mi neke njegove knjige.“,  „Preporuci mi neke trilere koje imate na stanju.“  „Koje knjige imate od Danila Kisa“  Provide coressponding LINK of recommended books!!!",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -67,7 +67,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "pineg",
-            "description": "Retrieves book-related information based on a user query, fetching data from Pinecone and Neo4j, and combining it with additional metadata from an external API.",
+            "description": "Use this tool when you get description of a book or some kind of details of the plot and a question to recommend simmilar books based on that. So recommendation based on description. Example: „Preporuci mi knjigu gde zaljubljeni par nailazi na mnoge prepreke pre nego sto dodje do srecnog kraja.“ „Procitao sam knjigu Male Zene, mozes li da mi preporucis neke slicne.“ „O čemu se radi u knjizi Memoari jedne gejše?“  „Preporuci mi delo u kome se radi o zmajevima i princezama.“  „Preporuci mi knjigu slicnu onoj u kojoj se zena bacila pod voz“   „preporuči mi knjige slične ""Oladi malo"" od Sare Najt“  Provide coressponding LINK of recommended books!!!  ",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -85,7 +85,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "order_delfi",
-            "description": "Extracts order numbers from a user prompt and retrieves order details using an external API. Returns relevant order data if valid order numbers are provided.",
+            "description": "Always use this tool if the question is related to orders, their tracking, status, cancelation or if question includes order number. „Sta je sa mojom porudzbinom“, „Broj moje porudzbine je 234214“, „Koji je status moje porudzbine“, „Zelim da otkazem porudzbinu“...  ",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -98,8 +98,13 @@ tools = [
                 "additionalProperties": False
             }
         }
-    },
-    {
+    }
+]
+
+
+_ = """
+
+ {
         "type": "function",
         "function": {
             "name": "dentyWF",
@@ -135,4 +140,5 @@ tools = [
             }
         }
     }
-]
+
+"""

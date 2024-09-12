@@ -14,7 +14,7 @@ from openai import OpenAI
 from os import getenv
 from streamlit_mic_recorder import mic_recorder
 
-from krembot_tools import rag_tool_answer
+from krembot_tools_fc import rag_tool_answer
 from krembot_db import ConversationDatabase, work_prompts
 from krembot_stui import *
 from krembot_funcs import *
