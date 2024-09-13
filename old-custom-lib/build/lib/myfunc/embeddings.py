@@ -239,7 +239,8 @@ def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
     )
     
     # Read the content of the uploaded file
-    data = read_uploaded_file(dokum)
+    # data = read_uploaded_file(dokum)
+    data = pinecone_utility.read_uploaded_file(dokum)
     
     # Get a serializable file name or other string identifier
     source_identifier = dokum.name if isinstance(dokum, UploadedFile) else str(dokum)
