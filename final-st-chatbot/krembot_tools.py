@@ -73,7 +73,7 @@ def rag_tool_answer(prompt):
         context = processor.process_query_results(prompt)
         
     elif st.session_state.rag_tool == "Uputstva":
-        processor = HybridQueryProcessor(namespace="ecd-uputstva", delfi_special=1)
+        processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
         context = processor.process_query_results(prompt)
 
     elif st.session_state.rag_tool == "Blogovi":
