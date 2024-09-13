@@ -181,7 +181,122 @@ def handle_pdf_file(raw_data):
         text += page.extract_text()
     return text
 
-def read_uploaded_file(uploaded_file):
+
+import chardet
+import re
+import streamlit as st
+from streamlit.uploaded_file_manager import UploadedFile
+
+def read_uploaded_file(uploaded_file, text_delimiter=" "):
+    if isinstance(uploaded_file, UploadedFile):
+        # Streamlit's UploadedFile needs to be read directly
+        raw_data = uploaded_file.read()
+
+        if is_binary(raw_data):
+            # Determine if it's a DOCX or PDF file by checking the file extension
+            if uploaded_file.name.endswith(".docx"):
+                data = handle_docx_file(raw_data)
+            elif uploaded_file.name.endswith(".pdf"):
+                data = handle_pdf_file(raw_data)
+            else:
+                st.write("Binary file detected but unsupported format for text extraction.")
+                return None
+
+            # Process the extracted text with the text delimiter
+            if data is not None and text_delimiter:
+                data = process_text_with_delimiter(data, text_delimiter)
+
+            return data
+
+        # Handle text files by detecting encoding
+        result = chardet.detect(raw_data)
+        encoding = result['encoding']
+        try:
+            data = raw_data.decode(encoding, errors="replace")  # Handle unknown characters gracefully
+        except (UnicodeDecodeError, TypeError):
+            data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
+
+        # Process the decoded text with the text delimiter
+        if text_delimiter:
+            data = process_text_with_delimiter(data, text_delimiter)
+
+    else:
+        # Handle as a regular file path
+        try:
+            with open(uploaded_file, 'rb') as f:  # Read file as binary
+                raw_data = f.read()
+            
+            if is_binary(raw_data):
+                # Determine if it's a DOCX or PDF file
+                if uploaded_file.endswith(".docx"):
+                    data = handle_docx_file(raw_data)
+                elif uploaded_file.endswith(".pdf"):
+                    data = handle_pdf_file(raw_data)
+                else:
+                    st.write("Binary file detected but unsupported format for text extraction.")
+                    return None
+
+                # Process the extracted text with the text delimiter
+                if data is not None and text_delimiter:
+                    data = process_text_with_delimiter(data, text_delimiter)
+
+                return data
+
+            # Handle text files by detecting encoding
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+            try:
+                data = raw_data.decode(encoding, errors="replace")
+            except (UnicodeDecodeError, TypeError):
+                data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
+
+            # Process the decoded text with the text delimiter
+            if text_delimiter:
+                data = process_text_with_delimiter(data, text_delimiter)
+        except (UnicodeDecodeError, TypeError):
+            data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
+
+    return data
+
+def process_text_with_delimiter(text, text_delimiter):
+    """
+    Processes the text by handling the specified text delimiter.
+
+    Parameters:
+    - text: The text content to process.
+    - text_delimiter: The delimiter used to split or replace in the text.
+
+    Returns:
+    - The processed text.
+    """
+    if text_delimiter == "":
+        text_delimiter = "\n\n"
+
+    # Example processing: Replace delimiters with spaces
+    # You can customize this to perform specific processing as needed
+    text = text.replace(text_delimiter, " ")
+
+    # Additional text cleaning similar to Function 2
+    text = text.replace("•", "")
+    text = re.sub(r"(?<=\b\w) (?=\w\b)", "", text)
+
+    return text
+
+def is_binary(data):
+    # Placeholder for binary detection logic
+    return b'\0' in data
+
+def handle_docx_file(raw_data):
+    # Placeholder for handling DOCX files
+    return extract_text_from_docx(raw_data)
+
+def handle_pdf_file(raw_data):
+    # Placeholder for handling PDF files
+    return extract_text_from_pdf(raw_data)
+
+
+
+def read_uploaded_file2(uploaded_file):
     if isinstance(uploaded_file, UploadedFile):
         # Streamlit's UploadedFile needs to be read directly
         raw_data = uploaded_file.read()
@@ -239,7 +354,8 @@ def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
     )
     
     # Read the content of the uploaded file
-    data = read_uploaded_file(dokum)
+    # data = read_uploaded_file(dokum)
+    data = read_uploaded_file(dokum, text_delimiter=sep)
     # data = pinecone_utility.read_uploaded_file(dokum)
     
     # Get a serializable file name or other string identifier
@@ -565,7 +681,7 @@ class PineconeRetriever:
 
 
 # in myfunc.embeddings.py
-def prepare_embeddings(chunk_size, chunk_overlap, dokum):
+def prepare_embeddings(chunk_size, chunk_overlap, dokum, sep):
     file_name = "chunks.json"
     semantic = st.radio(
         "Odaberite tip pripreme: ",
@@ -579,7 +695,7 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             file.write(dokum.getbuffer())
     json_string = None
     if semantic == "Standard":
-        json_string = standard_chunks(dokum, chunk_size, chunk_overlap)
+        json_string = standard_chunks(dokum, chunk_size, chunk_overlap, sep)
     elif semantic in ["Heading", "Semantic", "CSV"] and st.button(f"Pripremi {semantic}"):
         with st.spinner(f"Radim {semantic}"):
             if semantic == "Heading":
