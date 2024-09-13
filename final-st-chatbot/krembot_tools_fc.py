@@ -184,11 +184,10 @@ def dentyWF(prompt):
             input=[text],
             model=model
         ).data[0].embedding
-        
         return response
 
     def dense_query(query, top_k, filter, namespace="servis"):
-        # Get embedding for the query
+        # Get embedding for the user's actual query
         dense = get_embedding(text=query)
 
         query_params = {
@@ -200,31 +199,29 @@ def dentyWF(prompt):
         }
 
         response = index.query(**query_params)
-
         matches = response.to_dict().get('matches', [])
+        matches.sort(key=lambda x: x['score'], reverse=True)
         return matches
 
-    def search_pinecone_second_set(device: str) -> List[Dict]:
-        # Define the query text and filter for the new metadata structure
-        query = "Find device"
+    def search_pinecone_second_set(device: str, query: str) -> List[Dict]:
+        # Use the user's prompt as the query text
         filter = {"device": {"$eq": device}}
-        
-        query_embedding_2 = dense_query(query, top_k=5, filter=filter)
-        
-        # Extract metadata and map it to the new structure
+        query_embedding = dense_query(query, top_k=5, filter=filter)
+        # Process the matches as before
         matches = []
-        for match in query_embedding_2:
+        for match in query_embedding:
             metadata = match['metadata']
             matches.append({
                 'url': metadata['url'],
                 'text': metadata['text'],
                 'device': metadata['device'],
             })
-        
         return matches
-    
+
     denty_tools = "T3T4 Racer, ORTHOPHOS XG 3, SIROTorque L+, inEos X5, inLab MC X5, M1+C2+, TENEO, SIVISION 3, Sivision Digital"
     denty_tools_2 = ["T3T4 Racer", "ORTHOPHOS XG 3", "SIROTorque L+", "inEos X5", "inLab MC X5", "M1+C2+", "TENEO", "SIVISION 3", "Sivision Digital"]
+
+    # First, determine the device based on the user's prompt
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         temperature=0.0,
@@ -238,16 +235,20 @@ def dentyWF(prompt):
     )
 
     device = response.choices[0].message.content.strip()
-    print(3333, device)
-    if device not in denty_tools_2:
+    device = device.strip()
+    if device not in [d.strip() for d in denty_tools_2]:
         return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "Denty"
-    
+
+    # Now, use the user's prompt to search Pinecone
+    context = search_pinecone_second_set(device, prompt)
+
+    # Finally, generate the response using the context
     response = client.chat.completions.create(
         model="gpt-4o",
         temperature=0.0,
         messages=[
-            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context, for the given user query. Only use the provided context (it's included the user message) to generate the answer. The context is about the device: {device}"},
-            {"role": "user", "content": f"User query: {prompt}, /n/n context: {search_pinecone_second_set(device)}"}
+            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context for the given user query. Only use the provided context (it's included in the user message) to generate the answer. The context is about the device: {device}"},
+            {"role": "user", "content": f"User query: {prompt},\n\nContext: {context}"}
         ]
     )
     return response.choices[0].message.content.strip(), "DentyBot"
