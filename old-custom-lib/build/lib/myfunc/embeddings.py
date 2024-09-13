@@ -239,8 +239,8 @@ def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
     )
     
     # Read the content of the uploaded file
-    # data = read_uploaded_file(dokum)
-    data = pinecone_utility.read_uploaded_file(dokum)
+    data = read_uploaded_file(dokum)
+    # data = pinecone_utility.read_uploaded_file(dokum)
     
     # Get a serializable file name or other string identifier
     source_identifier = dokum.name if isinstance(dokum, UploadedFile) else str(dokum)
@@ -585,7 +585,8 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum):
             if semantic == "Heading":
                 json_string = heading_chunks(dokum)
             elif semantic == "Semantic":
-                data = pinecone_utility.read_uploaded_file(dokum)
+                data = read_uploaded_file(dokum)
+                # data = pinecone_utility.read_uploaded_file(dokum)
                 json_string = semantic_chunks(data, dokum.name)
             elif semantic == "CSV": 
                 json_string = csv_chunks(dokum)
