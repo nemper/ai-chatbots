@@ -42,6 +42,10 @@ def rag_tool_answer(prompt):
     elif os.getenv("APP_ID") == "DentyBot":
         return dentyWF(prompt), st.session_state.rag_tool
         
+    elif os.getenv("APP_ID") == "ECDBot":
+        processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
+        return processor.process_query_results(prompt), st.session_state.rag_tool
+    
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
@@ -67,18 +71,6 @@ def rag_tool_answer(prompt):
 
     elif st.session_state.rag_tool == "Orders":
         context = order_delfi(prompt)
-
-    elif st.session_state.rag_tool == "FAQ":
-        processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
-        context = processor.process_query_results(prompt)
-        
-    elif st.session_state.rag_tool == "Uputstva":
-        processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
-        context = processor.process_query_results(prompt)
-
-    elif st.session_state.rag_tool == "Blogovi":
-        processor = HybridQueryProcessor(namespace="ecd-blogovi", delfi_special=1)
-        context = processor.process_query_results(prompt)
 
     return context, st.session_state.rag_tool
 
