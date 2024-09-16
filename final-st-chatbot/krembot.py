@@ -1,7 +1,7 @@
 import io
 import streamlit as st
 import uuid
-_ = """
+#_ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
@@ -9,7 +9,7 @@ os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
-"""
+#"""
 from openai import OpenAI
 from os import getenv
 from streamlit_mic_recorder import mic_recorder
@@ -87,7 +87,7 @@ def handle_feedback():
         st.error(f"Error storing feedback: {e}")
 
 
-def build_messages_for_api():
+def build_messages_for_api(current_thread_id):
     messages = []
     tool_outputs = st.session_state.tool_outputs
     user_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'user']
@@ -125,6 +125,8 @@ def main():
     if 'tool_outputs' not in st.session_state:
         st.session_state.tool_outputs = []
 
+    current_thread_id = st.session_state.thread_id
+    
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -321,7 +323,7 @@ def main():
 
             with st.chat_message("assistant", avatar=avatar_ai):
                 # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
-                cc_messages = build_messages_for_api()
+                cc_messages = build_messages_for_api(current_thread_id)
                 message_placeholder = st.empty()
                 full_response = ""
                 for response in client.chat.completions.create(
