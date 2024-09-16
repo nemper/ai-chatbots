@@ -148,7 +148,6 @@ def main():
                     with st.chat_message(message["role"], avatar=avatar_user):
                         st.markdown(message["content"])
                 elif message["role"] == "tool":
-                    print(1111111111111111111111)
                     with st.chat_message(message["role"], avatar=avatar_ai):
                         st.markdown(message["content"])
                 elif message["role"] == "system":
@@ -245,12 +244,13 @@ def main():
                     st.markdown(st.session_state.prompt)
         else:    
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
-                Using the following context:
+                Using the following context, which comes directly from our database:
                 {result}
-                answer the question: 
+                answer the following question from the user:
                 {st.session_state.prompt}
-                If relevant information cannot be found in context, do not provide an answer. Instead, clearly state that the information is not currently available.
-                Do not fabricate or invent information. Always write in Serbian.
+                All the provided context is relevant and trustworthy, so make sure to base your answer strictly on this information.
+                If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
+                Always write in Serbian.
                 """}]}
             print(f"temp_full_prompt: {temp_full_prompt}")
     
