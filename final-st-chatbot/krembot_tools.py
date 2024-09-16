@@ -849,13 +849,13 @@ def API_search(matching_sec_ids):
                             'eksponencijalni procenti': eksponencijalni_procenti,
                             'eksponencijalne cene': eksponencijalne_cene
                         }
-                    elif type == "quantityDiscount" or type == "quantityDiscount2":
+                    elif type == "quantityDiscount2":
                         title = action_node.find('title').text
                         start_at = action_node.find('startAt').text
                         end_at = action_node.find('endAt').text
                         price_quantity_standard_d2 = float(action_node.find('priceQuantityStandard').text)
                         price_quantity_premium_d2 = float(action_node.find('priceQuantityPremium').text)
-                        quantity_discount_limit = int(action_node.find('quantityDiscountLimit').text)
+                        quantity_discount_limit = int(action_node.find('quantityDiscount2Limit').text)
 
                         akcija = {
                             'naziv akcije': title,
