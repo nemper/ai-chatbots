@@ -7,7 +7,7 @@ os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
 os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
 from openai import OpenAI
@@ -87,11 +87,44 @@ def handle_feedback():
         st.error(f"Error storing feedback: {e}")
 
 
+def build_messages_for_api():
+    messages = []
+    tool_outputs = st.session_state.tool_outputs
+    user_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'user']
+    assistant_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'assistant']
+    
+    # Ensure messages are in the correct order
+    max_len = max(len(user_messages), len(assistant_messages))
+    for idx in range(max_len):
+        if idx < len(user_messages):
+            # Include the user message
+            messages.append(user_messages[idx])
+            
+            # If there is a tool output for this user message, include it
+            if idx < len(st.session_state.tool_outputs):
+                tool_output = st.session_state.tool_outputs[idx]['tool_output']
+                
+                # Limit the tool output size
+                limited_tool_output = tool_output[:1000]  # Adjust as needed
+                
+                # Append the tool output to the user message content
+                messages[-1]['content'] += f"\n\n[Tool Output]:\n{limited_tool_output}"
+        
+        if idx < len(assistant_messages):
+            # Include the assistant's previous response
+            messages.append(assistant_messages[idx])
+    
+    return messages
+
+
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
 
 def main():
+    if 'tool_outputs' not in st.session_state:
+        st.session_state.tool_outputs = []
+
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -140,6 +173,18 @@ def main():
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
         if current_thread_id in st.session_state.messages:
             # avatari primena
+            if current_thread_id in st.session_state.messages:
+                for message in st.session_state.messages[current_thread_id]:
+                    if message["role"] == "assistant": 
+                        with st.chat_message("assistant", avatar=avatar_ai):
+                            st.markdown(message["content"])
+                    elif message["role"] == "user":         
+                        with st.chat_message("user", avatar=avatar_user):
+                            st.markdown(message["content"])
+                    elif message["role"] == "system":
+                        pass  # Do not display system messages
+            _ = """     
+
             for message in st.session_state.messages[current_thread_id]:
                 if message["role"] == "assistant": 
                     with st.chat_message(message["role"], avatar=avatar_ai):
@@ -156,7 +201,7 @@ def main():
                 else:         
                     with st.chat_message(message["role"], avatar=avatar_sys):
                         st.markdown(message["content"])
-                            
+                    """        
     # Opcije
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -215,6 +260,12 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         result, tool = rag_tool_answer(st.session_state.prompt)
+        # After getting the tool output
+        st.session_state.tool_outputs.append({
+            'user_message': st.session_state.prompt,
+            'tool_output': result
+        })
+
         st.session_state.tool_answer = result
         with st.expander("Expand"):
             st.write("Alat koji je koriscen: ", tool)
@@ -269,21 +320,22 @@ def main():
                 st.markdown(str(tool))
 
             with st.chat_message("assistant", avatar=avatar_ai):
-                    cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
-                    message_placeholder = st.empty()
-                    full_response = ""
-                    for response in client.chat.completions.create(
-                        model=getenv("OPENAI_MODEL"),
-                        temperature=0,
-                        messages=cc_messages,
-                        stream=True,
-                        stream_options={"include_usage":True},
-                        ):
-                        try:
-                            full_response += (response.choices[0].delta.content or "")
-                            message_placeholder.markdown(full_response + "▌")
-                        except Exception as e:
-                                pass
+                # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
+                cc_messages = build_messages_for_api()
+                message_placeholder = st.empty()
+                full_response = ""
+                for response in client.chat.completions.create(
+                    model=getenv("OPENAI_MODEL"),
+                    temperature=0,
+                    messages=cc_messages,
+                    stream=True,
+                    stream_options={"include_usage":True},
+                    ):
+                    try:
+                        full_response += (response.choices[0].delta.content or "")
+                        message_placeholder.markdown(full_response + "▌")
+                    except Exception as e:
+                            pass
             
 
             message_placeholder.markdown(full_response)
