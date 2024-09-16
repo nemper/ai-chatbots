@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="myfunc",
-    version="2.0.81",
+    version="2.0.81a",
     packages=find_packages(),
     install_requires=[
         'aiohttp==3.9.5',
@@ -32,7 +32,7 @@ setup(
         'pyodbc==5.1.0',
         'pypandoc==1.13',
         'python-docx==1.1.2',
-        'python-magic-bin',
+        # 'python-magic-bin',
         'PyPDF2==3.0.1',
         'PyYAML==6.0.1',
         'requests==2.32.3',
