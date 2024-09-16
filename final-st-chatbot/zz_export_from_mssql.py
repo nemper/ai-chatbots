@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from krembot_db import ConversationDatabase
 import json
+from st_aggrid import AgGrid, GridOptionsBuilder
+from krembot_db import ConversationDatabase
 
 st.set_page_config(layout="wide")
 
@@ -55,6 +56,58 @@ def get_conversation_records(app_name, user_name):
         columns = ['thread_id', 'conversation']
     return records, columns
 
+def filter_out_system_only_conversations(records):
+    """Filter out conversations that only contain system prompts."""
+    filtered_records = []
+    for record in records:
+        conversation_json = record[1]
+        conversation = json.loads(conversation_json)
+
+        # Check if there are any non-system messages
+        non_system_messages = [msg for msg in conversation if msg['role'] != 'system']
+
+        if non_system_messages:  # Keep conversations with user/assistant messages
+            filtered_records.append(record)
+
+    return filtered_records
+
+def filter_feedbacks_by_text(records, search_text):
+    """Filter feedback records by text found in previous_question, tool_answer, or given_answer."""
+    filtered_records = []
+    for record in records:
+        previous_question = record[1] or ""
+        tool_answer = record[2] or ""
+        given_answer = record[3] or ""
+        feedback_text = record[5] or ""
+        
+        # Search in all three columns (case-insensitive)
+        if (search_text.lower() in previous_question.lower() or
+            search_text.lower() in tool_answer.lower() or
+            search_text.lower() in given_answer.lower() or
+            search_text.lower() in feedback_text.lower()):
+            filtered_records.append(record)
+    
+    return filtered_records
+
+def filter_conversations_by_text(records, search_text):
+    """Filter conversation records by text found in any message content."""
+    filtered_records = []
+    for record in records:
+        conversation_json = record[1]
+        conversation = json.loads(conversation_json)
+
+        # Search in all message contents (case-insensitive)
+        for msg in conversation:
+            if search_text.lower() in msg['content'].lower():
+                filtered_records.append(record)
+                break  # No need to check further once a match is found
+    
+    return filtered_records
+
+def extract_feedback_by_thread_id(thread_id, records):
+    # Filter records by the given thread_id
+    return [record for record in records if record[0] == thread_id]
+
 def extract_conversation_by_thread_id(thread_id):
     with ConversationDatabase() as db:
         query = """
@@ -85,21 +138,7 @@ def parse_and_display_conversation(conversation_json):
             st.write(f"**ASSISTANT:** {msg['content']}")
         st.divider()  # Add a divider between conversation pairs
 
-def filter_out_system_only_conversations(records):
-    filtered_records = []
-    for record in records:
-        conversation_json = record[1]  # Assuming conversation is in the second column
-        conversation = json.loads(conversation_json)
-        
-        # Check if conversation has non-system messages
-        non_system_messages = [msg for msg in conversation if msg['role'] != 'system']
-        
-        if non_system_messages:  # Only include conversations with user/assistant messages
-            filtered_records.append(record)
-    
-    return filtered_records
-
-# Determine the table to fetch application names from based on the selected option
+# Initialize app selection (feedbacks or conversations)
 if view_option == "Feedbacks":
     app_names = get_app_names("Feedback")
 else:
@@ -110,38 +149,107 @@ selected_app_name = st.selectbox("Select Application Name", [''] + app_names)
 
 if selected_app_name:
     if view_option == "Feedbacks":
+        # Text input for filtering feedbacks
+        search_text = st.text_input("Enter text to filter by:")
+
         # Fetch feedback records for the selected app name
         records, columns = get_feedback_records(selected_app_name)
+
+        if records:
+            # Apply text filter
+            if search_text:
+                records = filter_feedbacks_by_text(records, search_text)
+
+            # Convert records to DataFrame for display in AgGrid
+            df = pd.DataFrame.from_records(records, columns=columns)
+
+            # Configure AgGrid for single-row selection
+            gb = GridOptionsBuilder.from_dataframe(df)
+            gb.configure_selection('single')  # Single row selection
+            grid_options = gb.build()
+
+            # Display interactive grid
+            grid_response = AgGrid(df, gridOptions=grid_options, update_mode='SELECTION_CHANGED')
+
+            # Access the selected rows (as a DataFrame)
+            selected_rows = pd.DataFrame(grid_response['selected_rows'])
+
+            # Ensure selected_rows is not empty and check its content
+            if not selected_rows.empty:
+                # Get the first selected row using iloc
+                selected_row = selected_rows.iloc[0]
+
+                # Extract values from the selected row
+                selected_thread_id = selected_row['thread_id']
+
+                # Filter feedback by the selected thread_id
+                filtered_feedback = extract_feedback_by_thread_id(selected_thread_id, records)
+
+                if filtered_feedback:
+                    feedback = filtered_feedback[0]
+                    st.write(f"**USER:** {feedback[1]}")        # previous_question
+                    st.divider()
+                    st.write(f"**TOOL:** {feedback[2]}")        # tool_answer
+                    st.divider()
+                    st.write(f"**ASSISTANT:** {feedback[3]}")   # given_answer
+                    st.divider()
+                    st.write(f"**FEEDBACK:** {feedback[5]}")    # feedback text
+                else:
+                    st.write(f"No feedback found for Thread ID: {selected_thread_id}")
+        else:
+            st.write("No feedback records found for the selected application name.")
+
     else:
         # Fetch user names for the selected app name
         user_names = get_user_names(selected_app_name)
         selected_user_name = st.selectbox("Select User Name", [''] + user_names)
 
         if selected_user_name:
+            # Text input for filtering conversations
+            search_text = st.text_input("Enter text to filter by:")
+
             # Fetch conversation records for the selected app name and user name
             records, columns = get_conversation_records(selected_app_name, selected_user_name)
 
-            # Filter out system-only conversations
-            records = filter_out_system_only_conversations(records)
+            # Filter out conversations that contain only system prompts
+            filtered_records = filter_out_system_only_conversations(records)
 
-    if 'records' in locals() and records:  # Ensure records exist
-        df = pd.DataFrame.from_records(records, columns=columns)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+            # Apply text filter
+            if search_text:
+                filtered_records = filter_conversations_by_text(filtered_records, search_text)
 
-        # Only show the text input for thread_id in Conversations
-        if view_option == "Conversations":
-            # Entry field for thread_id
-            selected_thread_id = st.text_input("Enter the Thread ID to extract the conversation")
+            if filtered_records:
+                # Convert filtered records to DataFrame for display in AgGrid
+                df = pd.DataFrame.from_records(filtered_records, columns=columns)
 
-            # Fetch and display conversation based on thread_id input
-            if selected_thread_id:
-                conversation_text = extract_conversation_by_thread_id(selected_thread_id)
-                
-                if conversation_text:
-                    st.write(f"Conversation for Thread ID: {selected_thread_id}")
-                    parse_and_display_conversation(conversation_text)
-                else:
-                    st.write(f"No conversation found for Thread ID: {selected_thread_id}")
+                # Configure AgGrid for single-row selection
+                gb = GridOptionsBuilder.from_dataframe(df)
+                gb.configure_selection('single')  # Single row selection
+                grid_options = gb.build()
 
-    elif 'records' in locals() and not records:
-        st.write(f"No {view_option.lower()} records found for the selected application name.")
+                # Display interactive grid
+                grid_response = AgGrid(df, gridOptions=grid_options, update_mode='SELECTION_CHANGED')
+
+                # Access the selected rows (as a DataFrame)
+                selected_rows = pd.DataFrame(grid_response['selected_rows'])
+
+                # Ensure selected_rows is not empty
+                if not selected_rows.empty:
+                    # Get the first selected row using iloc
+                    selected_row = selected_rows.iloc[0]
+
+                    # Extract values from the selected row
+                    selected_thread_id = selected_row['thread_id']
+
+                    # Fetch and display conversation based on thread_id input
+                    conversation_text = extract_conversation_by_thread_id(selected_thread_id)
+
+                    if conversation_text:
+                        st.header(f"Conversation: {selected_thread_id}")
+                        parse_and_display_conversation(conversation_text)
+                    else:
+                        st.write(f"No conversation found for Thread ID: {selected_thread_id}")
+            else:
+                st.write(f"No conversation records found for the selected user.")
+else:
+    st.write("Please select an application name to proceed.")

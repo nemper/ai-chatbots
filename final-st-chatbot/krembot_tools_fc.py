@@ -33,7 +33,68 @@ def connect_to_pinecone(x):
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
 
-def rag_tool_answer(prompt):
+from tools import tools as yyy
+def rag_tool_answer(user_query):
+    """
+    Processes a user query by utilizing the appropriate tool selected by the OpenAI model.
+
+    This function sends a user query to the AI model, which decides which tool to use.
+    The tool is called, and the response is returned.
+
+    Parameters:
+    - user_query: The user's query.
+
+    Returns:
+    - The result from the selected tool and the tool name.
+    """
+    client = OpenAI()
+
+    # Tool list definition (add your tool definitions here)
+
+    # Call the model to process the query and decide on the tool to use
+    response = client.chat.completions.create(
+        model=getenv("OPENAI_MODEL"),
+        temperature=0.0,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that chooses the most appropriate tool based on the user query. You must choose exactly one tool."},
+            {"role": "user", "content": user_query}
+        ],
+        tools=yyy,  # Provide the tool list
+        tool_choice="required"  # Allow the model to choose the tool automatically
+    )
+
+    # Check if the model made a tool call
+    if response.choices[0].message.tool_calls:
+        tool_call = response.choices[0].message.tool_calls[0]
+        tool_name = tool_call.function.name
+        tool_result = tool_call.function.arguments
+
+        tool_arguments = json.loads(tool_result)
+
+        if tool_name == "graphp":
+            tool_result = graphp(user_query)
+        elif tool_name == "hybrid_query_processor":
+            processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
+            tool_result = processor.process_query_results(user_query)
+        elif tool_name == "SelfQueryDelfi":
+            if "namespace" in tool_arguments:
+                tool_result = SelfQueryDelfi(upit=tool_arguments['upit'], namespace=tool_arguments['namespace'])
+            else:
+                tool_result = SelfQueryDelfi(user_query)
+        elif tool_name == "pineg":
+            tool_result = pineg(user_query)
+        elif tool_name == "order_delfi":
+            tool_result = order_delfi(user_query)
+        else:
+            tool_result = "Tool not found or not implemented"
+
+        return tool_result, tool_name
+    else:
+        # Handle cases where no tool was called, return a default response
+        return "No relevant tool found", "None"
+
+
+def rag_tool_answer2(prompt):
     st.session_state.rag_tool = "ClientDirect"
 
     if os.getenv("APP_ID") == "InteliBot":
@@ -42,10 +103,6 @@ def rag_tool_answer(prompt):
     elif os.getenv("APP_ID") == "DentyBot":
         return dentyWF(prompt), st.session_state.rag_tool
         
-    elif os.getenv("APP_ID") == "ECDBot":
-        processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
-        return processor.process_query_results(prompt), st.session_state.rag_tool
-    
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
 
@@ -71,6 +128,18 @@ def rag_tool_answer(prompt):
 
     elif st.session_state.rag_tool == "Orders":
         context = order_delfi(prompt)
+
+    elif st.session_state.rag_tool == "FAQ":
+        processor = HybridQueryProcessor(namespace="ecd-faq", delfi_special=1)
+        context = processor.process_query_results(prompt)
+        
+    elif st.session_state.rag_tool == "Uputstva":
+        processor = HybridQueryProcessor(namespace="ecd-uputstva", delfi_special=1)
+        context = processor.process_query_results(prompt)
+
+    elif st.session_state.rag_tool == "Blogovi":
+        processor = HybridQueryProcessor(namespace="ecd-blogovi", delfi_special=1)
+        context = processor.process_query_results(prompt)
 
     return context, st.session_state.rag_tool
 
@@ -536,13 +605,12 @@ def pineg(pitanje):
 
         matches = response.to_dict().get('matches', [])
         # print(f"Matches: {matches}")
-        matches.sort(key=lambda x: x['score'], reverse=True)
 
         return matches
 
     def search_pinecone(query: str) -> List[Dict]:
         # Dobij embedding za query
-        query_embedding = dense_query(query, top_k=5, filter=None)
+        query_embedding = dense_query(query, top_k=15, filter=None)
         # print(f"Results: {query_embedding}")
 
         # Ekstraktuj id i text iz metapodataka rezultata
@@ -843,13 +911,13 @@ def API_search(matching_sec_ids):
                             'eksponencijalni procenti': eksponencijalni_procenti,
                             'eksponencijalne cene': eksponencijalne_cene
                         }
-                    elif type == "quantityDiscount2":
+                    elif type == "quantityDiscount" or type == "quantityDiscount2":
                         title = action_node.find('title').text
                         start_at = action_node.find('startAt').text
                         end_at = action_node.find('endAt').text
                         price_quantity_standard_d2 = float(action_node.find('priceQuantityStandard').text)
                         price_quantity_premium_d2 = float(action_node.find('priceQuantityPremium').text)
-                        quantity_discount_limit = int(action_node.find('quantityDiscount2Limit').text)
+                        quantity_discount_limit = int(action_node.find('quantityDiscountLimit').text)
 
                         akcija = {
                             'naziv akcije': title,

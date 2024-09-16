@@ -16,6 +16,7 @@ python-docx
 sounddevice
 soundfile
 streamlit
+streamlit-aggrid
 streamlit-audiorecorder
 streamlit-feedback
 streamlit-mic-recorder
