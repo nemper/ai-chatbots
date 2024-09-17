@@ -450,17 +450,17 @@ def main():
                 st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
 
 
-            with col2:
-                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
-                    st.download_button(
-                        "⤓ Preuzmi", 
-                        st.session_state.filtered_messages, 
-                        file_name="istorija.txt", 
-                        help = "Čuvanje istorije ovog razgovora"
-                        )
-            with col3:
-                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
-                    st.button("🗑 Obriši", on_click=reset_memory)
+    with col2:
+        with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
+            st.download_button(
+                "⤓ Preuzmi", 
+                st.session_state.filtered_messages, 
+                file_name="istorija.txt", 
+                help = "Čuvanje istorije ovog razgovora"
+                )
+    with col3:
+        with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
+            st.button("🗑 Obriši", on_click=reset_memory)
 
 
 def main_wrap_for_st():
