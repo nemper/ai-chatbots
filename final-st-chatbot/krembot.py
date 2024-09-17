@@ -105,36 +105,6 @@ def num_tokens_from_messages(messages, model_name):
     return num_tokens
 
 
-def build_messages_for_api2(current_thread_id):
-    messages = []
-    tool_outputs = st.session_state.tool_outputs
-    user_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'user']
-    assistant_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'assistant']
-    
-    # Ensure messages are in the correct order
-    max_len = max(len(user_messages), len(assistant_messages))
-    for idx in range(max_len):
-        if idx < len(user_messages):
-            # Include the user message
-            messages.append(user_messages[idx])
-            
-            # If there is a tool output for this user message, include it
-            if idx < len(st.session_state.tool_outputs):
-                tool_output = st.session_state.tool_outputs[idx]['tool_output']
-                
-                # Limit the tool output size
-                limited_tool_output = tool_output[:1000]  # Adjust as needed
-                
-                # Append the tool output to the user message content
-                messages[-1]['content'] += f"\n\n[Tool Output]:\n{limited_tool_output}"
-        
-        if idx < len(assistant_messages):
-            # Include the assistant's previous response
-            messages.append(assistant_messages[idx])
-    
-    return messages
-
-
 def build_messages_for_api(current_thread_id):
     messages = []
     tool_outputs = st.session_state.tool_outputs
@@ -143,52 +113,71 @@ def build_messages_for_api(current_thread_id):
 
     # Initialize total tokens
     total_tokens = 0
-    max_tokens = 120000  # Set limit below maximum context length
+    max_tokens = 100000  # Adjust as needed (set below model's max context length)
 
     # Assume the model name is stored in OPENAI_MODEL env variable
     model_name = getenv("OPENAI_MODEL")
 
-    # Start from the end (most recent messages)
+    # Start building messages from the most recent ones
     idx = len(user_messages) - 1
     messages_to_add = []
+
+    # Always include the system prompt
+    system_prompt = {'role': 'system', 'content': mprompts["sys_ragbot"]}
+    total_tokens = num_tokens_from_messages([system_prompt], model_name)
+    messages_to_add = [system_prompt]
+
     while idx >= 0:
         temp_messages = []
 
-        # Assistant message
+        # Assistant message (if exists)
         if idx < len(assistant_messages):
-            message = assistant_messages[idx]
-            temp_messages.insert(0, message)
+            assistant_msg = assistant_messages[idx]
+            temp_messages.insert(0, assistant_msg)
 
         # User message with tool output
-        message = user_messages[idx].copy()
-        # If there is a tool output for this user message, include it
+        user_msg = user_messages[idx].copy()
+        # Include the tool output for this user message
         if idx < len(st.session_state.tool_outputs):
             tool_output = st.session_state.tool_outputs[idx]['tool_output']
-            # Limit the tool output size
-            limited_tool_output = tool_output[:1000]  # Adjust as needed
-            # Append the tool output to the user message content
-            message['content'] += f"\n\n[Tool Output]:\n{limited_tool_output}"
-        temp_messages.insert(0, message)
 
-        # Prepend temp_messages to messages_to_add
-        temp_messages.extend(messages_to_add)
+            # Optionally summarize the tool output if it's too long
+            tool_output_tokens = len(tiktoken.encoding_for_model(model_name).encode(tool_output))
+            if tool_output_tokens > 5000:  # Adjust threshold as needed
+                # Summarize the tool output
+                summarized_tool_output = summarize_tool_output(tool_output, model_name)
+                tool_output = summarized_tool_output
 
-        # Prepend system prompt
-        temp_full_messages = [{'role': 'system', 'content': mprompts["sys_ragbot"]}] + temp_messages
+            user_msg['content'] += f"\n\n[Tool Output]:\n{tool_output}"
 
+        temp_messages.insert(0, user_msg)
+
+        # Calculate tokens if we add these messages
+        temp_full_messages = messages_to_add + temp_messages
         tokens = num_tokens_from_messages(temp_full_messages, model_name)
+
         if tokens > max_tokens:
-            # Stop adding more messages
+            # Stop adding more messages to avoid exceeding the limit
             break
         else:
-            messages_to_add = temp_messages
+            messages_to_add = temp_full_messages
             total_tokens = tokens
             idx -= 1  # Move to previous messages
 
-    # Assemble the final messages
-    messages = [{'role': 'system', 'content': mprompts["sys_ragbot"]}] + messages_to_add
+    return messages_to_add
 
-    return messages
+def summarize_tool_output(tool_output, model_name):
+    """Summarizes the tool output to reduce its length."""
+    summary_prompt = f"Please summarize the following content to be concise and include only essential information:\n\n{tool_output}"
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{'role': 'system', 'content': 'You are a helpful assistant that summarizes content.'},
+                  {'role': 'user', 'content': summary_prompt}],
+        temperature=0,
+        max_tokens=500  # Limit the summary length
+    )
+    summary = response.choices[0].message['content']
+    return summary
 
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
