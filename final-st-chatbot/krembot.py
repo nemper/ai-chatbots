@@ -110,46 +110,41 @@ def build_messages_for_api(current_thread_id, max_tokens=120000):
     tool_outputs = st.session_state.tool_outputs
     user_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'user']
     assistant_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'assistant']
-
+    
     model_name = getenv("OPENAI_MODEL")
     encoding = tiktoken.encoding_for_model(model_name)
-
+    
     # Always include the system prompt
     system_prompt = {'role': 'system', 'content': mprompts["sys_ragbot"]}
     messages = [system_prompt]
-
-    # Start with the maximum possible history
-    max_history = len(user_messages)
-
-    while max_history > 0:
-        temp_messages = [system_prompt]
-
-        start_idx = len(user_messages) - max_history
-
-        for idx in range(start_idx, len(user_messages)):
-            # User message with tool output
-            user_msg = user_messages[idx].copy()
-            if idx < len(st.session_state.tool_outputs):
-                tool_output = st.session_state.tool_outputs[idx]['tool_output']
-                user_msg['content'] += f"\n\n[Tool Output]:\n{tool_output}"
-            temp_messages.append(user_msg)
-
-            # Assistant message (if exists)
-            if idx < len(assistant_messages):
-                assistant_msg = assistant_messages[idx]
-                temp_messages.append(assistant_msg)
-
-        total_tokens = num_tokens_from_messages(temp_messages, model_name)
-        if total_tokens <= max_tokens:
-            messages = temp_messages
-            break
-        else:
-            max_history -= 1  # Reduce history and try again
-
-    if max_history == 0:
-        st.error("Unable to build messages within token limit. Consider shortening your inputs.")
+    
+    # Build the full conversation history
+    conversation = []
+    for idx in range(len(user_messages)):
+        # User message with tool output
+        user_msg = user_messages[idx].copy()
+        if idx < len(tool_outputs):
+            tool_output = tool_outputs[idx]['tool_output']
+            user_msg['content'] += f"\n\n[Tool Output]:\n{tool_output}"
+        conversation.append(user_msg)
+        
+        # Assistant message (if exists)
+        if idx < len(assistant_messages):
+            assistant_msg = assistant_messages[idx]
+            conversation.append(assistant_msg)
+    
+    # Combine system prompt and conversation
+    messages.extend(conversation)
+    
+    total_tokens = num_tokens_from_messages(messages, model_name)
+    
+    # Remove messages from the front (after system prompt) until total_tokens <= max_tokens
+    while total_tokens > max_tokens and len(messages) > 1:  # Always keep at least the system prompt
+        messages.pop(1)  # Remove the message right after the system prompt
+        total_tokens = num_tokens_from_messages(messages, model_name)
     
     return messages
+
 
 
 def summarize_tool_output(tool_output, model_name):
