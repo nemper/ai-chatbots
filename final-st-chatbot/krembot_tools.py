@@ -108,6 +108,7 @@ def get_structured_decision_from_model(user_query):
 
 
 def dentyWF(prompt):
+    import csv
     index = connect_to_pinecone(x=0)
 
     def get_embedding(text, model="text-embedding-3-large"):
@@ -151,11 +152,10 @@ def dentyWF(prompt):
         return matches
     
     unique_devices = set()
-    with open("denty_devices.csv", 'r') as f:
-        data = json.load(f)
-        # Extract device values and add to the set
-        for entry in data:
-            unique_devices.add(entry['device'])
+    with open("denty_devices.csv", 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            unique_devices.add(row['device'])
 
     def check_device_in_text():
         for device in unique_devices:
