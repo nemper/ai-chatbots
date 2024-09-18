@@ -138,7 +138,7 @@ def dentyWF(prompt):
     def search_pinecone_second_set(device: str, query: str) -> List[Dict]:
         # Use the user's prompt as the query text
         filter = {"device": {"$eq": device}}
-        query_embedding = dense_query(query, top_k=5, filter=filter)
+        query_embedding = dense_query(query, top_k=4, filter=filter)
         # Process the matches as before
         matches = []
         for match in query_embedding:
@@ -538,7 +538,7 @@ def pineg(pitanje):
 
     def search_pinecone(query: str) -> List[Dict]:
         # Dobij embedding za query
-        query_embedding = dense_query(query, top_k=5, filter=None)
+        query_embedding = dense_query(query, top_k=4, filter=None)
         # print(f"Results: {query_embedding}")
 
         # Ekstraktuj id i text iz metapodataka rezultata
@@ -559,7 +559,7 @@ def pineg(pitanje):
         # Dobij embedding za query
         query = "Nađi knjigu"
         filter = {"title" : {"$eq" : title}, "authors" : {"$in" : authors}}
-        query_embedding_2 = dense_query(query, top_k=10, filter=filter)
+        query_embedding_2 = dense_query(query, top_k=5, filter=filter)
         # print(f"Results: {query_embedding}")
 
         # Ekstraktuj id i text iz metapodataka rezultata
@@ -1077,7 +1077,7 @@ class HybridQueryProcessor:
         self.score = kwargs.get('score', 0.05)  # Default score is 0.05
         self.index_name = kwargs.get('index', 'neo-positive')  # Default index is 'positive'
         self.namespace = kwargs.get('namespace', getenv("NAMESPACE"))  
-        self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
+        self.top_k = kwargs.get('top_k', 5)  # Default top_k is 5
         self.delfi_special = kwargs.get('delfi_special')
         self.index = connect_to_pinecone(self.delfi_special)
         self.host = getenv("PINECONE_HOST")

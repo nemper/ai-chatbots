@@ -10,6 +10,16 @@ os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
+
+#_ = """
+import os
+os.environ["CLIENT_FOLDER"] = "ECD"
+os.environ["SYS_RAGBOT"] = "ECD_SYS_RAGBOT"
+os.environ["APP_ID"] = "ECDBot"
+os.environ["CHOOSE_RAG"] = "ECD_CHOOSE_RAG"
+os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+#"""
 from openai import OpenAI
 from os import getenv
 from streamlit_mic_recorder import mic_recorder
@@ -107,12 +117,10 @@ def num_tokens_from_messages(messages, model_name):
 
 def build_messages_for_api(current_thread_id, max_tokens=120000):
     messages = []
-    tool_outputs = st.session_state.tool_outputs
     user_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'user']
     assistant_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'assistant']
     
     model_name = getenv("OPENAI_MODEL")
-    encoding = tiktoken.encoding_for_model(model_name)
     
     # Always include the system prompt
     system_prompt = {'role': 'system', 'content': mprompts["sys_ragbot"]}
@@ -120,6 +128,15 @@ def build_messages_for_api(current_thread_id, max_tokens=120000):
     
     # Build the full conversation history
     conversation = []
+    for idx in range(len(user_messages)):
+        # Add the user message without tool output
+        conversation.append(user_messages[idx].copy())
+        
+        # Add the assistant message (if exists)
+        if idx < len(assistant_messages):
+            conversation.append(assistant_messages[idx])
+
+    _ = """
     for idx in range(len(user_messages)):
         # User message with tool output
         user_msg = user_messages[idx].copy()
@@ -132,7 +149,7 @@ def build_messages_for_api(current_thread_id, max_tokens=120000):
         if idx < len(assistant_messages):
             assistant_msg = assistant_messages[idx]
             conversation.append(assistant_msg)
-    
+    """
     # Combine system prompt and conversation
     messages.extend(conversation)
     
@@ -146,19 +163,21 @@ def build_messages_for_api(current_thread_id, max_tokens=120000):
     return messages
 
 
-
-def summarize_tool_output(tool_output, model_name):
-    """Summarizes the tool output to reduce its length."""
-    summary_prompt = f"Please summarize the following content to be concise and include only essential information:\n\n{tool_output}"
+def check_if_for_tool(prompt, conversation):
     response = client.chat.completions.create(
-        model=model_name,
-        messages=[{'role': 'system', 'content': 'You are a helpful assistant that summarizes content.'},
-                  {'role': 'user', 'content': summary_prompt}],
-        temperature=0,
-        max_tokens=2000  # Limit the summary length
+        model="gpt-4o",
+        temperature=0.0,
+          messages=[
+            {"role": "system", "content": """You are a helpful assistant that determines if the user question is related to the previous question in the conversation.
+             Answer question based on the meaning of the context provided in the user's question:
+             - If the latest question is related return: 1
+             - If it is not return: 0
+             """},
+            {"role": "user", "content": f"Previous conversation: {conversation}, \n\n Current question: {prompt}"},
+        ]
     )
-    summary = response.choices[0].message.content.strip()
-    return summary
+
+    return response.choices[0].message.content.strip()
 
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
@@ -285,7 +304,18 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        result, tool = rag_tool_answer(st.session_state.prompt)
+        jj = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") not in ["tool", "system"]][:-1]
+        print(f"\n\n\nJJ: {jj}")
+        if len(jj) < 2:
+            hh = 1
+        else:
+            hh = check_if_for_tool(st.session_state.prompt, jj)
+        hh = 1
+        if hh in ["0", 0]:
+            result, tool = hh, "NoTool"
+        else:
+            result, tool = rag_tool_answer(st.session_state.prompt)
+        print(f"\n\n\nHH: {hh}")
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,
@@ -320,17 +350,20 @@ def main():
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-        else:    
-            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
-                Using the following context, which comes directly from our database:
-                {result}
-                answer the following question from the user:
-                {st.session_state.prompt}
-                All the provided context is relevant and trustworthy, so make sure to base your answer strictly on this information.
-                If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
-                Always write in Serbian.
-                """}]}
-            print(f"temp_full_prompt: {temp_full_prompt}")
+        else:
+            if result == hh:
+                temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
+            else:
+                temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
+                    Answer the following question from the user:
+                    {st.session_state.prompt}{st.session_state.prompt}
+                    Using the following context, which comes directly from our database:
+                    {result}
+                    All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
+                    Always write in Serbian.
+                    """}]}
+                    #If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
+            # print(f"temp_full_prompt: {temp_full_prompt}")
     
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
@@ -348,12 +381,15 @@ def main():
 
             with st.chat_message("assistant", avatar=avatar_ai):
                 # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
-                cc_messages = build_messages_for_api(current_thread_id)
+                cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") not in ["tool", "system"]][:-1]
+                cc_messages.append(temp_full_prompt)
+                # cc_messages = build_messages_for_api(current_thread_id)
+                print(f"\n\n\ncc_messages: {cc_messages}")
                 message_placeholder = st.empty()
                 full_response = ""
                 for response in client.chat.completions.create(
                     model=getenv("OPENAI_MODEL"),
-                    temperature=0,
+                    temperature=0.0,
                     messages=cc_messages,
                     stream=True,
                     stream_options={"include_usage":True},
