@@ -284,7 +284,7 @@ def main():
 
             with st.chat_message("assistant", avatar=avatar_ai):
                 # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
-                cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") not in ["tool", "system"]][:-1]
+                cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1]
                 cc_messages.append(temp_full_prompt)
                 print(f"\n\n\ncc_messages: {cc_messages}")
                 message_placeholder = st.empty()
