@@ -259,7 +259,7 @@ def main():
         else:
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
                 Answer the following question from the user:
-                {st.session_state.prompt}{st.session_state.prompt}
+                {st.session_state.prompt}
                 Using the following context, which comes directly from our database:
                 {result}
                 All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
