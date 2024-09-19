@@ -214,8 +214,6 @@ def read_uploaded_file(uploaded_file):
             data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
 
         # Process the decoded text with the text delimiter
-        if text_delimiter:
-            data = process_text_with_delimiter(data, text_delimiter)
 
     else:
         # Handle as a regular file path
@@ -234,8 +232,6 @@ def read_uploaded_file(uploaded_file):
                     return None
 
                 # Process the extracted text with the text delimiter
-                if data is not None and text_delimiter:
-                    data = process_text_with_delimiter(data, text_delimiter)
 
                 return data
 
@@ -248,8 +244,6 @@ def read_uploaded_file(uploaded_file):
                 data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
 
             # Process the decoded text with the text delimiter
-            if text_delimiter:
-                data = process_text_with_delimiter(data, text_delimiter)
         except (UnicodeDecodeError, TypeError):
             data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
 
