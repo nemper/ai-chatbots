@@ -7,8 +7,18 @@ os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
 os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
+"""
+
+_ = """
+import os
+os.environ["CLIENT_FOLDER"] = "ECD"
+os.environ["SYS_RAGBOT"] = "ECD_SYS_RAGBOT"
+os.environ["APP_ID"] = "ECDBot"
+os.environ["CHOOSE_RAG"] = "ECD_CHOOSE_RAG"
+os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
 """
 from openai import OpenAI
 from os import getenv
@@ -86,12 +96,16 @@ def handle_feedback():
     except Exception as e:
         st.error(f"Error storing feedback: {e}")
 
-
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
 
 def main():
+    if 'tool_outputs' not in st.session_state:
+        st.session_state.tool_outputs = []
+
+    current_thread_id = st.session_state.thread_id
+    
     if "thread_id" not in st.session_state:
         def get_thread_ids():
             with ConversationDatabase() as db:
@@ -140,22 +154,16 @@ def main():
                 st.session_state.messages[current_thread_id] = db.query_sql_record(st.session_state.app_name, st.session_state.username, current_thread_id) or []
         if current_thread_id in st.session_state.messages:
             # avatari primena
-            for message in st.session_state.messages[current_thread_id]:
-                if message["role"] == "assistant": 
-                    with st.chat_message(message["role"], avatar=avatar_ai):
-                        st.markdown(message["content"])
-                elif message["role"] == "user":         
-                    with st.chat_message(message["role"], avatar=avatar_user):
-                        st.markdown(message["content"])
-                elif message["role"] == "tool":
-                    with st.chat_message(message["role"], avatar=avatar_ai):
-                        st.markdown(message["content"])
-                elif message["role"] == "system":
-                    pass
-                else:         
-                    with st.chat_message(message["role"], avatar=avatar_sys):
-                        st.markdown(message["content"])
-                            
+            if current_thread_id in st.session_state.messages:
+                for message in st.session_state.messages[current_thread_id]:
+                    if message["role"] == "assistant": 
+                        with st.chat_message("assistant", avatar=avatar_ai):
+                            st.markdown(message["content"])
+                    elif message["role"] == "user":         
+                        with st.chat_message("user", avatar=avatar_user):
+                            st.markdown(message["content"])
+                    elif message["role"] == "system":
+                        pass  # Do not display system messages  
     # Opcije
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -214,6 +222,12 @@ def main():
     # Main conversation answer
     if st.session_state.prompt:
         result, tool = rag_tool_answer(st.session_state.prompt)
+        # After getting the tool output
+        st.session_state.tool_outputs.append({
+            'user_message': st.session_state.prompt,
+            'tool_output': result
+        })
+
         st.session_state.tool_answer = result
         with st.expander("Expand"):
             st.write("Alat koji je koriscen: ", tool)
@@ -242,17 +256,17 @@ def main():
                 )
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
-        else:    
+        else:
             temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
+                Answer the following question from the user:
+                {st.session_state.prompt}{st.session_state.prompt}
                 Using the following context, which comes directly from our database:
                 {result}
-                answer the following question from the user:
-                {st.session_state.prompt}
-                All the provided context is relevant and trustworthy, so make sure to base your answer strictly on this information.
-                If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
+                All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
                 Always write in Serbian.
                 """}]}
-            print(f"temp_full_prompt: {temp_full_prompt}")
+                    #If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
+            # print(f"temp_full_prompt: {temp_full_prompt}")
     
             # Append only the user's original prompt to the actual conversation log
             st.session_state.messages[current_thread_id].append({"role": "user", "content": st.session_state.prompt})
@@ -269,21 +283,24 @@ def main():
                 st.markdown(str(tool))
 
             with st.chat_message("assistant", avatar=avatar_ai):
-                    cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
-                    message_placeholder = st.empty()
-                    full_response = ""
-                    for response in client.chat.completions.create(
-                        model=getenv("OPENAI_MODEL"),
-                        temperature=0,
-                        messages=cc_messages,
-                        stream=True,
-                        stream_options={"include_usage":True},
-                        ):
-                        try:
-                            full_response += (response.choices[0].delta.content or "")
-                            message_placeholder.markdown(full_response + "▌")
-                        except Exception as e:
-                                pass
+                # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
+                cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1]
+                cc_messages.append(temp_full_prompt)
+                print(f"\n\n\ncc_messages: {cc_messages}")
+                message_placeholder = st.empty()
+                full_response = ""
+                for response in client.chat.completions.create(
+                    model=getenv("OPENAI_MODEL"),
+                    temperature=0.0,
+                    messages=cc_messages,
+                    stream=True,
+                    stream_options={"include_usage":True},
+                    ):
+                    try:
+                        full_response += (response.choices[0].delta.content or "")
+                        message_placeholder.markdown(full_response + "▌")
+                    except Exception as e:
+                            pass
             
 
             message_placeholder.markdown(full_response)
@@ -323,17 +340,17 @@ def main():
                 st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
 
 
-            with col2:
-                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
-                    st.download_button(
-                        "⤓ Preuzmi", 
-                        st.session_state.filtered_messages, 
-                        file_name="istorija.txt", 
-                        help = "Čuvanje istorije ovog razgovora"
-                        )
-            with col3:
-                with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
-                    st.button("🗑 Obriši", on_click=reset_memory)
+    with col2:
+        with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
+            st.download_button(
+                "⤓ Preuzmi", 
+                st.session_state.filtered_messages, 
+                file_name="istorija.txt", 
+                help = "Čuvanje istorije ovog razgovora"
+                )
+    with col3:
+        with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
+            st.button("🗑 Obriši", on_click=reset_memory)
 
 
 def main_wrap_for_st():

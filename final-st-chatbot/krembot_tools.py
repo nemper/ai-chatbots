@@ -108,6 +108,7 @@ def get_structured_decision_from_model(user_query):
 
 
 def dentyWF(prompt):
+    import csv
     index = connect_to_pinecone(x=0)
 
     def get_embedding(text, model="text-embedding-3-large"):
@@ -117,7 +118,7 @@ def dentyWF(prompt):
         ).data[0].embedding
         return response
 
-    def dense_query(query, top_k, filter, namespace="servis"):
+    def dense_query(query, top_k, filter, namespace="serviser"):
         # Get embedding for the user's actual query
         dense = get_embedding(text=query)
 
@@ -137,41 +138,36 @@ def dentyWF(prompt):
     def search_pinecone_second_set(device: str, query: str) -> List[Dict]:
         # Use the user's prompt as the query text
         filter = {"device": {"$eq": device}}
-        query_embedding = dense_query(query, top_k=5, filter=filter)
+        query_embedding = dense_query(query, top_k=4, filter=filter)
         # Process the matches as before
         matches = []
         for match in query_embedding:
             metadata = match['metadata']
             matches.append({
                 'url': metadata['url'],
+                'page': metadata['page'],
                 'text': metadata['text'],
                 'device': metadata['device'],
             })
         return matches
+    
+    unique_devices = set()
+    with open("denty_devices.csv", 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            unique_devices.add(row['device'])
 
-    denty_tools = "T3T4 Racer, ORTHOPHOS XG 3, SIROTorque L+, inEos X5, inLab MC X5, M1+C2+, TENEO, SIVISION 3, Sivision Digital"
-    denty_tools_2 = ["T3T4 Racer", "ORTHOPHOS XG 3", "SIROTorque L+", "inEos X5", "inLab MC X5", "M1+C2+", "TENEO", "SIVISION 3", "Sivision Digital"]
+    def check_device_in_text():
+        for device in unique_devices:
+            if device in prompt:
+                return device
+        return False
 
-    # First, determine the device based on the user's prompt
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": f"""
-                You are a helpful assistant that chooses the most appropriate tool based on a given user query. Your output is only the tool name.
-                These are the possible tools: {denty_tools}
-            """},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    device = response.choices[0].message.content.strip()
-    device = device.strip()
-    if device not in [d.strip() for d in denty_tools_2]:
-        return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "Denty"
-
-    # Now, use the user's prompt to search Pinecone
-    context = search_pinecone_second_set(device, prompt)
+    h = check_device_in_text()
+    if not h:
+        return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
+    else:
+        context = search_pinecone_second_set(h, prompt)
 
     # Finally, generate the response using the context
     response = client.chat.completions.create(
@@ -543,7 +539,7 @@ def pineg(pitanje):
 
     def search_pinecone(query: str) -> List[Dict]:
         # Dobij embedding za query
-        query_embedding = dense_query(query, top_k=5, filter=None)
+        query_embedding = dense_query(query, top_k=4, filter=None)
         # print(f"Results: {query_embedding}")
 
         # Ekstraktuj id i text iz metapodataka rezultata
@@ -564,7 +560,7 @@ def pineg(pitanje):
         # Dobij embedding za query
         query = "Nađi knjigu"
         filter = {"title" : {"$eq" : title}, "authors" : {"$in" : authors}}
-        query_embedding_2 = dense_query(query, top_k=10, filter=filter)
+        query_embedding_2 = dense_query(query, top_k=5, filter=filter)
         # print(f"Results: {query_embedding}")
 
         # Ekstraktuj id i text iz metapodataka rezultata
@@ -1082,7 +1078,7 @@ class HybridQueryProcessor:
         self.score = kwargs.get('score', 0.05)  # Default score is 0.05
         self.index_name = kwargs.get('index', 'neo-positive')  # Default index is 'positive'
         self.namespace = kwargs.get('namespace', getenv("NAMESPACE"))  
-        self.top_k = kwargs.get('top_k', 6)  # Default top_k is 6
+        self.top_k = kwargs.get('top_k', 5)  # Default top_k is 5
         self.delfi_special = kwargs.get('delfi_special')
         self.index = connect_to_pinecone(self.delfi_special)
         self.host = getenv("PINECONE_HOST")
