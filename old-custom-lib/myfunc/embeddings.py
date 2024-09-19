@@ -359,47 +359,41 @@ def read_uploaded_file2(uploaded_file):
             data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
     return data
 
-from langchain.text_splitter import CharacterTextSplitter
+import re
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
-    text_splitter = CharacterTextSplitter(
-        separator=sep,
+    # Escape the separator to handle regex special characters
+    escaped_sep = re.escape(sep)
+    
+    text_splitter = RecursiveCharacterTextSplitter(
+        separators=[escaped_sep, "\n\n", "\n", " ", ""],
         keep_separator=keep,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         length_function=len,
+        is_separator_regex=True,  # Set to True to use regex
     )
-    text_splitter2 = RecursiveCharacterTextSplitter(
-        separators=[sep, "\n\n", "\n", " ", ""],
-        keep_separator=keep,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-        is_separator_regex=False,
-    )
+    
     # Read the content of the uploaded file
-    # data = read_uploaded_file(dokum)
-    data = read_uploaded_file(dokum, text_delimiter=sep)
-    st.write("Processed text:", data)
-    # data = pinecone_utility.read_uploaded_file(dokum)
+    data = read_uploaded_file(dokum)
     
     # Get a serializable file name or other string identifier
     source_identifier = dokum.name if isinstance(dokum, UploadedFile) else str(dokum)
     
+    # Create documents by splitting the text
     texts = text_splitter.create_documents([data], metadatas=[{"source": source_identifier}])
-    print("TEXTS", texts)
-    # Define a custom method to convert Document to a JSON-serializable format
+    
+    # Proceed with creating JSON as before
     output_json_list = []
     current_date = datetime.now()
     date_string = current_date.strftime('%Y%m%d')
     
-    # Loop through the Document objects and convert them to JSON
-    i = 0
-    for document in texts:
-        i += 1
+    for i, document in enumerate(texts, start=1):
         output_dict = {
             "id": str(uuid4()),
             "chunk": i,
-            "text": document.page_content,
+            "text": document.page_content.strip(),
             "source": document.metadata.get("source", ""),
             "date": int(date_string),
         }
