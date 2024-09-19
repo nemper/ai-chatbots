@@ -246,6 +246,7 @@ def graphp(pitanje):
                 "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
                 "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the searched term."
                 "When generating the Cypher query, ensure to handle inflected forms properly by converting all names to their nominative form. For example, if the user asks for books by 'Adrijana Čajkovskog,' the query should be generated for 'Adrijan Čajkovski,' ensuring that the search is performed using the base form of the author's name."
+                "Additionally, ensure to normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when the user omits Serbian diacritics."
                 "When returning some properties of books, ensure to always return the oldProductId and the title too."
                 "Ensure to limit the number of records returned to 10."
 
