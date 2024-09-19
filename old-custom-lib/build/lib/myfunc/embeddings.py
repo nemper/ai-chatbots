@@ -188,7 +188,7 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
-def read_uploaded_file(uploaded_file, text_delimiter=" "):
+def read_uploaded_file(uploaded_file):
     if isinstance(uploaded_file, UploadedFile):
         # Streamlit's UploadedFile needs to be read directly
         raw_data = uploaded_file.read()
@@ -202,10 +202,6 @@ def read_uploaded_file(uploaded_file, text_delimiter=" "):
             else:
                 st.write("Binary file detected but unsupported format for text extraction.")
                 return None
-
-            # Process the extracted text with the text delimiter
-            if data is not None and text_delimiter:
-                data = process_text_with_delimiter(data, text_delimiter)
 
             return data
 
@@ -363,42 +359,54 @@ import re
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
-    # Escape the separator to handle regex special characters
-    escaped_sep = re.escape(sep)
-    
-    text_splitter = RecursiveCharacterTextSplitter(
-        separators=[escaped_sep, "\n\n", "\n", " ", ""],
-        keep_separator=keep,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-        is_separator_regex=True,  # Set to True to use regex
-    )
-    
     # Read the content of the uploaded file
     data = read_uploaded_file(dokum)
+    
+    # Debug: Print the data to verify the content
+    # print("Data after reading:", repr(data))
+    
+    # Split the text on the custom delimiter
+    initial_chunks = data.split(sep)
+    
+    # Remove any empty chunks and strip whitespace
+    initial_chunks = [chunk.strip() for chunk in initial_chunks if chunk.strip()]
     
     # Get a serializable file name or other string identifier
     source_identifier = dokum.name if isinstance(dokum, UploadedFile) else str(dokum)
     
-    # Create documents by splitting the text
-    texts = text_splitter.create_documents([data], metadatas=[{"source": source_identifier}])
-    
-    # Proceed with creating JSON as before
+    # Prepare the JSON output
     output_json_list = []
     current_date = datetime.now()
     date_string = current_date.strftime('%Y%m%d')
     
-    for i, document in enumerate(texts, start=1):
-        output_dict = {
-            "id": str(uuid4()),
-            "chunk": i,
-            "text": document.page_content.strip(),
-            "source": document.metadata.get("source", ""),
-            "date": int(date_string),
-        }
-        output_json_list.append(output_dict)
+    chunk_counter = 0  # To keep track of the chunk numbers
     
+    # For each initial chunk, further split it based on chunk_size and chunk_overlap
+    for initial_chunk in initial_chunks:
+        # Use RecursiveCharacterTextSplitter to split the initial chunk
+        text_splitter = RecursiveCharacterTextSplitter(
+            separators=["\n\n", "\n", " ", ""],
+            keep_separator=keep,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            is_separator_regex=False,
+        )
+        
+        sub_chunks = text_splitter.split_text(initial_chunk)
+        
+        for sub_chunk in sub_chunks:
+            chunk_counter += 1
+            output_dict = {
+                "id": str(uuid4()),
+                "chunk": chunk_counter,
+                "text": sub_chunk.strip(),
+                "source": source_identifier,
+                "date": int(date_string),
+            }
+            output_json_list.append(output_dict)
+    
+    # Create the JSON string
     json_string = (
         "["
         + ",\n".join(
