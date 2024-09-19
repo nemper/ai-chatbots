@@ -261,7 +261,7 @@ def read_uploaded_file(uploaded_file, text_delimiter=" "):
 
 
 
-def process_text_with_delimiter(text, text_delimiter):
+def process_text_with_delimiter2(text, text_delimiter):
     if not text_delimiter:
         text_delimiter = "\n\n"
 
@@ -275,7 +275,7 @@ def process_text_with_delimiter(text, text_delimiter):
     return text
 
 
-def process_text_with_delimiter2(text, text_delimiter):
+def process_text_with_delimiter(text, text_delimiter):
     """
     Processes the text by ensuring the specified text delimiter is handled correctly.
 
@@ -359,9 +359,16 @@ def read_uploaded_file2(uploaded_file):
             data = raw_data.decode("windows-1252", errors="replace")  # Fallback to windows-1252
     return data
 
-
+from langchain.text_splitter import CharacterTextSplitter
 def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
-    text_splitter = RecursiveCharacterTextSplitter(
+    text_splitter = CharacterTextSplitter(
+        separator=sep,
+        keep_separator=keep,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        length_function=len,
+    )
+    text_splitter2 = RecursiveCharacterTextSplitter(
         separators=[sep, "\n\n", "\n", " ", ""],
         keep_separator=keep,
         chunk_size=chunk_size,
