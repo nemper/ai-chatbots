@@ -187,6 +187,7 @@ import re
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+
 def read_uploaded_file(uploaded_file, text_delimiter=" "):
     if isinstance(uploaded_file, UploadedFile):
         # Streamlit's UploadedFile needs to be read directly
@@ -258,9 +259,10 @@ def read_uploaded_file(uploaded_file, text_delimiter=" "):
 
     return data
 
+
 def process_text_with_delimiter(text, text_delimiter):
     """
-    Processes the text by handling the specified text delimiter.
+    Processes the text by ensuring the specified text delimiter is handled correctly.
 
     Parameters:
     - text: The text content to process.
@@ -269,18 +271,18 @@ def process_text_with_delimiter(text, text_delimiter):
     Returns:
     - The processed text.
     """
-    if text_delimiter == "":
+    if not text_delimiter:
         text_delimiter = "\n\n"
 
-    # Example processing: Replace delimiters with spaces
-    # You can customize this to perform specific processing as needed
-    text = text.replace(text_delimiter, " ")
+    # Ensure the text uses consistent newlines
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # Additional text cleaning similar to Function 2
+    # Additional text cleaning before splitting
     text = text.replace("•", "")
     text = re.sub(r"(?<=\b\w) (?=\w\b)", "", text)
 
     return text
+
 
 def is_binary(data):
     # Placeholder for binary detection logic
