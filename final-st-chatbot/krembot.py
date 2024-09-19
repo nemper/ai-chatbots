@@ -263,7 +263,7 @@ def main():
                 Using the following context, which comes directly from our database:
                 {result}
                 All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
-                Always write in Serbian.
+                Always write in Serbian. Always provide corresponding links from established knowledge base and do NOT generate or suggest any links that do not exist within it. 
                 """}]}
                     #If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
             # print(f"temp_full_prompt: {temp_full_prompt}")
