@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: myfunc
-Version: 2.0.81a0
+Version: 2.0.81b0
 Requires-Dist: aiohttp==3.9.5
 Requires-Dist: azure-core==1.30.2
 Requires-Dist: azure-storage-blob==12.21.0
@@ -28,6 +28,7 @@ Requires-Dist: pydub==0.25.1
 Requires-Dist: pyodbc==5.1.0
 Requires-Dist: pypandoc==1.13
 Requires-Dist: python-docx==1.1.2
+Requires-Dist: python-magic-bin
 Requires-Dist: PyPDF2==3.0.1
 Requires-Dist: PyYAML==6.0.1
 Requires-Dist: requests==2.32.3

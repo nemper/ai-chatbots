@@ -185,7 +185,7 @@ def handle_pdf_file(raw_data):
 import chardet
 import re
 import streamlit as st
-from streamlit.uploaded_file_manager import UploadedFile
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 def read_uploaded_file(uploaded_file, text_delimiter=" "):
     if isinstance(uploaded_file, UploadedFile):
