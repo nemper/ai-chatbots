@@ -11,7 +11,7 @@ os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
 
-#_ = """
+_ = """
 import os
 os.environ["CLIENT_FOLDER"] = "ECD"
 os.environ["SYS_RAGBOT"] = "ECD_SYS_RAGBOT"
@@ -19,7 +19,7 @@ os.environ["APP_ID"] = "ECDBot"
 os.environ["CHOOSE_RAG"] = "ECD_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-#"""
+"""
 from openai import OpenAI
 from os import getenv
 from streamlit_mic_recorder import mic_recorder
