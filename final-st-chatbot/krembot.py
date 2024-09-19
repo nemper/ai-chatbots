@@ -96,89 +96,6 @@ def handle_feedback():
     except Exception as e:
         st.error(f"Error storing feedback: {e}")
 
-
-import tiktoken
-
-def num_tokens_from_messages(messages, model_name):
-    """Returns the number of tokens used by a list of messages."""
-    try:
-        encoding = tiktoken.encoding_for_model(model_name)
-    except KeyError:
-        encoding = tiktoken.get_encoding("cl100k_base")  # Fallback encoding
-    num_tokens = 0
-    for message in messages:
-        # Every message follows <im_start>{role/name}\n{content}<im_end>\n
-        num_tokens += 4  # Tokens for <im_start>{role/name}\n{content}<im_end>\n
-        for key, value in message.items():
-            num_tokens += len(encoding.encode(value))
-    num_tokens += 2  # Add tokens for priming
-    return num_tokens
-
-
-def build_messages_for_api(current_thread_id, max_tokens=120000):
-    messages = []
-    user_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'user']
-    assistant_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg['role'] == 'assistant']
-    
-    model_name = getenv("OPENAI_MODEL")
-    
-    # Always include the system prompt
-    system_prompt = {'role': 'system', 'content': mprompts["sys_ragbot"]}
-    messages = [system_prompt]
-    
-    # Build the full conversation history
-    conversation = []
-    for idx in range(len(user_messages)):
-        # Add the user message without tool output
-        conversation.append(user_messages[idx].copy())
-        
-        # Add the assistant message (if exists)
-        if idx < len(assistant_messages):
-            conversation.append(assistant_messages[idx])
-
-    _ = """
-    for idx in range(len(user_messages)):
-        # User message with tool output
-        user_msg = user_messages[idx].copy()
-        if idx < len(tool_outputs):
-            tool_output = tool_outputs[idx]['tool_output']
-            user_msg['content'] += f"\n\n[Tool Output]:\n{tool_output}"
-        conversation.append(user_msg)
-        
-        # Assistant message (if exists)
-        if idx < len(assistant_messages):
-            assistant_msg = assistant_messages[idx]
-            conversation.append(assistant_msg)
-    """
-    # Combine system prompt and conversation
-    messages.extend(conversation)
-    
-    total_tokens = num_tokens_from_messages(messages, model_name)
-    
-    # Remove messages from the front (after system prompt) until total_tokens <= max_tokens
-    while total_tokens > max_tokens and len(messages) > 1:  # Always keep at least the system prompt
-        messages.pop(1)  # Remove the message right after the system prompt
-        total_tokens = num_tokens_from_messages(messages, model_name)
-    
-    return messages
-
-
-def check_if_for_tool(prompt, conversation):
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        temperature=0.0,
-          messages=[
-            {"role": "system", "content": """You are a helpful assistant that determines if the user question is related to the previous question in the conversation.
-             Answer question based on the meaning of the context provided in the user's question:
-             - If the latest question is related return: 1
-             - If it is not return: 0
-             """},
-            {"role": "user", "content": f"Previous conversation: {conversation}, \n\n Current question: {prompt}"},
-        ]
-    )
-
-    return response.choices[0].message.content.strip()
-
 def reset_memory():
     st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
     st.session_state.filtered_messages = ""
@@ -304,18 +221,7 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        jj = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") not in ["tool", "system"]][:-1]
-        print(f"\n\n\nJJ: {jj}")
-        if len(jj) < 2:
-            hh = 1
-        else:
-            hh = check_if_for_tool(st.session_state.prompt, jj)
-        hh = 1
-        if hh in ["0", 0]:
-            result, tool = hh, "NoTool"
-        else:
-            result, tool = rag_tool_answer(st.session_state.prompt)
-        print(f"\n\n\nHH: {hh}")
+        result, tool = rag_tool_answer(st.session_state.prompt)
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,
@@ -351,17 +257,14 @@ def main():
                 with st.chat_message("user", avatar=avatar_user):
                     st.markdown(st.session_state.prompt)
         else:
-            if result == hh:
-                temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": st.session_state.prompt}]}
-            else:
-                temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
-                    Answer the following question from the user:
-                    {st.session_state.prompt}{st.session_state.prompt}
-                    Using the following context, which comes directly from our database:
-                    {result}
-                    All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
-                    Always write in Serbian.
-                    """}]}
+            temp_full_prompt = {"role": "user", "content": [{"type": "text", "text": f"""
+                Answer the following question from the user:
+                {st.session_state.prompt}{st.session_state.prompt}
+                Using the following context, which comes directly from our database:
+                {result}
+                All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
+                Always write in Serbian.
+                """}]}
                     #If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
             # print(f"temp_full_prompt: {temp_full_prompt}")
     
@@ -383,7 +286,6 @@ def main():
                 # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
                 cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") not in ["tool", "system"]][:-1]
                 cc_messages.append(temp_full_prompt)
-                # cc_messages = build_messages_for_api(current_thread_id)
                 print(f"\n\n\ncc_messages: {cc_messages}")
                 message_placeholder = st.empty()
                 full_response = ""
