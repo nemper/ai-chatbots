@@ -260,7 +260,22 @@ def read_uploaded_file(uploaded_file, text_delimiter=" "):
     return data
 
 
+
 def process_text_with_delimiter(text, text_delimiter):
+    if not text_delimiter:
+        text_delimiter = "\n\n"
+
+    # Do not replace the delimiter; keep it in the text
+    # Proceed with other text cleaning tasks
+
+    # Additional text cleaning
+    text = text.replace("•", "")
+    text = re.sub(r"(?<=\b\w) (?=\w\b)", "", text)
+
+    return text
+
+
+def process_text_with_delimiter2(text, text_delimiter):
     """
     Processes the text by ensuring the specified text delimiter is handled correctly.
 
@@ -354,10 +369,10 @@ def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
         length_function=len,
         is_separator_regex=False,
     )
-    
     # Read the content of the uploaded file
     # data = read_uploaded_file(dokum)
     data = read_uploaded_file(dokum, text_delimiter=sep)
+    st.write("Processed text:", data)
     # data = pinecone_utility.read_uploaded_file(dokum)
     
     # Get a serializable file name or other string identifier
