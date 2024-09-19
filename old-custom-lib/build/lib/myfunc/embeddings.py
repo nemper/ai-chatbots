@@ -386,7 +386,7 @@ def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
     source_identifier = dokum.name if isinstance(dokum, UploadedFile) else str(dokum)
     
     texts = text_splitter.create_documents([data], metadatas=[{"source": source_identifier}])
-    
+    print("TEXTS", texts)
     # Define a custom method to convert Document to a JSON-serializable format
     output_json_list = []
     current_date = datetime.now()
