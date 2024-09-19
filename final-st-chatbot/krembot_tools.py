@@ -138,7 +138,7 @@ def dentyWF(prompt):
     def search_pinecone_second_set(device: str, query: str) -> List[Dict]:
         # Use the user's prompt as the query text
         filter = {"device": {"$eq": device}}
-        query_embedding = dense_query(query, top_k=4, filter=filter)
+        query_embedding = dense_query(query, top_k=10, filter=filter)
         # Process the matches as before
         matches = []
         for match in query_embedding:
@@ -151,14 +151,17 @@ def dentyWF(prompt):
             })
         return matches
     
-    unique_devices = set()
-    with open("denty_devices.csv", 'r') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            unique_devices.add(row['device'])
+    def read_devices_into_list(file_path):
+        try:
+            with open(file_path, "r") as infile:
+                return [line.strip() for line in infile.readlines()]
+        except IOError as e:
+            print(f"Error reading the file {file_path}: {e}")
+            return []
 
     def check_device_in_text():
-        for device in unique_devices:
+        x = read_devices_into_list("devices.txt")
+        for device in x:
             if device in prompt:
                 return device
         return False
@@ -174,7 +177,7 @@ def dentyWF(prompt):
         model="gpt-4o",
         temperature=0.0,
         messages=[
-            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context for the given user query. Only use the provided context (it's included in the user message) to generate the answer. The context is about the device: {device}"},
+            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context for the given user query. Only use the provided context (it's included in the user message) to generate the answer. Always include the provided url(s) in your answer. The context is about the device: {h}"},
             {"role": "user", "content": f"User query: {prompt},\n\nContext: {context}"}
         ]
     )
