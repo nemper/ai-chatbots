@@ -763,7 +763,7 @@ class PromptDatabase:
             return []
 
 
-#@st.cache_data
+@st.cache_data
 def work_prompts():
     default_prompt = "You are a helpful assistant that always writes in Serbian."
 
