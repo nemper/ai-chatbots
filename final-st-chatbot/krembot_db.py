@@ -263,14 +263,17 @@ class PromptDatabase:
         order_clause += "END"
 
         query = f"""
-        SELECT PromptString FROM PromptStrings
+        SELECT PromptName, PromptString FROM PromptStrings
         WHERE PromptName IN ({','.join(['?'] * len(prompt_names))})
         """ + order_clause
 
         params = tuple(prompt_names) + tuple(prompt_names)
         self.cursor.execute(query, params)
         results = self.cursor.fetchall()
-        return [result[0] for result in results] if results else []
+        dict = {}
+        for result in results:
+            dict[result[0]] = result[1]
+        return dict
 
     def get_records(self, query, params=None):
         try:
@@ -289,11 +292,6 @@ class PromptDatabase:
         query = f"SELECT DISTINCT {column} FROM {table}"
         records = self.get_records(query)
         return [record[0] for record in records] if records else []
-
-    def get_prompts_by_names(self, variable_names, prompt_names):
-        prompt_strings = self.query_sql_prompt_strings(prompt_names)
-        prompt_variables = dict(zip(variable_names, prompt_strings))
-        return prompt_variables
 
     def get_all_records_from_table(self, table_name):
         """
@@ -765,7 +763,7 @@ class PromptDatabase:
             return []
 
 
-@st.cache_data
+#@st.cache_data
 def work_prompts():
     default_prompt = "You are a helpful assistant that always writes in Serbian."
 
@@ -783,9 +781,6 @@ def work_prompts():
 
     with PromptDatabase() as db:
         env_vars = [getenv(name.upper()) for name in prompt_names]
-        prompt_map = db.get_prompts_by_names(prompt_names, env_vars)
-
-        for name in prompt_names:
-            all_prompts[name] = prompt_map.get(name, default_prompt)
+        prompt_map = db.query_sql_prompt_strings(env_vars)
     
-    return all_prompts
+    return prompt_map
