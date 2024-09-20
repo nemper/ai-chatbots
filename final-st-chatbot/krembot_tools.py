@@ -108,7 +108,6 @@ def get_structured_decision_from_model(user_query):
 
 
 def dentyWF(prompt):
-    import csv
     index = connect_to_pinecone(x=0)
 
     def get_embedding(text, model="text-embedding-3-large"):
