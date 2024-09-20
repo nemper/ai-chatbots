@@ -160,12 +160,15 @@ def dentyWF(prompt):
 
     def check_device_in_text():
         x = read_devices_into_list("devices.txt")
+        print(prompt)
+        print(x)
         for device in x:
             if device in prompt:
                 return device
         return False
 
     h = check_device_in_text()
+    print(h)
     if not h:
         return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
     else:
