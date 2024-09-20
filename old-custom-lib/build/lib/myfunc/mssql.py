@@ -1,5 +1,5 @@
 import json
-import os
+from os import getenv
 import pyodbc
 import streamlit as st
 
@@ -8,10 +8,10 @@ class ConversationDatabase:
     A class to interact with a MSSQL database for storing and retrieving conversation data.
     """
     def __init__(self, host=None, user=None, password=None, database=None):
-        self.host = host if host is not None else os.getenv('MSSQL_HOST')
-        self.user = user if user is not None else os.getenv('MSSQL_USER')
-        self.password = password if password is not None else os.getenv('MSSQL_PASS')
-        self.database = database if database is not None else os.getenv('MSSQL_DB')
+        self.host = host if host is not None else getenv('MSSQL_HOST')
+        self.user = user if user is not None else getenv('MSSQL_USER')
+        self.password = password if password is not None else getenv('MSSQL_PASS')
+        self.database = database if database is not None else getenv('MSSQL_DB')
         self.conn = None
         self.cursor = None
 
@@ -217,10 +217,10 @@ class PromptDatabase:
         """
         Initializes the connection details for the database, with the option to use environment variables as defaults.
         """
-        self.host = host if host is not None else os.getenv('MSSQL_HOST')
-        self.user = user if user is not None else os.getenv('MSSQL_USER')
-        self.password = password if password is not None else os.getenv('MSSQL_PASS')
-        self.database = database if database is not None else os.getenv('MSSQL_DB')
+        self.host = host if host is not None else getenv('MSSQL_HOST')
+        self.user = user if user is not None else getenv('MSSQL_USER')
+        self.password = password if password is not None else getenv('MSSQL_PASS')
+        self.database = database if database is not None else getenv('MSSQL_DB')
         self.conn = None
         self.cursor = None
         
@@ -261,14 +261,17 @@ class PromptDatabase:
         order_clause += "END"
 
         query = f"""
-        SELECT PromptString FROM PromptStrings
+        SELECT PromptName, PromptString FROM PromptStrings
         WHERE PromptName IN ({','.join(['?'] * len(prompt_names))})
         """ + order_clause
 
-        params = tuple(prompt_names) + tuple(prompt_names)  # prompt_names repeated for both IN and ORDER BY
+        params = tuple(prompt_names) + tuple(prompt_names)
         self.cursor.execute(query, params)
         results = self.cursor.fetchall()
-        return [result[0] for result in results] if results else []
+        dict = {}
+        for result in results:
+            dict[result[0]] = result[1]
+        return dict
 
     def get_records(self, query, params=None):
         try:
@@ -287,11 +290,6 @@ class PromptDatabase:
         query = f"SELECT DISTINCT {column} FROM {table}"
         records = self.get_records(query)
         return [record[0] for record in records] if records else []
-
-    def get_prompts_by_names(self, variable_names, prompt_names):
-        prompt_strings = self.query_sql_prompt_strings(prompt_names)
-        prompt_variables = dict(zip(variable_names, prompt_strings))
-        return prompt_variables
 
     def get_all_records_from_table(self, table_name):
         """
@@ -345,26 +343,21 @@ class PromptDatabase:
         Adds a new record to the database, handling the relationships between users, files, variables, and prompts.
         """
         try:
-            # Fetch UserID based on username
             self.cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (username,))
             user_result = self.cursor.fetchone()
             user_id = user_result[0] if user_result else None
 
-            # Fetch VariableID based on variablename
             self.cursor.execute("SELECT VariableID FROM PromptVariables WHERE VariableName = ?", (variablename,))
             variable_result = self.cursor.fetchone()
             variable_id = variable_result[0] if variable_result else None
 
-            # Fetch FileID based on filename
             self.cursor.execute("SELECT FileID FROM PythonFiles WHERE Filename = ?", (filename,))
             file_result = self.cursor.fetchone()
             file_id = file_result[0] if file_result else None
 
-            # Ensure all IDs are found
             if not all([user_id, variable_id, file_id]):
                 return "Error: Missing UserID, VariableID, or VariableFileID."
 
-            # Correctly include FileID in the insertion command
             self.cursor.execute(
                 "INSERT INTO PromptStrings (PromptString, PromptName, Comment, UserID, VariableID, VariableFileID) VALUES (?, ?, ?, ?, ?, ?)",
                 (promptstring, promptname, comment, user_id, variable_id, file_id)
@@ -773,52 +766,19 @@ def work_prompts():
     default_prompt = "You are a helpful assistant that always writes in Serbian."
 
     all_prompts = {
-        # asistenti.py
-        "text_from_image": default_prompt ,
-        "text_from_audio": default_prompt ,
-
-        # embeddings.py
-        "contextual_compression": default_prompt ,
-        "rag_self_query": default_prompt ,
-        
-        # various_tools.py
-        "hyde_rag": default_prompt ,
-        "choose_rag": default_prompt ,
-
-        # klotbot
+        "text_from_image": default_prompt,
+        "contextual_compression": default_prompt,
+        "rag_self_query": default_prompt,
+        "hyde_rag": default_prompt,
+        "choose_rag": default_prompt,
         "sys_ragbot": default_prompt,
         "rag_answer_reformat": default_prompt,
-
-        # upitnik
-        "gap_ba_expert" : default_prompt,
-        "gap_dt_consultant" : default_prompt,
-        "gap_service_suggestion" : default_prompt,
-        "gap_write_report" : default_prompt,
-
-        # zapisnik
-        "summary_end": default_prompt,
-        "summary_begin": default_prompt,
-        "intro_summary": default_prompt,
-        "topic_list_summary": default_prompt,
-        "date_participants_summary": default_prompt,
-        "topic_summary": default_prompt,
-        "conclusion_summary": default_prompt,
-
-        # pravnik
-        "new_law_email": default_prompt,
-        
-        # blogger
-        "sys_blogger": default_prompt,
-        
         }
 
     prompt_names = list(all_prompts.keys())
 
     with PromptDatabase() as db:
-        env_vars = [os.getenv(name.upper()) for name in prompt_names]
-        prompt_map = db.get_prompts_by_names(prompt_names, env_vars)
-
-        for name in prompt_names:
-            all_prompts[name] = prompt_map.get(name, default_prompt)
+        env_vars = [getenv(name.upper()) for name in prompt_names]
+        prompt_map = db.query_sql_prompt_strings(env_vars)
     
-    return all_prompts
+    return prompt_map
