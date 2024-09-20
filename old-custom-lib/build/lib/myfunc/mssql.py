@@ -773,12 +773,29 @@ def work_prompts():
         "choose_rag": default_prompt,
         "sys_ragbot": default_prompt,
         "rag_answer_reformat": default_prompt,
-        }
+    }
 
     prompt_names = list(all_prompts.keys())
 
+    # Build a mapping from original prompt names to environment variable values
+    prompt_env_map = {name: getenv(name.upper()) for name in prompt_names}
+
+    # Extract the environment variable values
+    env_vars = list(prompt_env_map.values())
+
     with PromptDatabase() as db:
-        env_vars = [getenv(name.upper()) for name in prompt_names]
-        prompt_map = db.query_sql_prompt_strings(env_vars)
-    
+        # Fetch the prompt strings from the database using the environment variable values
+        sql_results = db.query_sql_prompt_strings(env_vars)
+
+    # Build the output dictionary with original prompt names as keys
+    prompt_map = {}
+    for prompt_name in prompt_names:
+        env_var = prompt_env_map[prompt_name]
+        prompt_string = sql_results.get(env_var)
+        if prompt_string is not None:
+            prompt_map[prompt_name] = prompt_string
+        else:
+            # Use the default prompt if no result is found in the database
+            prompt_map[prompt_name] = all_prompts[prompt_name]
+
     return prompt_map
