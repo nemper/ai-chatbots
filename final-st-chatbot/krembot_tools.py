@@ -117,7 +117,7 @@ def dentyWF(prompt):
         ).data[0].embedding
         return response
 
-    def dense_query(query, top_k, filter, namespace="serviser"):
+    def dense_query(query, top_k, filter, namespace="dentyservis2"):
         # Get embedding for the user's actual query
         dense = get_embedding(text=query)
 
@@ -138,6 +138,7 @@ def dentyWF(prompt):
         # Use the user's prompt as the query text
         filter = {"device": {"$eq": device}}
         query_embedding = dense_query(query, top_k=10, filter=filter)
+        print(111111111, query_embedding)
         # Process the matches as before
         matches = []
         for match in query_embedding:
@@ -160,20 +161,17 @@ def dentyWF(prompt):
 
     def check_device_in_text():
         x = read_devices_into_list("devices.txt")
-        print(prompt)
-        print(x)
         for device in x:
             if device in prompt:
                 return device
         return False
 
     h = check_device_in_text()
-    print(h)
     if not h:
         return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
     else:
         context = search_pinecone_second_set(h, prompt)
-
+        print(context)
     # Finally, generate the response using the context
     response = client.chat.completions.create(
         model="gpt-4o",
