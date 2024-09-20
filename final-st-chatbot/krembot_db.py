@@ -771,7 +771,6 @@ def work_prompts():
 
     all_prompts = {
         "text_from_image": default_prompt,
-        "text_from_audio": default_prompt,
         "contextual_compression": default_prompt,
         "rag_self_query": default_prompt,
         "hyde_rag": default_prompt,
