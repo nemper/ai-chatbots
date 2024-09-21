@@ -689,21 +689,14 @@ class PineconeRetriever:
 
 
 # in myfunc.embeddings.py
-def prepare_embeddings(chunk_size, chunk_overlap, dokum, sep):
+def prepare_embeddings(chunk_size, chunk_overlap, dokum, semantic):
     file_name = "chunks.json"
-    semantic = st.radio(
-        "Odaberite tip pripreme: ",
-        ("Standard", "Heading", "Semantic", "CSV"),
-        key="semantic",
-        index=None,
-        horizontal=True,
-        help="Način pripreme JSON fajla za embeding",
-    )
     with io.open(dokum.name, "wb") as file:
             file.write(dokum.getbuffer())
     json_string = None
     if semantic == "Standard":
-        json_string = standard_chunks(dokum, chunk_size, chunk_overlap, sep)
+        x = st.text_input("Unesite delimiter", help="Unesite delimiter", key="delimiter")
+        json_string = standard_chunks(dokum, chunk_size, chunk_overlap, x)
     elif semantic in ["Heading", "Semantic", "CSV"] and st.button(f"Pripremi {semantic}"):
         with st.spinner(f"Radim {semantic}"):
             if semantic == "Heading":
