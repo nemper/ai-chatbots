@@ -696,7 +696,8 @@ def prepare_embeddings(chunk_size, chunk_overlap, dokum, semantic):
     json_string = None
     if semantic == "Standard":
         x = st.text_input("Unesite delimiter", help="Unesite delimiter", key="delimiter")
-        json_string = standard_chunks(dokum, chunk_size, chunk_overlap, x)
+        if x:
+            json_string = standard_chunks(dokum, chunk_size, chunk_overlap, x)
     elif semantic in ["Heading", "Semantic", "CSV"] and st.button(f"Pripremi {semantic}"):
         with st.spinner(f"Radim {semantic}"):
             if semantic == "Heading":
