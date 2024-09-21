@@ -289,20 +289,6 @@ def process_text_with_delimiter(text, text_delimiter):
     return text
 
 
-def is_binary(data):
-    # Placeholder for binary detection logic
-    return b'\0' in data
-
-def handle_docx_file(raw_data):
-    # Placeholder for handling DOCX files
-    return extract_text_from_docx(raw_data)
-
-def handle_pdf_file(raw_data):
-    # Placeholder for handling PDF files
-    return extract_text_from_pdf(raw_data)
-
-
-
 def read_uploaded_file2(uploaded_file):
     if isinstance(uploaded_file, UploadedFile):
         # Streamlit's UploadedFile needs to be read directly
@@ -360,6 +346,8 @@ def standard_chunks(dokum, chunk_size, chunk_overlap, sep="\n\n", keep=False):
     # print("Data after reading:", repr(data))
     
     # Split the text on the custom delimiter
+    if not sep:
+        sep = "\n\n"
     initial_chunks = data.split(sep)
     
     # Remove any empty chunks and strip whitespace
