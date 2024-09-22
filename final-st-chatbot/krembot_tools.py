@@ -782,8 +782,10 @@ def order_delfi(prompt):
         orders = re.findall(pattern, text)
         
         # Convert the matched strings to integers
-        orders = [int(order) for order in orders]
+        return [int(order) for order in orders]
+
     order_ids = extract_orders_from_string(prompt)
+    print(order_ids)
     if len(order_ids) > 0:
         return API_search_2(order_ids)
     else:
