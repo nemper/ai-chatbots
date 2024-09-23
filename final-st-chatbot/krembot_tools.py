@@ -41,7 +41,12 @@ def rag_tool_answer(prompt):
 
     elif os.getenv("APP_ID") == "DentyBot":
         return dentyWF(prompt), st.session_state.rag_tool
-        
+    
+    elif os.getenv("APP_ID") == "DentyBotS":
+        processor = HybridQueryProcessor(namespace="brosureiuputstva", delfi_special=1)
+        context = processor.process_query_results(prompt)
+        return context, st.session_state.rag_tool
+    
     elif os.getenv("APP_ID") == "ECDBot":
         processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
         return processor.process_query_results(prompt), st.session_state.rag_tool
@@ -1120,7 +1125,8 @@ class HybridQueryProcessor:
             'include_metadata': True,
             'namespace': namespace or self.namespace
         }
-
+        print("NAMESPACE: ", namespace)
+        print("NAMESPACE: ", self.namespace)
         if filter:
             query_params['filter'] = filter
 
