@@ -102,6 +102,11 @@ def rag_tool_answer2(prompt):
 
     elif os.getenv("APP_ID") == "DentyBot":
         return dentyWF(prompt), st.session_state.rag_tool
+
+    elif os.getenv("APP_ID") == "DentyBotS":
+        processor = HybridQueryProcessor(namespace="brosureiuputstva", delfi_special=1)
+        context = processor.process_query_results(prompt)
+        return context, st.session_state.rag_tool
         
     context = " "
     st.session_state.rag_tool = get_structured_decision_from_model(prompt)
