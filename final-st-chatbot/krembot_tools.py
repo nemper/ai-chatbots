@@ -40,6 +40,24 @@ def rag_tool_answer(prompt):
         return intelisale(prompt), st.session_state.rag_tool
 
     elif os.getenv("APP_ID") == "DentyBot":
+        def read_devices_into_list(file_path):
+            try:
+                with open(file_path, "r") as infile:
+                    return [line.strip() for line in infile.readlines()]
+            except IOError as e:
+                print(f"Error reading the file {file_path}: {e}")
+                return []
+            
+        def check_device_in_text():
+            x = read_devices_into_list("devices.txt")
+            for device in x:
+                if device in prompt:
+                    return device
+            return False
+
+        device = check_device_in_text()
+        processor = HybridQueryProcessor(namespace="dentyservis2", delfi_special=1)
+        search_results = processor.search_by_device(query=prompt, device=device, top_k=10, namespace="dentyservis2")
         return dentyWF(prompt), st.session_state.rag_tool
     
     elif os.getenv("APP_ID") == "DentyBotS":
@@ -48,7 +66,7 @@ def rag_tool_answer(prompt):
         return context, st.session_state.rag_tool
     
     elif os.getenv("APP_ID") == "ECDBot":
-        processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
+        processor = HybridQueryProcessor(namespace="ecd", delfi_special=1)
         return processor.process_query_results(prompt), st.session_state.rag_tool
     
     context = " "
@@ -1134,7 +1152,7 @@ class HybridQueryProcessor:
         matches = response.to_dict().get('matches', [])
         results = []
 
-        for match in matches:
+        for idx, match in enumerate(matches):
             try:
                 metadata = match.get('metadata', {})
 
@@ -1146,6 +1164,9 @@ class HybridQueryProcessor:
                 result_entry.setdefault('chunk', None)
                 result_entry.setdefault('source', None)
                 result_entry.setdefault('score', match.get('score', 0))
+
+                #if idx != 0 and getenv("APP_ID") == "ECDBot":
+                #    result_entry['source'] = None  # or omit this line to exclude 'source' entirely
 
                 # Only add to results if 'context' exists
                 if result_entry['context']:
@@ -1169,7 +1190,7 @@ class HybridQueryProcessor:
             for item in tematika:
                 if item["score"] > self.score:
                     # Build the metadata string from all relevant fields
-                    metadata_str = "\n".join(f"{key}: {value}" for key, value in item.items())
+                    metadata_str = "\n".join(f"{key}: {value}" for key, value in item.items() if value != None)
                     # Append the formatted metadata string to uk_teme
                     uk_teme += metadata_str + "\n\n"
             
@@ -1195,6 +1216,26 @@ class HybridQueryProcessor:
         result = client.embeddings.create(input=[text], model=model).data[0].embedding
        
         return result
+    
+    def search_by_device(self, query: str, device: str, top_k: int = 10, namespace: str = "dentyservis2") -> List[Dict]:
+        """
+        Searches Pinecone filtered by device metadata and returns ranked results.
+        """
+        filter = {"device": {"$eq": device}}
+        results = self.hybrid_query(upit=query, top_k=top_k, filter=filter, namespace=namespace)
+        
+        # Process the matches to include only relevant metadata
+        processed_matches = []
+        for match in results:
+            metadata = match
+            processed_matches.append({
+                'url': metadata.get('url', ''),
+                'page': metadata.get('page', ''),
+                'text': metadata.get('text', ''),
+                'device': metadata.get('device', ''),
+                'score': metadata.get('score', 0)  # Include score if needed
+            })
+        return processed_matches
 
 
 def intelisale(query):
