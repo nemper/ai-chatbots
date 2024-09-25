@@ -1165,8 +1165,8 @@ class HybridQueryProcessor:
                 result_entry.setdefault('source', None)
                 result_entry.setdefault('score', match.get('score', 0))
 
-                #if idx != 0 and getenv("APP_ID") == "ECDBot":
-                #    result_entry['source'] = None  # or omit this line to exclude 'source' entirely
+                if idx != 0 and getenv("APP_ID") == "ECDBot":
+                    result_entry['source'] = None  # or omit this line to exclude 'source' entirely
 
                 # Only add to results if 'context' exists
                 if result_entry['context']:
