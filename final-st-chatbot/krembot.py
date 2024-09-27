@@ -44,8 +44,8 @@ from streamlit_feedback import streamlit_feedback
 
 mprompts = work_prompts()
 
-#with st.expander("Promptovi"):
-#    st.write(mprompts)
+with st.expander("Promptovi"):
+    st.write(mprompts)
 
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
