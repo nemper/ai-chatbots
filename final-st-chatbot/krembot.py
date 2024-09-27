@@ -363,7 +363,7 @@ def main():
             else:
                 result, tool = rag_tool_answer(st.session_state.prompt, selected_device)
         else:
-            rag_tool_answer(st.session_state.prompt, 1)
+            result, tool = rag_tool_answer(st.session_state.prompt, 1)
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,
