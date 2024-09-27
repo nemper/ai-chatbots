@@ -2,15 +2,15 @@ import io
 import streamlit as st
 import uuid
 
-_ = """
+#_ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Denty"
-os.environ["SYS_RAGBOT"] = "DENTY_SALES"
-os.environ["APP_ID"] = "DentyBotS"
+os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
+os.environ["APP_ID"] = "DentyBot"
 os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-"""
+#"""
 
 _ = """
 import os
@@ -75,8 +75,132 @@ if st.session_state.thread_id not in st.session_state.messages:
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 file_reader = FileReader()
 
-# custom_streamlit_style()
-# apply_background_image(avatar_bg)
+
+CATEGORY_DEVICE_MAPPING = {
+"CAD/CAM Systems": [
+    "CEREC",
+    "CEREC AC",
+    "CEREC AF",
+    "CEREC AI",
+    "CEREC MC",
+    "CEREC MC XL",
+    "CEREC NETWORK",
+    "CEREC OMNICAM",
+    "CEREC PRIMEMILL",
+    "CEREC PRIMESCAN",
+    "CEREC SPEEDFIRE",
+    "OMNICAM",
+    "PRIMESCAN AC",
+    "PRIMEPRINT",
+    "PRIMEPRINT PPU"
+],
+"Imaging Systems": [
+    "GALILEOS",
+    "GALILEOS COMFORT",
+    "GALILEOS GAX5",
+    "GALILEOS X-RAY UNIT",
+    "FACESCAN",
+    "PERIOSCAN",
+    "SIDEXIS 4",
+    "SIDEXIS XG",
+    "XIOS"
+],
+"Dental Units": [
+    "HELIODENT",
+    "HELIODENT DS",
+    "HELIODENT PLUS",
+    "HELIODENT VARIO",
+    "C2",
+    "C5",
+    "C8",
+    "CEREC MC",
+    "CEREC MC XL",
+    "INLAB MC",
+    "INLAB MC X5",
+    "INLAB MC XL",
+    "INLAB PC",
+    "INLAB PROFIRE",
+    "SIROTORQUE L",
+    "T1 CLASSIC",
+    "T1 ENERGO",
+    "T1 HIGHSPEED",
+    "T1 LINE",
+    "T1 TURBINE",
+    "T2 ENERGO",
+    "T2 HIGHSPEED",
+    "T2 LINE",
+    "T2 REVO",
+    "T3 HIGHSPEED",
+    "T3 LINE",
+    "T3 RACER",
+    "T3 TURBINE",
+    "T4 LINE",
+    "T4 RACER",
+    "TURBINE",
+    "TURBINES SIROBOOST",
+    "TURBINES T1 CONTROL",
+    "VARIO DG"
+],
+"Lasers": [
+    "FONALASER",
+    "SIROLASER",
+    "SIROLASER XTEND",
+    "SIROENDO",
+    "SIROCAM"
+],
+"Intraoral Scanners": [
+    "INLAB MC",
+    "INLAB MC X5",
+    "INLAB MC XL",
+    "PRIMESCAN AC",
+    "SIM INTEGO"
+],
+"Dental Instruments and Tools": [
+    "AE SENSOR",
+    "APOLLO DI",
+    "AXANO",
+    "AXEOS",
+    "CARL",
+    "CEILING MODEL",
+    "CERCON",
+    "ENDO",
+    "HEAT-DUO",
+    "LEDLIGHT",
+    "LEDVIEW",
+    "M1",
+    "MAILLEFER",
+    "MIDWEST",
+    "MM2-SINTER",
+    "MOTORCAST COMPACT",
+    "MULTIMAT",
+    "PAUL",
+    "PROFEEL",
+    "PROFIRE",
+    "SIMULATION UNIT",
+    "SINIUS",
+    "SIROTORQUE L",
+    "SIUCOM",
+    "SIVISION",
+    "TEMPERATURE TABLE",
+    "TENEO",
+    "TULSA"
+],
+"Other Equipment/Accessories": [
+    "INTRAORAL PRODUCTS"
+]
+}
+
+# Sidebar for selections
+st.sidebar.header("Select Device Category and Device")
+
+# Category selection
+categories = list(CATEGORY_DEVICE_MAPPING.keys())
+selected_category = st.sidebar.selectbox("Select a Category", categories)
+
+# Device selection based on selected category
+devices = CATEGORY_DEVICE_MAPPING[selected_category]
+selected_device = st.sidebar.selectbox("Select a Device", devices)
+
 
 def handle_feedback():
     feedback = st.session_state.get("fb_k", {})
@@ -232,7 +356,14 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        result, tool = rag_tool_answer(st.session_state.prompt)
+        if getenv("APP_ID") == "DentyBot":
+            x = selected_device
+            if not x:
+                st.error("Niste izabrali uređaj.")
+            else:
+                result, tool = rag_tool_answer(st.session_state.prompt, selected_device)
+        else:
+            rag_tool_answer(st.session_state.prompt, 1)
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,
@@ -274,7 +405,7 @@ def main():
                 Using the following context, which comes directly from our database:
                 {result}
                 All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
-                Always write in Serbian. Always provide corresponding links from established knowledge base and do NOT generate or suggest any links that do not exist within it. 
+                Always provide corresponding links from established knowledge base and do NOT generate or suggest any links that do not exist within it. 
                 """}]}
                     #If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
             # print(f"temp_full_prompt: {temp_full_prompt}")

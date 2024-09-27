@@ -134,10 +134,6 @@ async def fetch_spoken_response(client, user_message, full_response, api_key):
 
 
 async def suggest_questions(prompt, api_key=getenv("OPENAI_API_KEY")):
-    system_message = {
-        "role": "system",
-        "content": f"Use only the Serbian language"
-    }
     user_message = {
         "role": "user",
         "content": f"""You are an AI language model assistant for a company's chatbot. Your task is to generate 3 different possible continuation sentences that a user might say based on the given context. These continuations should be in the form of questions or statements that naturally follow from the conversation.
@@ -234,7 +230,7 @@ def process_request(client, full_prompt, full_response, api_key):
 
 system_message = {
         "role": "system",
-        "content": f"Use only the Serbian language"           
+        "content":         
             f"You are an AI language model assistant for a company's chatbot. Your task is to generate "
             f"3 different possible continuation sentences that a user might say based on the given context. "
             f"These continuations should be in the form of questions or statements that naturally follow from "

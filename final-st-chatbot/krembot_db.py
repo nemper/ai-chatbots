@@ -765,7 +765,7 @@ class PromptDatabase:
 
 @st.cache_data
 def work_prompts():
-    default_prompt = "You are a helpful assistant that always writes in Serbian."
+    default_prompt = "You are a helpful assistant."
 
     all_prompts = {
         "text_from_image": default_prompt,

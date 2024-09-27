@@ -33,32 +33,19 @@ def connect_to_pinecone(x):
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
 
-def rag_tool_answer(prompt):
+def rag_tool_answer(prompt, x):
     st.session_state.rag_tool = "ClientDirect"
 
     if os.getenv("APP_ID") == "InteliBot":
         return intelisale(prompt), st.session_state.rag_tool
 
     elif os.getenv("APP_ID") == "DentyBot":
-        def read_devices_into_list(file_path):
-            try:
-                with open(file_path, "r") as infile:
-                    return [line.strip() for line in infile.readlines()]
-            except IOError as e:
-                print(f"Error reading the file {file_path}: {e}")
-                return []
-            
-        def check_device_in_text():
-            x = read_devices_into_list("devices.txt")
-            for device in x:
-                if device in prompt:
-                    return device
-            return False
+        processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
+        search_results = processor.search_by_device(query=prompt, device=x, top_k=10, namespace="denty-serviser")
+        print(44444444444444444444444, search_results)
 
-        device = check_device_in_text()
-        processor = HybridQueryProcessor(namespace="dentyservis2", delfi_special=1)
-        search_results = processor.search_by_device(query=prompt, device=device, top_k=10, namespace="dentyservis2")
-        return dentyWF(prompt), st.session_state.rag_tool
+        return search_results, st.session_state.rag_tool
+        # return dentyWF(prompt), st.session_state.rag_tool
     
     elif os.getenv("APP_ID") == "DentyBotS":
         processor = HybridQueryProcessor(namespace="brosureiuputstva", delfi_special=1)
@@ -128,83 +115,6 @@ def get_structured_decision_from_model(user_query):
     data_dict = json.loads(json_string)
     # Access the 'tool' value
     return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
-
-
-def dentyWF(prompt):
-    index = connect_to_pinecone(x=0)
-
-    def get_embedding(text, model="text-embedding-3-large"):
-        response = client.embeddings.create(
-            input=[text],
-            model=model
-        ).data[0].embedding
-        return response
-
-    def dense_query(query, top_k, filter, namespace="dentyservis2"):
-        # Get embedding for the user's actual query
-        dense = get_embedding(text=query)
-
-        query_params = {
-            'top_k': top_k,
-            'vector': dense,
-            'include_metadata': True,
-            'filter': filter,
-            'namespace': namespace
-        }
-
-        response = index.query(**query_params)
-        matches = response.to_dict().get('matches', [])
-        matches.sort(key=lambda x: x['score'], reverse=True)
-        return matches
-
-    def search_pinecone_second_set(device: str, query: str) -> List[Dict]:
-        # Use the user's prompt as the query text
-        filter = {"device": {"$eq": device}}
-        query_embedding = dense_query(query, top_k=10, filter=filter)
-        print(111111111, query_embedding)
-        # Process the matches as before
-        matches = []
-        for match in query_embedding:
-            metadata = match['metadata']
-            matches.append({
-                'url': metadata['url'],
-                'page': metadata['page'],
-                'text': metadata['text'],
-                'device': metadata['device'],
-            })
-        return matches
-    
-    def read_devices_into_list(file_path):
-        try:
-            with open(file_path, "r") as infile:
-                return [line.strip() for line in infile.readlines()]
-        except IOError as e:
-            print(f"Error reading the file {file_path}: {e}")
-            return []
-
-    def check_device_in_text():
-        x = read_devices_into_list("devices.txt")
-        for device in x:
-            if device in prompt:
-                return device
-        return False
-
-    h = check_device_in_text()
-    if not h:
-        return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
-    else:
-        context = search_pinecone_second_set(h, prompt)
-        print(context)
-    # Finally, generate the response using the context
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context for the given user query. Only use the provided context (it's included in the user message) to generate the answer. Always include the provided url(s) in your answer. The context is about the device: {h}"},
-            {"role": "user", "content": f"User query: {prompt},\n\nContext: {context}"}
-        ]
-    )
-    return response.choices[0].message.content.strip(), "DentyBot"
 
 
 def graphp(pitanje):
@@ -1143,15 +1053,13 @@ class HybridQueryProcessor:
             'include_metadata': True,
             'namespace': namespace or self.namespace
         }
-        print("NAMESPACE: ", namespace)
-        print("NAMESPACE: ", self.namespace)
         if filter:
             query_params['filter'] = filter
 
         response = self.index.query(**query_params)
         matches = response.to_dict().get('matches', [])
         results = []
-
+        print(565, matches)
         for idx, match in enumerate(matches):
             try:
                 metadata = match.get('metadata', {})
@@ -1160,7 +1068,7 @@ class HybridQueryProcessor:
                 result_entry = metadata.copy()
 
                 # Ensure mandatory fields exist with default values if they are not in metadata
-                result_entry.setdefault('context', '')
+                result_entry.setdefault('context', metadata.get('text', ''))
                 result_entry.setdefault('chunk', None)
                 result_entry.setdefault('source', None)
                 result_entry.setdefault('score', match.get('score', 0))
@@ -1175,7 +1083,7 @@ class HybridQueryProcessor:
                 # Log or handle the exception if needed
                 print(f"An error occurred: {e}")
                 pass
-
+        print(566, results)
         return results
        
     def process_query_results(self, upit, dict=False):
@@ -1217,25 +1125,44 @@ class HybridQueryProcessor:
        
         return result
     
-    def search_by_device(self, query: str, device: str, top_k: int = 10, namespace: str = "dentyservis2") -> List[Dict]:
+    def search_by_device(self, query, device, top_k=10, namespace="denty-serviser"):
         """
-        Searches Pinecone filtered by device metadata and returns ranked results.
+        Retrieves top_k entries filtered by device.
         """
-        filter = {"device": {"$eq": device}}
+        # Implement the device filtering logic here
+        # For example:
+        filter = {'device': {'$in': [device]}}  # Use the 'device' parameter
+        
+        print(f"Performing search with device filter in namespace: {namespace}")
+        
+        # Perform the hybrid query with the device filter
         results = self.hybrid_query(upit=query, top_k=top_k, filter=filter, namespace=namespace)
+        
+        print(f"Raw results: {results}")  # Debugging
         
         # Process the matches to include only relevant metadata
         processed_matches = []
         for match in results:
-            metadata = match
+            # Access fields directly from match
+            device_list = match.get('device', [])
+            if isinstance(device_list, list):
+                device_str = ', '.join(device_list)
+            else:
+                device_str = str(device_list).lower()  # Ensure it's a string
+            
             processed_matches.append({
-                'url': metadata.get('url', ''),
-                'page': metadata.get('page', ''),
-                'text': metadata.get('text', ''),
-                'device': metadata.get('device', ''),
-                'score': metadata.get('score', 0)  # Include score if needed
+                'url': match.get('url', ''),
+                'page': match.get('page', ''),
+                'text': match.get('text', ''),
+                'device': device_str,
+                'score': match.get('score', 0)  # Include score if needed
             })
-        return processed_matches
+        
+        print(f"Processed matches: {processed_matches}")  # Debugging
+        return processed_matches  # It's good practice to return the processed results
+
+
+
 
 
 def intelisale(query):
