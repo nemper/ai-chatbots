@@ -2,7 +2,7 @@ import io
 import streamlit as st
 import uuid
 
-#_ = """
+_ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Denty"
 os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
@@ -10,7 +10,7 @@ os.environ["APP_ID"] = "DentyBot"
 os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-#"""
+"""
 
 _ = """
 import os
