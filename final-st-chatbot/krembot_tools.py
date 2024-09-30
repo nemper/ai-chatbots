@@ -33,6 +33,7 @@ def connect_to_pinecone(x):
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
 
+
 def rag_tool_answer(prompt, x):
     st.session_state.rag_tool = "ClientDirect"
 
@@ -41,7 +42,7 @@ def rag_tool_answer(prompt, x):
 
     elif os.getenv("APP_ID") == "DentyBot":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
-        search_results = processor.search_by_device(query=prompt, device=x, top_k=10, namespace="denty-serviser")
+        search_results = processor.process_query_results(upit=prompt, device=x)
         print(44444444444444444444444, search_results)
 
         return search_results, st.session_state.rag_tool
@@ -721,9 +722,14 @@ def order_delfi(prompt):
     print(order_ids)
     if len(order_ids) > 0:
         return API_search_2(order_ids)
+        if o[0]['package_status'] == "MAIL_SENT":
+            return "Nema informacija o porudžbini."
     else:
         return "Morate uneti tačan broj porudžbine/a."
 
+
+def API_search_AKS(order_ids):
+    return 
 
 def API_search(matching_sec_ids):
 
@@ -1068,9 +1074,11 @@ class HybridQueryProcessor:
                 result_entry = metadata.copy()
 
                 # Ensure mandatory fields exist with default values if they are not in metadata
-                result_entry.setdefault('context', metadata.get('text', ''))
+                result_entry.setdefault('context', None)
                 result_entry.setdefault('chunk', None)
                 result_entry.setdefault('source', None)
+                result_entry.setdefault('url', None)
+                result_entry.setdefault('page', None)
                 result_entry.setdefault('score', match.get('score', 0))
 
                 if idx != 0 and getenv("APP_ID") == "ECDBot":
@@ -1086,12 +1094,16 @@ class HybridQueryProcessor:
         print(566, results)
         return results
        
-    def process_query_results(self, upit, dict=False):
+    def process_query_results(self, upit, dict=False, device=None):
         """
         Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
         Additionally, returns a list of scores for items that meet the score threshold.
         """
-        tematika = self.hybrid_query(upit)
+        if getenv("APP_ID") == "DentyBot":
+            filter = {'device': {'$in': [device]}}
+            tematika = self.hybrid_query(upit=upit, filter=filter)
+        else:
+            tematika = self.hybrid_query(upit=upit)
         if not dict:
             uk_teme = ""
             
