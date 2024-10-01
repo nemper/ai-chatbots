@@ -80,6 +80,9 @@ def rag_tool_answer(prompt, x):
     elif st.session_state.rag_tool == "Pineg":
         context = pineg(prompt)
 
+    elif st.session_state.rag_tool == "Natop":
+        context = get_items_by_category(prompt)
+
     elif st.session_state.rag_tool == "Orders":
         context = order_delfi(prompt)
 
@@ -649,6 +652,54 @@ def pineg(pitanje):
     # print(f"Display Results: {display_results(combined_results)}")
     return combined_results
 
+
+def get_items_by_category(prompt):
+    response = client.chat.completions.create(
+        model=getenv("OPENAI_MODEL"),
+        temperature=0.0,
+        response_format={"type": "json_object"},
+        messages=[
+        {"role": "system", "content": """You are a helpful assistant that determines the category of the user's query. It must be one of the following 3: 
+         Knjiga, Strana knjiga, Gift
+         
+         You may only return the name of the category (with the capitalization as provided above). Do not include any additional information."""},
+        {"role": "user", "content": f"Please provide the response in JSON format: {prompt}"}],
+        )
+    data_dict = json.loads(response.choices[0].message.content)
+    # Access the 'tool' value
+    category = data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
+    
+    try:
+        # Slanje GET zahteva prema API-ju
+        response = requests.get("https://delfi.rs/api/pc-frontend-api/toplists")
+        response.raise_for_status()  # Provera uspešnosti zahteva
+
+        # Parsiranje odgovora iz JSON formata
+        result_string = ""
+        data = response.json()
+        for item in data.get('data', {}).get('sections', []):
+            for product in item.get('content', {}).get('products', []):
+                if product.get('category') == category:
+                    title = product.get('title', 'N/A')
+                    authors = product.get('authors', [])
+                    genres = product.get('genres', [])
+                    
+                    # Convert authors and genres to a string format
+                    authors_str = ', '.join([author.get('authorName', 'Unknown') for author in authors])
+                    genres_str = ', '.join([genre.get('genreName', 'Unknown') for genre in genres])
+                    
+                    # Append the collected information to the result string
+                    result_string += f"Title: {title}\n"
+                    result_string += f"Authors: {authors_str}\n"
+                    result_string += f"Genres: {genres_str}\n"
+                    result_string += "-" * 40 + "\n"  # Separator for readability
+                    
+        return result_string
+
+    except requests.exceptions.RequestException as e:
+        return f"Došlo je do greške prilikom povezivanja sa API-jem: {e}"
+
+
 def API_search_2(order_ids):
 
     def get_order_info(order_id):
@@ -657,7 +708,7 @@ def API_search_2(order_ids):
             'x-api-key': getenv("DELFI_ORDER_API_KEY")
         }
         return requests.get(url, headers=headers).json()
-
+    tc = []
     # Function to parse the JSON response and extract required fields
     def parse_order_info(json_data):
         order_info = {}
@@ -670,7 +721,7 @@ def API_search_2(order_ids):
             order_info['delivery_service'] = data.get('delivery_service', 'N/A')
             order_info['delivery_time'] = data.get('delivery_time', 'N/A')
             order_info['payment_type'] = data.get('payment_detail', {}).get('payment_type', 'N/A')
-
+            tc.append(data.get('tracking_codes', None))
             # Extract package info if available
             packages = data.get('packages', [])
             if packages:
@@ -702,6 +753,9 @@ def API_search_2(order_ids):
     except Exception as e:
         print(f"Error retrieving order information: {e}")
         orders_info = "No orders found for the given IDs."
+    tc = [x for x in tc if x is not None]
+    if len(tc) > 0:
+        orders_info.append(API_search_aks(tc))
 
     return orders_info
 
@@ -727,9 +781,6 @@ def order_delfi(prompt):
     else:
         return "Morate uneti tačan broj porudžbine/a."
 
-
-def API_search_AKS(order_ids):
-    return 
 
 def API_search(matching_sec_ids):
 
@@ -875,6 +926,71 @@ def API_search(matching_sec_ids):
     # for info in products_info:
     #     output += str(info) + "\n"
     return products_info
+
+
+def API_search_aks(order_ids):
+    
+    def get_order_status(order_id):
+        url = f"http://www.akskurir.com/AKSVipService/Pracenje/{order_id}"
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for failed requests
+        return response.json()
+
+    def parse_order_status(json_data):
+        status_info = {}
+        status_changes = []
+        
+        if 'ErrorCode' in json_data and json_data['ErrorCode'] == 0:
+            status_info['ErrorCode'] = json_data.get('ErrorCode', 'N/A')
+            status_info['Status'] = json_data.get('Status', 'N/A')
+            
+            lst = json_data.get('StatusList', [])
+            for status in lst:
+                status_change = {
+                    'Vreme': status.get('Vreme', 'N/A'),
+                    'VremeInt': status.get('VremeInt', 'N/A'),
+                    'Centar': status.get('Centar', 'N/A'),
+                    'StatusOpis': status.get('StatusOpis', 'N/A'),
+                    'NStatus': status.get('NStatus', 'N/A')
+                }
+                status_changes.append(status_change)
+        else:
+            status_info['ErrorCode'] = json_data.get('ErrorCode', 'N/A')
+            status_info['Status'] = json_data.get('Status', 'N/A')
+
+        return status_info, status_changes
+
+    def get_multiple_orders_info(order_ids):
+        orders_info = []
+        for order_id in order_ids:
+            try:
+                # Fetch order status
+                order_status_json = get_order_status(order_id)
+                current_status, status_changes = parse_order_status(order_status_json)
+                
+                # Assemble order information
+                order_info = {
+                    'order_id': order_id,
+                    'current_status': current_status,
+                    'status_changes': status_changes
+                }
+                orders_info.append(order_info)
+            except requests.exceptions.RequestException as e:
+                print(f"HTTP error for order {order_id}: {e}")
+                orders_info.append({'order_id': order_id, 'error': str(e)})
+            except Exception as e:
+                print(f"Error for order {order_id}: {e}")
+                orders_info.append({'order_id': order_id, 'error': str(e)})
+        return orders_info
+
+    # Main function to retrieve information for all orders
+    try:
+        orders_info = get_multiple_orders_info(order_ids)
+    except Exception as e:
+        print(f"Error retrieving order information: {e}")
+        orders_info = "No orders found for the given IDs."
+
+    return orders_info
 
 
 def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
