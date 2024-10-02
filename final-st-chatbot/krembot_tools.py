@@ -2,7 +2,6 @@ import json
 import neo4j
 import pyodbc
 import requests
-import streamlit as st
 import xml.etree.ElementTree as ET
 
 from langchain.chains.query_constructor.base import AttributeInfo
@@ -33,46 +32,57 @@ def connect_to_pinecone(x):
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
 
-def rag_tool_answer(prompt):
-    st.session_state.rag_tool = "ClientDirect"
+
+def rag_tool_answer(prompt, x):
+    rag_tool = "ClientDirect"
 
     if os.getenv("APP_ID") == "InteliBot":
-        return intelisale(prompt), st.session_state.rag_tool
+        return intelisale(prompt),rag_tool
 
     elif os.getenv("APP_ID") == "DentyBot":
-        return dentyWF(prompt), st.session_state.rag_tool
-        
+        processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
+        search_results = processor.process_query_results(upit=prompt, device=x)
+        return search_results,rag_tool
+    
+    elif os.getenv("APP_ID") == "DentyBotS":
+        processor = HybridQueryProcessor(namespace="denty-komercijalista", delfi_special=1)
+        context = processor.process_query_results(prompt)
+        return context,rag_tool
+    
     elif os.getenv("APP_ID") == "ECDBot":
-        processor = HybridQueryProcessor(namespace="ecd-uput", delfi_special=1)
-        return processor.process_query_results(prompt), st.session_state.rag_tool
+        processor = HybridQueryProcessor(namespace="ecd", delfi_special=1)
+        return processor.process_query_results(prompt),rag_tool
     
     context = " "
-    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
+    rag_tool = get_structured_decision_from_model(prompt)
 
-    if st.session_state.rag_tool == "Hybrid":
+    if rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
 
-    elif st.session_state.rag_tool == "Opisi":
+    elif rag_tool == "Opisi":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(prompt)
 
-    elif st.session_state.rag_tool == "Korice":
+    elif rag_tool == "Korice":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
         
-    elif st.session_state.rag_tool == "Graphp": 
+    elif rag_tool == "Graphp": 
         context = graphp(prompt)
 
-    elif st.session_state.rag_tool == "Pineg":
+    elif rag_tool == "Pineg":
         context = pineg(prompt)
 
-    elif st.session_state.rag_tool == "Orders":
+    elif rag_tool == "Natop":
+        context = get_items_by_category(prompt)
+
+    elif rag_tool == "Orders":
         context = order_delfi(prompt)
 
-    return context, st.session_state.rag_tool
+    return context,rag_tool
 
 
 def get_structured_decision_from_model(user_query):
@@ -105,83 +115,6 @@ def get_structured_decision_from_model(user_query):
     data_dict = json.loads(json_string)
     # Access the 'tool' value
     return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
-
-
-def dentyWF(prompt):
-    import csv
-    index = connect_to_pinecone(x=0)
-
-    def get_embedding(text, model="text-embedding-3-large"):
-        response = client.embeddings.create(
-            input=[text],
-            model=model
-        ).data[0].embedding
-        return response
-
-    def dense_query(query, top_k, filter, namespace="serviser"):
-        # Get embedding for the user's actual query
-        dense = get_embedding(text=query)
-
-        query_params = {
-            'top_k': top_k,
-            'vector': dense,
-            'include_metadata': True,
-            'filter': filter,
-            'namespace': namespace
-        }
-
-        response = index.query(**query_params)
-        matches = response.to_dict().get('matches', [])
-        matches.sort(key=lambda x: x['score'], reverse=True)
-        return matches
-
-    def search_pinecone_second_set(device: str, query: str) -> List[Dict]:
-        # Use the user's prompt as the query text
-        filter = {"device": {"$eq": device}}
-        query_embedding = dense_query(query, top_k=10, filter=filter)
-        # Process the matches as before
-        matches = []
-        for match in query_embedding:
-            metadata = match['metadata']
-            matches.append({
-                'url': metadata['url'],
-                'page': metadata['page'],
-                'text': metadata['text'],
-                'device': metadata['device'],
-            })
-        return matches
-    
-    def read_devices_into_list(file_path):
-        try:
-            with open(file_path, "r") as infile:
-                return [line.strip() for line in infile.readlines()]
-        except IOError as e:
-            print(f"Error reading the file {file_path}: {e}")
-            return []
-
-    def check_device_in_text():
-        x = read_devices_into_list("devices.txt")
-        for device in x:
-            if device in prompt:
-                return device
-        return False
-
-    h = check_device_in_text()
-    if not h:
-        return "Niste uneli ispravno ime uređaja. Molimo pokušajte ponovo.", "DentyBot"
-    else:
-        context = search_pinecone_second_set(h, prompt)
-
-    # Finally, generate the response using the context
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": f"You are a helpful assistant that chooses the most appropriate answer(s) from the provided context for the given user query. Only use the provided context (it's included in the user message) to generate the answer. Always include the provided url(s) in your answer. The context is about the device: {h}"},
-            {"role": "user", "content": f"User query: {prompt},\n\nContext: {context}"}
-        ]
-    )
-    return response.choices[0].message.content.strip(), "DentyBot"
 
 
 def graphp(pitanje):
@@ -761,6 +694,54 @@ def pineg(pitanje):
     # print(f"Display Results: {display_results(combined_results)}")
     return combined_results
 
+
+def get_items_by_category(prompt):
+    response = client.chat.completions.create(
+        model=getenv("OPENAI_MODEL"),
+        temperature=0.0,
+        response_format={"type": "json_object"},
+        messages=[
+        {"role": "system", "content": """You are a helpful assistant that determines the category of the user's query. It must be one of the following 3: 
+         Knjiga, Strana knjiga, Gift
+         
+         You may only return the name of the category (with the capitalization as provided above). Do not include any additional information."""},
+        {"role": "user", "content": f"Please provide the response in JSON format: {prompt}"}],
+        )
+    data_dict = json.loads(response.choices[0].message.content)
+    # Access the 'tool' value
+    category = data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
+    
+    try:
+        # Slanje GET zahteva prema API-ju
+        response = requests.get("https://delfi.rs/api/pc-frontend-api/toplists")
+        response.raise_for_status()  # Provera uspešnosti zahteva
+
+        # Parsiranje odgovora iz JSON formata
+        result_string = ""
+        data = response.json()
+        for item in data.get('data', {}).get('sections', []):
+            for product in item.get('content', {}).get('products', []):
+                if product.get('category') == category:
+                    title = product.get('title', 'N/A')
+                    authors = product.get('authors', [])
+                    genres = product.get('genres', [])
+                    
+                    # Convert authors and genres to a string format
+                    authors_str = ', '.join([author.get('authorName', 'Unknown') for author in authors])
+                    genres_str = ', '.join([genre.get('genreName', 'Unknown') for genre in genres])
+                    
+                    # Append the collected information to the result string
+                    result_string += f"Title: {title}\n"
+                    result_string += f"Authors: {authors_str}\n"
+                    result_string += f"Genres: {genres_str}\n"
+                    result_string += "-" * 40 + "\n"  # Separator for readability
+                    
+        return result_string
+
+    except requests.exceptions.RequestException as e:
+        return f"Došlo je do greške prilikom povezivanja sa API-jem: {e}"
+
+
 def API_search_2(order_ids):
 
     def get_order_info(order_id):
@@ -769,7 +750,7 @@ def API_search_2(order_ids):
             'x-api-key': getenv("DELFI_ORDER_API_KEY")
         }
         return requests.get(url, headers=headers).json()
-
+    tc = []
     # Function to parse the JSON response and extract required fields
     def parse_order_info(json_data):
         order_info = {}
@@ -782,7 +763,7 @@ def API_search_2(order_ids):
             order_info['delivery_service'] = data.get('delivery_service', 'N/A')
             order_info['delivery_time'] = data.get('delivery_time', 'N/A')
             order_info['payment_type'] = data.get('payment_detail', {}).get('payment_type', 'N/A')
-
+            tc.append(data.get('tracking_codes', None))
             # Extract package info if available
             packages = data.get('packages', [])
             if packages:
@@ -814,6 +795,9 @@ def API_search_2(order_ids):
     except Exception as e:
         print(f"Error retrieving order information: {e}")
         orders_info = "No orders found for the given IDs."
+    tc = [x for x in tc if x is not None]
+    if len(tc) > 0:
+        orders_info.append(API_search_aks(tc))
 
     return orders_info
 
@@ -828,10 +812,14 @@ def order_delfi(prompt):
         orders = re.findall(pattern, text)
         
         # Convert the matched strings to integers
-        orders = [int(order) for order in orders]
+        return [int(order) for order in orders]
+
     order_ids = extract_orders_from_string(prompt)
+    print(order_ids)
     if len(order_ids) > 0:
         return API_search_2(order_ids)
+        if o[0]['package_status'] == "MAIL_SENT":
+            return "Nema informacija o porudžbini."
     else:
         return "Morate uneti tačan broj porudžbine/a."
 
@@ -980,6 +968,71 @@ def API_search(matching_sec_ids):
     # for info in products_info:
     #     output += str(info) + "\n"
     return products_info
+
+
+def API_search_aks(order_ids):
+    
+    def get_order_status(order_id):
+        url = f"http://www.akskurir.com/AKSVipService/Pracenje/{order_id}"
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for failed requests
+        return response.json()
+
+    def parse_order_status(json_data):
+        status_info = {}
+        status_changes = []
+        
+        if 'ErrorCode' in json_data and json_data['ErrorCode'] == 0:
+            status_info['ErrorCode'] = json_data.get('ErrorCode', 'N/A')
+            status_info['Status'] = json_data.get('Status', 'N/A')
+            
+            lst = json_data.get('StatusList', [])
+            for status in lst:
+                status_change = {
+                    'Vreme': status.get('Vreme', 'N/A'),
+                    'VremeInt': status.get('VremeInt', 'N/A'),
+                    'Centar': status.get('Centar', 'N/A'),
+                    'StatusOpis': status.get('StatusOpis', 'N/A'),
+                    'NStatus': status.get('NStatus', 'N/A')
+                }
+                status_changes.append(status_change)
+        else:
+            status_info['ErrorCode'] = json_data.get('ErrorCode', 'N/A')
+            status_info['Status'] = json_data.get('Status', 'N/A')
+
+        return status_info, status_changes
+
+    def get_multiple_orders_info(order_ids):
+        orders_info = []
+        for order_id in order_ids:
+            try:
+                # Fetch order status
+                order_status_json = get_order_status(order_id)
+                current_status, status_changes = parse_order_status(order_status_json)
+                
+                # Assemble order information
+                order_info = {
+                    'order_id': order_id,
+                    'current_status': current_status,
+                    'status_changes': status_changes
+                }
+                orders_info.append(order_info)
+            except requests.exceptions.RequestException as e:
+                print(f"HTTP error for order {order_id}: {e}")
+                orders_info.append({'order_id': order_id, 'error': str(e)})
+            except Exception as e:
+                print(f"Error for order {order_id}: {e}")
+                orders_info.append({'order_id': order_id, 'error': str(e)})
+        return orders_info
+
+    # Main function to retrieve information for all orders
+    try:
+        orders_info = get_multiple_orders_info(order_ids)
+    except Exception as e:
+        print(f"Error retrieving order information: {e}")
+        orders_info = "No orders found for the given IDs."
+
+    return orders_info
 
 
 def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
@@ -1132,89 +1185,6 @@ class HybridQueryProcessor:
         self.index = connect_to_pinecone(self.delfi_special)
         self.host = getenv("PINECONE_HOST")
 
-    def hybrid_score_norm(self, dense, sparse):
-        """
-        Normalizes the scores from dense and sparse vectors using the alpha value.
-
-        Args:
-            dense (list): The dense vector scores.
-            sparse (dict): The sparse vector scores.
-
-        Returns:
-            tuple: Normalized dense and sparse vector scores.
-        """
-        return ([v * self.alpha for v in dense], 
-                {"indices": sparse["indices"], 
-                 "values": [v * (1 - self.alpha) for v in sparse["values"]]})
-    
-    def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
-        # Get embedding and unpack results
-        dense = self.get_embedding(text=upit)
-
-        # Use those results in another function call
-        hdense, hsparse = self.hybrid_score_norm(
-            sparse=BM25Encoder().fit([upit]).encode_queries(upit),
-            dense=dense
-        )
-
-        query_params = {
-            'top_k': top_k or self.top_k,
-            'vector': hdense,
-            'sparse_vector': hsparse,
-            'include_metadata': True,
-            'namespace': namespace or self.namespace
-        }
-
-        if filter:
-            query_params['filter'] = filter
-
-        response = self.index.query(**query_params)
-        matches = response.to_dict().get('matches', [])
-        results = []
-
-        for match in matches:
-            try:
-                metadata = match.get('metadata', {})
-
-                # Create the result entry with all metadata fields
-                result_entry = metadata.copy()
-
-                # Ensure mandatory fields exist with default values if they are not in metadata
-                result_entry.setdefault('context', '')
-                result_entry.setdefault('chunk', None)
-                result_entry.setdefault('source', None)
-                result_entry.setdefault('score', match.get('score', 0))
-
-                # Only add to results if 'context' exists
-                if result_entry['context']:
-                    results.append(result_entry)
-            except Exception as e:
-                # Log or handle the exception if needed
-                print(f"An error occurred: {e}")
-                pass
-
-        return results
-       
-    def process_query_results(self, upit, dict=False):
-        """
-        Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
-        Additionally, returns a list of scores for items that meet the score threshold.
-        """
-        tematika = self.hybrid_query(upit)
-        if not dict:
-            uk_teme = ""
-            
-            for item in tematika:
-                if item["score"] > self.score:
-                    # Build the metadata string from all relevant fields
-                    metadata_str = "\n".join(f"{key}: {value}" for key, value in item.items())
-                    # Append the formatted metadata string to uk_teme
-                    uk_teme += metadata_str + "\n\n"
-            
-            return uk_teme
-        else:
-            return tematika
-        
     def get_embedding(self, text, model="text-embedding-3-large"):
 
         """
@@ -1233,6 +1203,161 @@ class HybridQueryProcessor:
         result = client.embeddings.create(input=[text], model=model).data[0].embedding
        
         return result
+    
+    def hybrid_score_norm(self, dense, sparse):
+        """
+        Normalizes the scores from dense and sparse vectors using the alpha value.
+
+        Args:
+            dense (list): The dense vector scores.
+            sparse (dict): The sparse vector scores.
+
+        Returns:
+            tuple: Normalized dense and sparse vector scores.
+        """
+        return ([v * self.alpha for v in dense], 
+                {"indices": sparse["indices"], 
+                 "values": [v * (1 - self.alpha) for v in sparse["values"]]})
+    
+    def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
+        """
+        Executes a hybrid query combining both dense (embedding-based) and sparse (BM25-based) search approaches
+        to retrieve the most relevant results. The query leverages embeddings for semantic understanding and
+        BM25 for keyword matching, normalizing their scores for a hybrid result.
+
+        Args:
+            upit (str): The input query string for which to search and retrieve results.
+            top_k (int, optional): The maximum number of top results to return. If not specified, uses the default value defined in `self.top_k`.
+            filter (dict, optional): An optional filter to apply to the search results. It should be a dictionary that defines criteria for filtering the results.
+            namespace (str, optional): The namespace within which to search for results. Defaults to `self.namespace` if not provided.
+
+        Returns:
+            list[dict]: A list of dictionaries where each dictionary represents a search result. Each result includes metadata such as:
+                - 'context': The relevant text snippet related to the query.
+                - 'chunk': The specific chunk of the document where the match was found.
+                - 'source': The source of the document or data (could be `None` based on certain conditions).
+                - 'url': The URL of the document if available.
+                - 'page': The page number if applicable.
+                - 'score': The relevance score of the match (default is 0 if not present).
+
+        Raises:
+            Exception: If any error occurs during processing, the exception is caught and logged but not re-raised.
+
+        Note:
+            - The hybrid query combines both semantic and lexical retrieval methods.
+            - Results are only added if the 'context' field exists in the result metadata.
+            - When running under the environment variable `APP_ID="ECDBot"`, the 'source' field is conditionally modified for non-first results.
+        """
+        # Get embedding and unpack results
+        dense = self.get_embedding(text=upit)
+
+        # Use those results in another function call
+        hdense, hsparse = self.hybrid_score_norm(
+            sparse=BM25Encoder().fit([upit]).encode_queries(upit),
+            dense=dense
+        )
+
+        query_params = {
+            'top_k': top_k or self.top_k,
+            'vector': hdense,
+            'sparse_vector': hsparse,
+            'include_metadata': True,
+            'namespace': namespace or self.namespace
+        }
+        if filter:
+            query_params['filter'] = filter
+
+        response = self.index.query(**query_params)
+        matches = response.to_dict().get('matches', [])
+        results = []
+        
+        for idx, match in enumerate(matches):
+            try:
+                metadata = match.get('metadata', {})
+
+                # Create the result entry with all metadata fields
+                result_entry = metadata.copy()
+
+                # Ensure mandatory fields exist with default values if they are not in metadata
+                result_entry.setdefault('context', None)
+                result_entry.setdefault('chunk', None)
+                result_entry.setdefault('source', None)
+                result_entry.setdefault('url', None)
+                result_entry.setdefault('page', None)
+                result_entry.setdefault('score', match.get('score', 0))
+
+                if idx != 0 and getenv("APP_ID") == "ECDBot":
+                    result_entry['source'] = None  # or omit this line to exclude 'source' entirely
+
+                # Only add to results if 'context' exists
+                if result_entry['context']:
+                    results.append(result_entry)
+            except Exception as e:
+                # Log or handle the exception if needed
+                print(f"An error occurred: {e}")
+                pass
+        
+        return results
+       
+    def process_query_results(self, upit, dict=False, device=None):
+        """
+        Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
+        Additionally, returns a list of scores for items that meet the score threshold.
+        """
+        if getenv("APP_ID") == "DentyBot":
+            filter = {'device': {'$in': [device]}}
+            tematika = self.hybrid_query(upit=upit, filter=filter)
+        else:
+            tematika = self.hybrid_query(upit=upit)
+        if not dict:
+            uk_teme = ""
+            
+            for item in tematika:
+                if item["score"] > self.score:
+                    # Build the metadata string from all relevant fields
+                    metadata_str = "\n".join(f"{key}: {value}" for key, value in item.items() if value != None)
+                    # Append the formatted metadata string to uk_teme
+                    uk_teme += metadata_str + "\n\n"
+            
+            return uk_teme
+        else:
+            return tematika
+    
+    def search_by_device(self, query, device, top_k=10, namespace="denty-serviser"):
+        """
+        Retrieves top_k entries filtered by device.
+        """
+        # Implement the device filtering logic here
+        # For example:
+        filter = {'device': {'$in': [device]}}  # Use the 'device' parameter
+        
+        print(f"Performing search with device filter in namespace: {namespace}")
+        
+        # Perform the hybrid query with the device filter
+        results = self.hybrid_query(upit=query, top_k=top_k, filter=filter, namespace=namespace)
+        
+        print(f"Raw results: {results}")  # Debugging
+        
+        # Process the matches to include only relevant metadata
+        processed_matches = []
+        for match in results:
+            # Access fields directly from match
+            device_list = match.get('device', [])
+            if isinstance(device_list, list):
+                device_str = ', '.join(device_list)
+            else:
+                device_str = str(device_list).lower()  # Ensure it's a string
+            
+            processed_matches.append({
+                'url': match.get('url', ''),
+                'page': match.get('page', ''),
+                'text': match.get('text', ''),
+                'device': device_str,
+                'score': match.get('score', 0)  # Include score if needed
+            })
+        
+        print(f"Processed matches: {processed_matches}")  # Debugging
+        return processed_matches  # It's good practice to return the processed results
 
 
 def intelisale(query):

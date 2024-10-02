@@ -263,14 +263,17 @@ class PromptDatabase:
         order_clause += "END"
 
         query = f"""
-        SELECT PromptString FROM PromptStrings
+        SELECT PromptName, PromptString FROM PromptStrings
         WHERE PromptName IN ({','.join(['?'] * len(prompt_names))})
         """ + order_clause
 
         params = tuple(prompt_names) + tuple(prompt_names)
         self.cursor.execute(query, params)
         results = self.cursor.fetchall()
-        return [result[0] for result in results] if results else []
+        dict = {}
+        for result in results:
+            dict[result[0]] = result[1]
+        return dict
 
     def get_records(self, query, params=None):
         try:
@@ -289,11 +292,6 @@ class PromptDatabase:
         query = f"SELECT DISTINCT {column} FROM {table}"
         records = self.get_records(query)
         return [record[0] for record in records] if records else []
-
-    def get_prompts_by_names(self, variable_names, prompt_names):
-        prompt_strings = self.query_sql_prompt_strings(prompt_names)
-        prompt_variables = dict(zip(variable_names, prompt_strings))
-        return prompt_variables
 
     def get_all_records_from_table(self, table_name):
         """
@@ -767,26 +765,39 @@ class PromptDatabase:
 
 @st.cache_data
 def work_prompts():
-    default_prompt = "You are a helpful assistant that always writes in Serbian."
+    default_prompt = "You are a helpful assistant."
 
     all_prompts = {
         "text_from_image": default_prompt,
-        "text_from_audio": default_prompt,
         "contextual_compression": default_prompt,
         "rag_self_query": default_prompt,
         "hyde_rag": default_prompt,
         "choose_rag": default_prompt,
         "sys_ragbot": default_prompt,
         "rag_answer_reformat": default_prompt,
-        }
+    }
 
     prompt_names = list(all_prompts.keys())
 
-    with PromptDatabase() as db:
-        env_vars = [getenv(name.upper()) for name in prompt_names]
-        prompt_map = db.get_prompts_by_names(prompt_names, env_vars)
+    # Build a mapping from original prompt names to environment variable values
+    prompt_env_map = {name: getenv(name.upper()) for name in prompt_names}
 
-        for name in prompt_names:
-            all_prompts[name] = prompt_map.get(name, default_prompt)
-    
-    return all_prompts
+    # Extract the environment variable values
+    env_vars = list(prompt_env_map.values())
+
+    with PromptDatabase() as db:
+        # Fetch the prompt strings from the database using the environment variable values
+        sql_results = db.query_sql_prompt_strings(env_vars)
+
+    # Build the output dictionary with original prompt names as keys
+    prompt_map = {}
+    for prompt_name in prompt_names:
+        env_var = prompt_env_map[prompt_name]
+        prompt_string = sql_results.get(env_var)
+        if prompt_string is not None:
+            prompt_map[prompt_name] = prompt_string
+        else:
+            # Use the default prompt if no result is found in the database
+            prompt_map[prompt_name] = all_prompts[prompt_name]
+
+    return prompt_map

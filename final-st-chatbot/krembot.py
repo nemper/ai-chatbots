@@ -1,13 +1,24 @@
 import io
 import streamlit as st
 import uuid
+
+_ = """
+import os
+os.environ["CLIENT_FOLDER"] = "Denty"
+os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
+os.environ["APP_ID"] = "DentyBot"
+os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
+os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+"""
+
 _ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
 os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
 
@@ -17,7 +28,7 @@ os.environ["CLIENT_FOLDER"] = "ECD"
 os.environ["SYS_RAGBOT"] = "ECD_SYS_RAGBOT"
 os.environ["APP_ID"] = "ECDBot"
 os.environ["CHOOSE_RAG"] = "ECD_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
 """
 from openai import OpenAI
@@ -26,16 +37,21 @@ from streamlit_mic_recorder import mic_recorder
 
 from krembot_tools import rag_tool_answer
 from krembot_db import ConversationDatabase, work_prompts
-from krembot_stui import *
+#from krembot_stui import *
 from krembot_funcs import *
 
 from streamlit_feedback import streamlit_feedback
 
 mprompts = work_prompts()
 
-#with st.expander("Promptovi"):
-#    st.write(mprompts)
-
+with st.expander("Promptovi"):
+    st.write(mprompts)
+import os
+client_folder = os.getenv("CLIENT_FOLDER")
+# avatar_bg = os.path.join("Clients", client_folder, "bg.png")
+avatar_ai = os.path.join("Clients", client_folder, "avatar.png")
+avatar_user = os.path.join("Clients", client_folder, "user.webp")
+avatar_sys = os.path.join("Clients", client_folder, "logo.png")
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
@@ -64,8 +80,209 @@ if st.session_state.thread_id not in st.session_state.messages:
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 file_reader = FileReader()
 
-# custom_streamlit_style()
-# apply_background_image(avatar_bg)
+
+CATEGORY_DEVICE_MAPPING = {
+    "CAD/CAM Systems": [
+        "CEREC AC",
+        "CEREC AF",
+        "CEREC AI",
+        "CEREC MC",
+        "CEREC MC XL",
+        "CEREC NETWORK",
+        "CEREC OMNICAM",
+        "CEREC PRIMEMILL",
+        "CEREC PRIMESCAN",
+        "CEREC SPEEDFIRE",
+        "CEREC PRIMEPRINT",
+        "CEREC PRIMESCAN",
+        "CEREC OMNICAM",
+        "CEREC SPEEDFIRE",
+        "PRIMEPRINT",
+        "PRIMEPRINT PPU",
+        "INEOS BLUE",
+        "INLAB MC",
+        "INLAB PC",
+        "INLAB PROFIRE",
+        "INFIRE HTC",
+        "CEREC PRIMEPRINT",
+        "PRIMESCAN",
+        "PRIMESCAN AC"
+    ],
+    "Imaging Systems": [
+        "GALILEOS",
+        "GALILEOS COMFORT",
+        "GALILEOS GAX5",
+        "GALILEOS X-RAY UNIT",
+        "FACESCAN",
+        "PERIOSCAN",
+        "SIDEXIS 4",
+        "SIDEXIS XG",
+        "XIOS",
+        "SIM INTEGO",
+        "SIMULATION UNIT",
+        "ORTHOPHOS XG",
+        "ORTHOPHOS E",
+        "ORTHOPHOS S",
+        "ORTHOPHOS SL",
+        "ORTHOPHOS XG",
+        "XIOS"
+    ],
+    "Dental Units": [
+        "HELIODENT",
+        "HELIODENT DS",
+        "HELIODENT PLUS",
+        "HELIODENT VARIO",
+        "C2",
+        "C5",
+        "C8",
+        "CEREC MC",
+        "CEREC MC XL",
+        "INLAB MC",
+        "INLAB MC X5",
+        "INLAB MC XL",
+        "INLAB PC",
+        "INLAB PROFIRE",
+        "SIROTORQUE L",
+        "T1 CLASSIC",
+        "T1 ENERGO",
+        "T1 HIGHSPEED",
+        "T1 LINE",
+        "T1 TURBINE",
+        "T2 ENERGO",
+        "T2 HIGHSPEED",
+        "T2 LINE",
+        "T2 REVO",
+        "T3 HIGHSPEED",
+        "T3 LINE",
+        "T3 RACER",
+        "T3 TURBINE",
+        "T4 LINE",
+        "T4 RACER",
+        "TURBINE",
+        "TURBINES SIROBOOST",
+        "TURBINES T1 CONTROL",
+        "VARIO DG",
+        "AXANO",
+        "AXEOS",
+        "C2",
+        "C5",
+        "C8",
+        "M1",
+        "MM2-SINTER",
+        "HEAT-DUO",
+        "MOTORCAST COMPACT",
+        "MULTIMAT",
+        "ORTHOPHOS E",
+        "ORTHOPHOS S",
+        "ORTHOPHOS SL",
+        "ORTHOPHOS XG",
+        "VARIO DG"
+    ],
+    "Lasers": [
+        "FONALASER",
+        "SIROLASER",
+        "SIROLASER XTEND",
+        "SIROENDO",
+        "SIROCAM",
+        "SIROLUX",
+        "SIROPURE",
+        "FONALASER"
+    ],
+    "Intraoral Scanners": [
+        "INLAB MC",
+        "INLAB MC X5",
+        "INLAB MC XL",
+        "PRIMESCAN AC",
+        "SIM INTEGO",
+        "INTEGO",
+        "PRIMESCAN",
+        "PRIMESCAN AC",
+        "CEREC PRIMESCAN"
+    ],
+    "Dental Instruments and Tools": [
+        "AE SENSOR",
+        "APOLLO DI",
+        "AXANO",
+        "AXEOS",
+        "CARL",
+        "PAUL",
+        "CEILING MODEL",
+        "CERCON",
+        "ENDO",
+        "HEAT-DUO",
+        "LEDLIGHT",
+        "LEDVIEW",
+        "M1",
+        "MAILLEFER",
+        "MIDWEST",
+        "MM2-SINTER",
+        "MOTORCAST COMPACT",
+        "MULTIMAT",
+        "PROFEEL",
+        "PROFIRE",
+        "SIMULATION UNIT",
+        "SINIUS",
+        "SIROCAM",
+        "SIROENDO",
+        "SIROLUX",
+        "SIROPURE",
+        "SIROTORQUE L",
+        "SIUCOM",
+        "SIVISION",
+        "TEMPERATURE TABLE",
+        "TENEO",
+        "TULSA",
+        "VARIO DG",
+        "TURBINES SIROBOOST",
+        "TURBINES T1 CONTROL"
+    ],
+    "Other Equipment/Accessories": [
+        "INTRAORAL PRODUCTS",
+        "DAC UNIVERSAL",
+        "VARIO DG",
+        "TENEO"
+    ],
+    "Hybrid or Multi-Category Devices": [
+        "CEREC AC, CEREC OMNICAM",
+        "CEREC AC, INEOS BLUE",
+        "CEREC AC, INLAB MC",
+        "CEREC AF, CEREC AI",
+        "CEREC MC, CEREC AC, CEREC SPEEDFIRE, INLAB MC, CEREC PRIMEPRINT, CEREC PRIMESCAN, CEREC OMNICAM",
+        "CEREC MC, CEREC PRIMEMILL, CEREC AC, CEREC OMNICAM, PRIMESCAN, INLAB MC, CEREC SPEEDFIRE, PRIMEPRINT",
+        "CEREC MC, INLAB MC",
+        "CEREC PRIMESCAN, CEREC OMNICAM",
+        "ENDO, VDW, TULSA, MAILLEFER, MIDWEST",
+        "HELIODENT, LEDVIEW",
+        "SIROLASER, FONALASER",
+        "SIROLUX, HELIODENT",
+        "SIROLUX, LEDVIEW, HELIODENT",
+        "T1 CLASSIC, T1 LINE, T2 LINE, T3 LINE, T4 LINE",
+        "T1 ENERGO, T2 ENERGO",
+        "T1 HIGHSPEED, T2 HIGHSPEED, T3 HIGHSPEED",
+        "T1 LINE, T2 LINE, T3 LINE",
+        "T1 TURBINE, T2, TURBINE, T3 TURBINE",
+        "T3 RACER, T4 RACER",
+        "TENEO, SINIUS, INTEGO",
+        "ORTHOPHOS S, ORTHOPHOS SL",
+        "ORTHOPHOS SL, ORTHOPHOS S",
+        "ORTHOPHOS XG, GALILEOS",
+        "ORTHOPHOS XG, GALILEOS, XIOS",
+        "SIUCOM, SIVISION"
+    ]
+}
+
+if os.getenv("APP_ID") == "DentyBot":
+    # Sidebar for selections
+    st.sidebar.header("Select Device Category and Device")
+
+    # Category selection
+    categories = list(CATEGORY_DEVICE_MAPPING.keys())
+    selected_category = st.sidebar.selectbox("Select a Category", categories)
+
+    # Device selection based on selected category
+    devices = CATEGORY_DEVICE_MAPPING[selected_category]
+    selected_device = st.sidebar.selectbox("Select a Device", devices)
+
 
 def handle_feedback():
     feedback = st.session_state.get("fb_k", {})
@@ -167,6 +384,8 @@ def main():
     # Opcije
     col1, col2, col3 = st.columns(3)
     with col1:
+        audio = None
+        _ = """
     # Use the fixed container and apply the horizontal layout
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):
             with st.popover("Više opcija", help = "Snimanje pitanja, Slušanje odgovora, Priloži sliku"):
@@ -186,7 +405,7 @@ def main():
                 st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
                 # slika
                 st.session_state.image_ai, st.session_state.vrsta = file_reader.read_files()
-
+    """
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
 
@@ -221,7 +440,14 @@ def main():
 
     # Main conversation answer
     if st.session_state.prompt:
-        result, tool = rag_tool_answer(st.session_state.prompt)
+        if getenv("APP_ID") == "DentyBot":
+            x = selected_device
+            if not x:
+                st.error("Niste izabrali uređaj.")
+            else:
+                result, tool = rag_tool_answer(st.session_state.prompt, selected_device)
+        else:
+            result, tool = rag_tool_answer(st.session_state.prompt, 1)
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,
@@ -263,7 +489,7 @@ def main():
                 Using the following context, which comes directly from our database:
                 {result}
                 All the provided context is relevant and trustworthy, so make sure to base your answer strictly on the information above.
-                Always write in Serbian. Always provide corresponding links from established knowledge base and do NOT generate or suggest any links that do not exist within it. 
+                Always provide corresponding links from established knowledge base and do NOT generate or suggest any links that do not exist within it. 
                 """}]}
                     #If you cannot find the relevant information within the context, clearly state that the information is not currently available, but do not invent or guess.
             # print(f"temp_full_prompt: {temp_full_prompt}")
@@ -304,7 +530,7 @@ def main():
             
 
             message_placeholder.markdown(full_response)
-            copy_to_clipboard(full_response)
+            #copy_to_clipboard(full_response)
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
@@ -339,7 +565,7 @@ def main():
             if st.session_state.vrsta:
                 st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
 
-
+    _ = """
     with col2:
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
             st.download_button(
@@ -351,7 +577,7 @@ def main():
     with col3:
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
             st.button("🗑 Obriši", on_click=reset_memory)
-
+    """
 
 def main_wrap_for_st():
     check_openai_errors(main)
