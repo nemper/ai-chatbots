@@ -1,0 +1,16 @@
+*.txt
+!requirements.txt
+!odgovor_turbo.txt
+!prompt_turbo.txt
+!prompt_turbo_miljan.txt
+*.json
+*.exe
+*.mp3
+*.pdf
+*.docx
+.vsidx
+.wsuo
+*.csv
+*.xlsx
+slnx.sqlite
+*.JSONL
