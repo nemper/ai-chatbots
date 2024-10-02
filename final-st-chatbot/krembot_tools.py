@@ -2,7 +2,6 @@ import json
 import neo4j
 import pyodbc
 import requests
-import streamlit as st
 import xml.etree.ElementTree as ET
 
 from langchain.chains.query_constructor.base import AttributeInfo
@@ -35,58 +34,55 @@ def connect_to_pinecone(x):
 
 
 def rag_tool_answer(prompt, x):
-    st.session_state.rag_tool = "ClientDirect"
+    rag_tool = "ClientDirect"
 
     if os.getenv("APP_ID") == "InteliBot":
-        return intelisale(prompt), st.session_state.rag_tool
+        return intelisale(prompt),rag_tool
 
     elif os.getenv("APP_ID") == "DentyBot":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
         search_results = processor.process_query_results(upit=prompt, device=x)
-        print(44444444444444444444444, search_results)
-
-        return search_results, st.session_state.rag_tool
-        # return dentyWF(prompt), st.session_state.rag_tool
+        return search_results,rag_tool
     
     elif os.getenv("APP_ID") == "DentyBotS":
-        processor = HybridQueryProcessor(namespace="brosureiuputstva", delfi_special=1)
+        processor = HybridQueryProcessor(namespace="denty-komercijalista", delfi_special=1)
         context = processor.process_query_results(prompt)
-        return context, st.session_state.rag_tool
+        return context,rag_tool
     
     elif os.getenv("APP_ID") == "ECDBot":
         processor = HybridQueryProcessor(namespace="ecd", delfi_special=1)
-        return processor.process_query_results(prompt), st.session_state.rag_tool
+        return processor.process_query_results(prompt),rag_tool
     
     context = " "
-    st.session_state.rag_tool = get_structured_decision_from_model(prompt)
+    rag_tool = get_structured_decision_from_model(prompt)
 
-    if st.session_state.rag_tool == "Hybrid":
+    if rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
 
-    elif st.session_state.rag_tool == "Opisi":
+    elif rag_tool == "Opisi":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(prompt)
 
-    elif st.session_state.rag_tool == "Korice":
+    elif rag_tool == "Korice":
         uvod = mprompts["rag_self_query"]
         prompt = uvod + prompt
         context = SelfQueryDelfi(upit=prompt, namespace="korice")
         
-    elif st.session_state.rag_tool == "Graphp": 
+    elif rag_tool == "Graphp": 
         context = graphp(prompt)
 
-    elif st.session_state.rag_tool == "Pineg":
+    elif rag_tool == "Pineg":
         context = pineg(prompt)
 
-    elif st.session_state.rag_tool == "Natop":
+    elif rag_tool == "Natop":
         context = get_items_by_category(prompt)
 
-    elif st.session_state.rag_tool == "Orders":
+    elif rag_tool == "Orders":
         context = order_delfi(prompt)
 
-    return context, st.session_state.rag_tool
+    return context,rag_tool
 
 
 def get_structured_decision_from_model(user_query):
@@ -1143,6 +1139,25 @@ class HybridQueryProcessor:
         self.index = connect_to_pinecone(self.delfi_special)
         self.host = getenv("PINECONE_HOST")
 
+    def get_embedding(self, text, model="text-embedding-3-large"):
+
+        """
+        Retrieves the embedding for the given text using the specified model.
+
+        Args:
+            text (str): The text to be embedded.
+            model (str): The model to be used for embedding. Default is "text-embedding-3-large".
+
+        Returns:
+            list: The embedding vector of the given text.
+            int: The number of prompt tokens used.
+        """
+        
+        text = text.replace("\n", " ")
+        result = client.embeddings.create(input=[text], model=model).data[0].embedding
+       
+        return result
+    
     def hybrid_score_norm(self, dense, sparse):
         """
         Normalizes the scores from dense and sparse vectors using the alpha value.
@@ -1159,6 +1174,34 @@ class HybridQueryProcessor:
                  "values": [v * (1 - self.alpha) for v in sparse["values"]]})
     
     def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
+        """
+        Executes a hybrid query combining both dense (embedding-based) and sparse (BM25-based) search approaches
+        to retrieve the most relevant results. The query leverages embeddings for semantic understanding and
+        BM25 for keyword matching, normalizing their scores for a hybrid result.
+
+        Args:
+            upit (str): The input query string for which to search and retrieve results.
+            top_k (int, optional): The maximum number of top results to return. If not specified, uses the default value defined in `self.top_k`.
+            filter (dict, optional): An optional filter to apply to the search results. It should be a dictionary that defines criteria for filtering the results.
+            namespace (str, optional): The namespace within which to search for results. Defaults to `self.namespace` if not provided.
+
+        Returns:
+            list[dict]: A list of dictionaries where each dictionary represents a search result. Each result includes metadata such as:
+                - 'context': The relevant text snippet related to the query.
+                - 'chunk': The specific chunk of the document where the match was found.
+                - 'source': The source of the document or data (could be `None` based on certain conditions).
+                - 'url': The URL of the document if available.
+                - 'page': The page number if applicable.
+                - 'score': The relevance score of the match (default is 0 if not present).
+
+        Raises:
+            Exception: If any error occurs during processing, the exception is caught and logged but not re-raised.
+
+        Note:
+            - The hybrid query combines both semantic and lexical retrieval methods.
+            - Results are only added if the 'context' field exists in the result metadata.
+            - When running under the environment variable `APP_ID="ECDBot"`, the 'source' field is conditionally modified for non-first results.
+        """
         # Get embedding and unpack results
         dense = self.get_embedding(text=upit)
 
@@ -1181,7 +1224,7 @@ class HybridQueryProcessor:
         response = self.index.query(**query_params)
         matches = response.to_dict().get('matches', [])
         results = []
-        print(565, matches)
+        
         for idx, match in enumerate(matches):
             try:
                 metadata = match.get('metadata', {})
@@ -1207,7 +1250,7 @@ class HybridQueryProcessor:
                 # Log or handle the exception if needed
                 print(f"An error occurred: {e}")
                 pass
-        print(566, results)
+        
         return results
        
     def process_query_results(self, upit, dict=False, device=None):
@@ -1233,25 +1276,6 @@ class HybridQueryProcessor:
             return uk_teme
         else:
             return tematika
-        
-    def get_embedding(self, text, model="text-embedding-3-large"):
-
-        """
-        Retrieves the embedding for the given text using the specified model.
-
-        Args:
-            text (str): The text to be embedded.
-            model (str): The model to be used for embedding. Default is "text-embedding-3-large".
-
-        Returns:
-            list: The embedding vector of the given text.
-            int: The number of prompt tokens used.
-        """
-        
-        text = text.replace("\n", " ")
-        result = client.embeddings.create(input=[text], model=model).data[0].embedding
-       
-        return result
     
     def search_by_device(self, query, device, top_k=10, namespace="denty-serviser"):
         """
@@ -1288,9 +1312,6 @@ class HybridQueryProcessor:
         
         print(f"Processed matches: {processed_matches}")  # Debugging
         return processed_matches  # It's good practice to return the processed results
-
-
-
 
 
 def intelisale(query):
