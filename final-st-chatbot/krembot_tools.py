@@ -203,37 +203,39 @@ def graphp(pitanje):
                 "Only Book nodes have properties: id, oldProductId, category, title, price, quantity, pages, and eBook."
                 "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
                 "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci, Knjige za decu). Please ensure that the generated Cypher query uses these exact capitalizations."
+                "Sometimes you will need to filter the data based on the category. Exsiting categories are: Knjiga, Strana knjiga, Gift, Film, Muzika, Udžbenik, Video igra, Dečija knjiga."
                 "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
                 "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the searched term."
                 "When generating the Cypher query, ensure to handle inflected forms properly by converting all names to their nominative form. For example, if the user asks for books by 'Adrijana Čajkovskog,' the query should be generated for 'Adrijan Čajkovski,' ensuring that the search is performed using the base form of the author's name."
                 "Additionally, ensure to normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when the user omits Serbian diacritics."
                 "When returning some properties of books, ensure to always return the oldProductId and the title too."
-                "Ensure to limit the number of records returned to 10."
+                "Ensure to limit the number of records returned to 6."
+                "Hari Poter is stored as 'Harry Potter' in the database."
 
                 "Here is an example user question and the corresponding Cypher query: "
                 "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Da Vinčijev kod') AND b.quantity > 0 RETURN b LIMIT 10"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Da Vinčijev kod') AND b.quantity > 0 RETURN b LIMIT 6"
 
                 "Example user question: 'O čemu se radi u knjizi Memoari jedne gejše?' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Memoari jedne gejše') RETURN b LIMIT 10"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Memoari jedne gejše') RETURN b LIMIT 6"
 
                 "Example user question: 'Interesuje me knjiga Piramide.' "
-                "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Piramide') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author LIMIT 10"
+                "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Piramide') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author LIMIT 6"
                 
                 "Example user question: 'Preporuci mi knjige istog žanra kao Krhotine.' "
-                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, b.category AS category, a.name AS author, g.name AS genre LIMIT 10"
+                "Cypher query: MATCH (b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(b.title) CONTAINS toLower('Krhotine') WITH g MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b:Book) WHERE b.title CONTAINS 'Krhotine' AND rec.quantity > 0 MATCH (rec)-[:WROTE]-(a:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, b.category AS category, a.name AS author, g.name AS genre LIMIT 6"
 
                 "Example user question: 'Koja je cena za Autostoperski vodič kroz galaksiju?' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Autostoperski vodič kroz galaksiju') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Autostoperski vodič kroz galaksiju') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 6"
 
                 "Example user question: 'Da li imate anu karenjinu na stanju' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Ana Karenjina') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Ana Karenjina') AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category LIMIT 6"
 
                 "Example user question: 'Intresuju me fantastika. Preporuči mi neke knjige' "
-                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre {name: 'Fantastika'}) RETURN b, a.name, g.name LIMIT 10"
+                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre {name: 'Fantastika'}) RETURN b, a.name, g.name LIMIT 6"
                 
                 "Example user question: 'Da li imate mobi dik na stanju, treba mi 27 komada?' "
-                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category LIMIT 10"
+                "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category LIMIT 6"
             
                 "Example user question: 'preporuči mi knjige slične Oladi malo od Sare Najt' "
                 "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Oladi malo') AND toLower(a.name) CONTAINS toLower('Sara Najt') WITH b MATCH (b)-[:BELONGS_TO]->(g:Genre) WITH g, b MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b) WHERE rec.quantity > 0 AND NOT toLower(rec.title) CONTAINS toLower('Oladi malo') WITH rec, COLLECT(DISTINCT g.name) AS genres MATCH (rec)-[:WROTE]-(recAuthor:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, rec.category AS category, recAuthor.name AS author, genres AS genre LIMIT 6"
@@ -682,7 +684,7 @@ def pineg(pitanje):
                 duplicate_filter.append(result['sec_id'])
                 # print(f"Duplicate Filter: {duplicate_filter}")
                 
-                combined_results.append(combined_data)
+                combined_results.extend(combined_data)
                 # print(f"Combined Results: {combined_results}")
                 
                 
