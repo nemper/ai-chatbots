@@ -31,8 +31,6 @@ def connect_to_pinecone(x):
     pinecone_host = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io" if x == 0 else "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
     return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
 
-
-
 def rag_tool_answer(prompt, x):
     rag_tool = "ClientDirect"
 
