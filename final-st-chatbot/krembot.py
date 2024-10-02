@@ -8,7 +8,7 @@ os.environ["CLIENT_FOLDER"] = "Denty"
 os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
 os.environ["APP_ID"] = "DentyBot"
 os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
 """
 
@@ -18,7 +18,7 @@ os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
 os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
 """
 
@@ -28,7 +28,7 @@ os.environ["CLIENT_FOLDER"] = "ECD"
 os.environ["SYS_RAGBOT"] = "ECD_SYS_RAGBOT"
 os.environ["APP_ID"] = "ECDBot"
 os.environ["CHOOSE_RAG"] = "ECD_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o-2024-08-06"
+os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
 """
 from openai import OpenAI
@@ -266,17 +266,17 @@ CATEGORY_DEVICE_MAPPING = {
     ]
 }
 
-if os.getenv("APP_ID") == "DentyBot":
-    # Sidebar for selections
-    st.sidebar.header("Select Device Category and Device")
+#if os.getenv("APP_ID") == "DentyBot":
+# Sidebar for selections
+st.sidebar.header("Select Device Category and Device")
 
-    # Category selection
-    categories = list(CATEGORY_DEVICE_MAPPING.keys())
-    selected_category = st.sidebar.selectbox("Select a Category", categories)
+# Category selection
+categories = list(CATEGORY_DEVICE_MAPPING.keys())
+selected_category = st.sidebar.selectbox("Select a Category", categories)
 
-    # Device selection based on selected category
-    devices = CATEGORY_DEVICE_MAPPING[selected_category]
-    selected_device = st.sidebar.selectbox("Select a Device", devices)
+# Device selection based on selected category
+devices = CATEGORY_DEVICE_MAPPING[selected_category]
+selected_device = st.sidebar.selectbox("Select a Device", devices)
 
 
 def handle_feedback():
