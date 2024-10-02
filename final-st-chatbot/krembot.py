@@ -37,7 +37,7 @@ from streamlit_mic_recorder import mic_recorder
 
 from krembot_tools import rag_tool_answer
 from krembot_db import ConversationDatabase, work_prompts
-from krembot_stui import *
+#from krembot_stui import *
 from krembot_funcs import *
 
 from streamlit_feedback import streamlit_feedback
@@ -46,7 +46,12 @@ mprompts = work_prompts()
 
 with st.expander("Promptovi"):
     st.write(mprompts)
-
+import os
+client_folder = os.getenv("CLIENT_FOLDER")
+# avatar_bg = os.path.join("Clients", client_folder, "bg.png")
+avatar_ai = os.path.join("Clients", client_folder, "avatar.png")
+avatar_user = os.path.join("Clients", client_folder, "user.webp")
+avatar_sys = os.path.join("Clients", client_folder, "logo.png")
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
@@ -379,6 +384,8 @@ def main():
     # Opcije
     col1, col2, col3 = st.columns(3)
     with col1:
+        audio = None
+        _ = """
     # Use the fixed container and apply the horizontal layout
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):
             with st.popover("Više opcija", help = "Snimanje pitanja, Slušanje odgovora, Priloži sliku"):
@@ -398,7 +405,7 @@ def main():
                 st.session_state.button_clicks = st.toggle('🔈 Slušaj odgovor', key='toggle_button', help = "Glasovni odgovor asistenta")
                 # slika
                 st.session_state.image_ai, st.session_state.vrsta = file_reader.read_files()
-
+    """
     # main conversation prompt            
     st.session_state.prompt = st.chat_input("Kako vam mogu pomoći?")
 
@@ -523,7 +530,7 @@ def main():
             
 
             message_placeholder.markdown(full_response)
-            copy_to_clipboard(full_response)
+            #copy_to_clipboard(full_response)
             # Append assistant's response to the conversation
             st.session_state.messages[current_thread_id].append({"role": "tool", "content": str(tool)})
             st.session_state.messages[current_thread_id].append({"role": "assistant", "content": full_response})
@@ -558,7 +565,7 @@ def main():
             if st.session_state.vrsta:
                 st.info(f"Dokument je učitan ({st.session_state.vrsta}) - uklonite ga iz uploadera kada ne želite više da pričate o njegovom sadržaju.")
 
-
+    _ = """
     with col2:
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
             st.download_button(
@@ -570,7 +577,7 @@ def main():
     with col3:
         with st_fixed_container(mode="fixed", position="bottom", border=False, margin='10px'):          
             st.button("🗑 Obriši", on_click=reset_memory)
-
+    """
 
 def main_wrap_for_st():
     check_openai_errors(main)
