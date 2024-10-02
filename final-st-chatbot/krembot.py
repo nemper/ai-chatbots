@@ -271,17 +271,17 @@ CATEGORY_DEVICE_MAPPING = {
     ]
 }
 
-#if os.getenv("APP_ID") == "DentyBot":
-# Sidebar for selections
-st.sidebar.header("Select Device Category and Device")
+if os.getenv("APP_ID") == "DentyBot":
+    # Sidebar for selections
+    st.sidebar.header("Select Device Category and Device")
 
-# Category selection
-categories = list(CATEGORY_DEVICE_MAPPING.keys())
-selected_category = st.sidebar.selectbox("Select a Category", categories)
+    # Category selection
+    categories = list(CATEGORY_DEVICE_MAPPING.keys())
+    selected_category = st.sidebar.selectbox("Select a Category", categories)
 
-# Device selection based on selected category
-devices = CATEGORY_DEVICE_MAPPING[selected_category]
-selected_device = st.sidebar.selectbox("Select a Device", devices)
+    # Device selection based on selected category
+    devices = CATEGORY_DEVICE_MAPPING[selected_category]
+    selected_device = st.sidebar.selectbox("Select a Device", devices)
 
 
 def handle_feedback():
