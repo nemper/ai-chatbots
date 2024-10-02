@@ -185,6 +185,30 @@ def dentyWF(prompt):
 
 
 def graphp(pitanje):
+    """
+    Processes a user's question, generates a Cypher query, executes it on a Neo4j database, 
+    enriches the resulting data with descriptions from Pinecone, and formats the response.
+
+    Parameters:
+    pitanje (str): User's question in natural language related to the Neo4j database.
+
+    Returns:
+    list: A list of dictionaries representing enriched book data, each containing properties like 
+          'title', 'category', 'author', and a description from Pinecone.
+    
+    The function consists of the following steps:
+    1. Connects to the Neo4j database using the `connect_to_neo4j()` function.
+    2. Defines a nested function `run_cypher_query()` to execute a Cypher query and clean the results.
+    3. Generates a Cypher query from the user's question using the `generate_cypher_query()` function.
+    4. Validates the generated Cypher query using `is_valid_cypher()`.
+    5. Runs the Cypher query on the Neo4j database and retrieves book data.
+    6. Enriches the retrieved book data with additional information fetched from an API.
+    7. Fetches descriptions from Pinecone for the books using their 'oldProductId'.
+    8. Combines book data with descriptions.
+    9. Formats the final data and returns it as a formatted response.
+
+    The function performs error handling to manage invalid Cypher queries or errors during data fetching.
+    """
     driver = connect_to_neo4j()
 
     def run_cypher_query(driver, query):
@@ -470,6 +494,28 @@ def graphp(pitanje):
         print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
 
 def pineg(pitanje):
+    """
+    Processes a user's question, performs a dense vector search in Pinecone, fetches relevant data from an API and Neo4j, 
+    combines the results, and displays them in a structured format.
+
+    Parameters:
+    pitanje (str): User's question in natural language.
+
+    Returns:
+    list: A list of combined results, each containing information from the API, Pinecone, and Neo4j database.
+    
+    The function consists of the following steps:
+    1. Connects to the Pinecone index using `connect_to_pinecone(x=0)` and to the Neo4j database using `connect_to_neo4j()`.
+    2. Defines a nested function `run_cypher_query()` to execute a Cypher query on Neo4j to retrieve book data including 
+       authors and genres.
+    3. Uses `get_embedding()` to create embeddings for a given text and `dense_query()` to perform a similarity search in Pinecone.
+    4. Searches Pinecone using `search_pinecone()` for the initial query and `search_pinecone_second_set()` for secondary searches.
+    5. Combines book data retrieved from Neo4j and API data using `combine_data()`.
+    6. Displays the final combined data in a user-friendly format using `display_results()`.
+    
+    The function performs error handling to avoid processing duplicate entries, limits the number of API calls to a maximum 
+    of three, and returns a list of combined results with enriched book information.
+    """
     index = connect_to_pinecone(x=0)
     driver = connect_to_neo4j()
 
