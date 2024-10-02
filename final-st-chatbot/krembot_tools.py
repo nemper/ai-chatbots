@@ -15,44 +15,81 @@ import os
 from os import getenv
 from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
-from typing import List, Dict
-
+from typing import List, Dict, Any, Tuple, Union, Optional
 from krembot_db import work_prompts
 
 mprompts = work_prompts()
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
-def connect_to_neo4j():
-    return neo4j.GraphDatabase.driver(getenv("NEO4J_URI"), auth=(getenv("NEO4J_USER"), getenv("NEO4J_PASS")))
+
+def connect_to_neo4j() -> neo4j.Driver:
+    """
+    Establishes a connection to the Neo4j database using credentials from environment variables.
+
+    Returns:
+        neo4j.Driver: A Neo4j driver instance for interacting with the database.
+    """
+    uri = getenv("NEO4J_URI")
+    user = getenv("NEO4J_USER")
+    password = getenv("NEO4J_PASS")
+    return neo4j.GraphDatabase.driver(uri, auth=(user, password))
 
 
-def connect_to_pinecone(x):
+def connect_to_pinecone(x: int) -> Any:
+    """
+    Connects to a Pinecone index based on the provided parameter.
+
+    Args:
+        x (int): Determines which Pinecone host to connect to. If x is 0, connects to the primary host;
+                 otherwise, connects to the secondary host.
+
+    Returns:
+        Any: An instance of Pinecone Index connected to the specified host.
+    """
     pinecone_api_key = getenv('PINECONE_API_KEY')
-    pinecone_host = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io" if x == 0 else "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-    return Pinecone(api_key=pinecone_api_key, host=pinecone_host).Index(host=pinecone_host)
+    pinecone_host = (
+        "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
+        if x == 0
+        else "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+    )
+    pinecone_client = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
+    return pinecone_client.Index(host=pinecone_host)
 
 
+def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
+    """
+    Generates an answer using the RAG (Retrieval-Augmented Generation) tool based on the provided prompt and context.
 
-def rag_tool_answer(prompt, x):
+    The function behavior varies depending on the 'APP_ID' environment variable. It utilizes different processors
+    and tools to fetch and generate the appropriate response.
+
+    Args:
+        prompt (str): The input query or prompt for which an answer is to be generated.
+        x (int): Additional parameter that may influence the processing logic, such as device selection.
+
+    Returns:
+        Tuple[Any, str]: A tuple containing the generated context or search results and the RAG tool used.
+    """
     rag_tool = "ClientDirect"
+    app_id = os.getenv("APP_ID")
 
-    if os.getenv("APP_ID") == "InteliBot":
-        return intelisale(prompt),rag_tool
+    if app_id == "InteliBot":
+        return intelisale(prompt), rag_tool
 
-    elif os.getenv("APP_ID") == "DentyBot":
+    elif app_id == "DentyBot":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
         search_results = processor.process_query_results(upit=prompt, device=x)
-        return search_results,rag_tool
-    
-    elif os.getenv("APP_ID") == "DentyBotS":
+        return search_results, rag_tool
+
+    elif app_id == "DentyBotS":
         processor = HybridQueryProcessor(namespace="denty-komercijalista", delfi_special=1)
         context = processor.process_query_results(prompt)
-        return context,rag_tool
-    
-    elif os.getenv("APP_ID") == "ECDBot":
+        return context, rag_tool
+
+    elif app_id == "ECDBot":
         processor = HybridQueryProcessor(namespace="ecd", delfi_special=1)
-        return processor.process_query_results(prompt),rag_tool
-    
+        return processor.process_query_results(prompt), rag_tool
+
     context = " "
     rag_tool = get_structured_decision_from_model(prompt)
 
@@ -62,15 +99,15 @@ def rag_tool_answer(prompt, x):
 
     elif rag_tool == "Opisi":
         uvod = mprompts["rag_self_query"]
-        prompt = uvod + prompt
-        context = SelfQueryDelfi(prompt)
+        combined_prompt = uvod + prompt
+        context = SelfQueryDelfi(combined_prompt)
 
     elif rag_tool == "Korice":
         uvod = mprompts["rag_self_query"]
-        prompt = uvod + prompt
-        context = SelfQueryDelfi(upit=prompt, namespace="korice")
-        
-    elif rag_tool == "Graphp": 
+        combined_prompt = uvod + prompt
+        context = SelfQueryDelfi(upit=combined_prompt, namespace="korice")
+
+    elif rag_tool == "Graphp":
         context = graphp(prompt)
 
     elif rag_tool == "Pineg":
@@ -82,24 +119,22 @@ def rag_tool_answer(prompt, x):
     elif rag_tool == "Orders":
         context = order_delfi(prompt)
 
-    return context,rag_tool
+    return context, rag_tool
 
 
-def get_structured_decision_from_model(user_query):
+def get_structured_decision_from_model(user_query: str) -> str:
     """
-    Determines the most appropriate tool to use for a given user query using an AI model.
+    Determines the appropriate tool to handle a user's query using the OpenAI model.
 
-    This function sends a user query to an AI model and receives a structured decision in the
-    form of a JSON object. The decision includes the recommended tool to use for addressing
-    the user's query, based on the content and context of the query. The function uses a
-    structured prompt, generated by `create_structured_prompt`, to instruct the AI on how
-    to process the query. The AI's response is parsed to extract the tool recommendation.
+    This function sends the user's query to the OpenAI API with a specific system prompt to obtain a structured
+    decision in JSON format. It parses the JSON response to extract the selected tool.
 
-    Parameters:
-    - user_query: The user's query for which the tool recommendation is sought.
+    Args:
+        user_query (str): The user's input query for which a structured decision is to be made.
 
     Returns:
-    - The name of the recommended tool as a string, based on the AI's analysis of the user query.
+        str: The name of the tool determined by the model to handle the user's query. If the 'tool' key is not present,
+             it returns the first value from the JSON response.
     """
     client = OpenAI()
     response = client.chat.completions.create(
@@ -695,7 +730,21 @@ def pineg(pitanje):
     return combined_results
 
 
-def get_items_by_category(prompt):
+def get_items_by_category(prompt: str) -> str:
+    """
+    Retrieves items from a specific category based on the user's prompt.
+
+    This function uses the OpenAI API to determine the category of the user's query. It then sends a GET request
+    to an external API to fetch items belonging to the identified category. The function formats and returns
+    the relevant item details such as title, authors, and genres.
+
+    Args:
+        prompt (str): The user's input prompt used to determine the category of items to retrieve.
+
+    Returns:
+        str: A formatted string containing the details of items in the identified category. If an error occurs
+             during the API request, it returns an error message.
+    """
     response = client.chat.completions.create(
         model=getenv("OPENAI_MODEL"),
         temperature=0.0,
@@ -742,8 +791,23 @@ def get_items_by_category(prompt):
         return f"Došlo je do greške prilikom povezivanja sa API-jem: {e}"
 
 
-def API_search_2(order_ids):
+def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
+    """
+    Retrieves and processes information for a list of order IDs.
 
+    This function fetches detailed information for each order ID by making API requests to an external service.
+    It parses the JSON responses to extract relevant order details such as ID, type, status, delivery service,
+    delivery time, payment type, package status, and order item type. Additionally, it collects tracking codes
+    and performs an auxiliary search if tracking codes are available.
+
+    Args:
+        order_ids (List[str]): A list of order IDs for which information is to be retrieved.
+
+    Returns:
+        List[Dict[str, Any]] or str: A list of dictionaries containing the extracted order information. If an error
+                                     occurs during the retrieval process, it returns an error message indicating that
+                                     no orders were found for the given IDs.
+    """
     def get_order_info(order_id):
         url = f"http://185.22.145.64:3003/api/order-info/{order_id}"
         headers = {
@@ -752,7 +816,24 @@ def API_search_2(order_ids):
         return requests.get(url, headers=headers).json()
     tc = []
     # Function to parse the JSON response and extract required fields
-    def parse_order_info(json_data):
+    def parse_order_info(json_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parses the JSON data for a single order and extracts relevant order information.
+
+        Args:
+            json_data (Dict[str, Any]): The JSON data received from the order information API.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing extracted order details such as:
+                - id (str): The unique identifier of the order.
+                - type (str): The type of the order.
+                - status (str): The current status of the order.
+                - delivery_service (str): The delivery service used for the order.
+                - delivery_time (str): The estimated delivery time.
+                - payment_type (str): The type of payment used.
+                - package_status (str): The status of the package.
+                - order_item_type (str): The type of items in the order.
+        """
         order_info = {}
         if 'orderData' in json_data:
             data = json_data['orderData']
@@ -779,7 +860,25 @@ def API_search_2(order_ids):
         return order_info
 
     # Main function to get info for a list of order IDs
-    def get_multiple_orders_info(order_ids):
+    def get_multiple_orders_info(order_ids: List[str]) -> List[Dict[str, Any]]:
+        """
+        Retrieves and processes information for multiple order IDs.
+
+        Args:
+            order_ids (List[str]): A list of order IDs for which information is to be retrieved.
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries, each containing details of an order, including:
+                - id (str): The unique identifier of the order.
+                - type (str): The type of the order.
+                - status (str): The current status of the order.
+                - delivery_service (str): The delivery service used for the order.
+                - delivery_time (str): The estimated delivery time.
+                - payment_type (str): The type of payment used.
+                - package_status (str): The status of the package.
+                - order_item_type (str): The type of items in the order.
+            If an error occurs during retrieval, the list may contain an error message string.
+        """
         orders_info = []
         for order_id in order_ids:
             json_data = get_order_info(order_id)
@@ -803,8 +902,17 @@ def API_search_2(order_ids):
 
 
 import re
-def order_delfi(prompt):
-    def extract_orders_from_string(text):
+def order_delfi(prompt: str) -> str:
+    def extract_orders_from_string(text: str) -> List[int]:
+        """
+        Extracts all integer order IDs consisting of five or more digits from the provided text.
+
+        Args:
+            text (str): The input string containing potential order IDs.
+
+        Returns:
+            List[int]: A list of extracted order IDs as integers.
+        """
         # Define a regular expression pattern to match 5 or more digit integers
         pattern = r'\b\d{5,}\b'
         
@@ -824,13 +932,30 @@ def order_delfi(prompt):
         return "Morate uneti tačan broj porudžbine/a."
 
 
-def API_search(matching_sec_ids):
+def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
 
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
     # Function to parse the XML response and extract required fields
-    def parse_product_info(xml_data):
+    def parse_product_info(xml_data: bytes) -> Dict[str, Any]:
+        """
+        Parses the XML data of a product and extracts relevant product information.
+
+        Args:
+            xml_data (bytes): The XML data retrieved from the Delfi API for a product.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing extracted product details such as prices, lager, URL, ID, and action information.
+                            The dictionary may include keys like:
+                                - 'puna cena' (float)
+                                - 'eBook cena' (float)
+                                - 'lager' (str)
+                                - 'url' (str)
+                                - 'id' (str)
+                                - 'akcija' (Dict[str, Any], optional)
+                                - 'cene' (Dict[str, Any], optional)
+        """
         product_info = {}
         try:
             root = ET.fromstring(xml_data)
@@ -944,7 +1069,19 @@ def API_search(matching_sec_ids):
         return product_info
 
     # Main function to get info for a list of product IDs
-    def get_multiple_products_info(token, product_ids):
+    def get_multiple_products_info(token: str, product_ids: List[int]) -> Union[List[Dict[str, Any]], str]:
+        """
+        Retrieves and processes information for multiple product IDs.
+
+        Args:
+            token (str): The API authentication token.
+            product_ids (List[int]): A list of product IDs for which information is to be retrieved.
+
+        Returns:
+            Union[List[Dict[str, Any]], str]: 
+                - If successful, returns a list of dictionaries, each containing details of a product.
+                - If an error occurs during retrieval, returns an error message string indicating that no products were found for the given IDs.
+        """
         products_info = []
         for product_id in product_ids:
             # print(f"Product ID: {product_id}")
@@ -970,15 +1107,31 @@ def API_search(matching_sec_ids):
     return products_info
 
 
-def API_search_aks(order_ids):
+def API_search_aks(order_ids: List[str]) -> List[Dict[str, Any]]:
     
-    def get_order_status(order_id):
+    def get_order_status(order_id: int) -> Dict[str, Any]:
         url = f"http://www.akskurir.com/AKSVipService/Pracenje/{order_id}"
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for failed requests
         return response.json()
 
-    def parse_order_status(json_data):
+    def parse_order_status(json_data: Dict[str, Any]) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        """
+        Parses the JSON data of an order's status and extracts relevant information.
+
+        Args:
+            json_data (Dict[str, Any]): The JSON data received from the order tracking API.
+
+        Returns:
+            Tuple[Dict[str, Any], List[Dict[str, Any]]]: 
+                - A dictionary containing the error code and current status of the order.
+                - A list of dictionaries detailing each status change, including:
+                    - 'Vreme' (str): The timestamp of the status change.
+                    - 'VremeInt' (str): An internal timestamp or identifier.
+                    - 'Centar' (str): The center or location associated with the status.
+                    - 'StatusOpis' (str): A description of the status.
+                    - 'NStatus' (str): A numerical or coded representation of the status.
+        """
         status_info = {}
         status_changes = []
         
@@ -1002,7 +1155,27 @@ def API_search_aks(order_ids):
 
         return status_info, status_changes
 
-    def get_multiple_orders_info(order_ids):
+    def get_multiple_orders_info(order_ids: List[int]) -> List[Dict[str, Any]]:
+        """
+        Retrieves and processes information for multiple order IDs.
+
+        Args:
+            order_ids (List[int]): A list of order IDs for which information is to be retrieved.
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries, each containing:
+                - 'order_id' (int): The unique identifier of the order.
+                - 'current_status' (Dict[str, Any]): The current status information of the order, including:
+                    - 'ErrorCode' (Any): The error code returned by the API (if any).
+                    - 'Status' (Any): The current status of the order.
+                - 'status_changes' (List[Dict[str, Any]]): A list of status change records, each containing:
+                    - 'Vreme' (str): The timestamp of the status change.
+                    - 'VremeInt' (str): An internal timestamp or identifier.
+                    - 'Centar' (str): The center or location associated with the status.
+                    - 'StatusOpis' (str): A description of the status.
+                    - 'NStatus' (str): A numerical or coded representation of the status.
+                - 'error' (str, optional): An error message if the order information could not be retrieved.
+        """
         orders_info = []
         for order_id in order_ids:
             try:
@@ -1035,29 +1208,35 @@ def API_search_aks(order_ids):
     return orders_info
 
 
-def SelfQueryDelfi(upit, api_key=None, environment=None, index_name='delfi', namespace='opisi', openai_api_key=None, host=None):
+def SelfQueryDelfi(
+    upit: str,
+    api_key: Optional[str] = None,
+    environment: Optional[str] = None,
+    index_name: str = 'delfi',
+    namespace: str = 'opisi',
+    openai_api_key: Optional[str] = None,
+    host: Optional[str] = None
+    ) -> str:
     """
-    Executes a query against a Pinecone vector database using specified parameters or environment variables. 
-    The function initializes the Pinecone and OpenAI services, sets up the vector store and metadata, 
-    and performs a query using a custom retriever based on the provided input 'upit'.
+    Performs a self-query on the Delfi vector store to retrieve relevant documents based on the user's query.
 
-    It is used for self-query on metadata.
+    This function initializes the necessary embeddings and vector store, sets up the retriever with OpenAI's ChatGPT model,
+    and retrieves relevant documents that match the user's input query. It then formats the retrieved documents and their
+    metadata into a single result string.
 
-    Parameters:
-    upit (str): The query input for retrieving relevant documents.
-    api_key (str, optional): API key for Pinecone. Defaults to PINECONE_API_KEY from environment variables.
-    environment (str, optional): Pinecone environment. Defaults to PINECONE_API_KEY from environment variables.
-    index_name (str, optional): Name of the Pinecone index to use. Defaults to 'positive'.
-    namespace (str, optional): Namespace for Pinecone index. Defaults to NAMESPACE from environment variables.
-    openai_api_key (str, optional): OpenAI API key. Defaults to OPENAI_API_KEY from environment variables.
+    Args:
+        upit (str): The user's input query for which relevant documents are to be retrieved.
+        api_key (Optional[str], optional): The API key for Pinecone. Defaults to the 'PINECONE_API_KEY' environment variable.
+        environment (Optional[str], optional): The environment setting for Pinecone. Defaults to the 'PINECONE_API_KEY' environment variable.
+        index_name (str, optional): The name of the Pinecone index to use. Defaults to 'delfi'.
+        namespace (str, optional): The namespace within the Pinecone index to query. Defaults to 'opisi'.
+        openai_api_key (Optional[str], optional): The API key for OpenAI. Defaults to the 'OPENAI_API_KEY' environment variable.
+        host (Optional[str], optional): The host URL for Pinecone. Defaults to the 'PINECONE_HOST' environment variable.
 
     Returns:
-    str: A string containing the concatenated results from the query, with each document's metadata and content.
-         In case of an exception, it returns the exception message.
-
-    Note:
-    The function is tailored to a specific use case involving Pinecone and OpenAI services. 
-    It requires proper setup of these services and relevant environment variables.
+        str: A formatted string containing the details of the retrieved documents, including metadata such as
+             section ID, category, custom ID, date, image URL, authors, title, cover description, and the content.
+             If an error occurs, returns the error message as a string.
     """
     
     # Use the passed values if available, otherwise default to environment variables
@@ -1134,30 +1313,9 @@ class HybridQueryProcessor:
 
     This class allows the execution of queries that combine dense and sparse vector searches,
     typically used for retrieving and ranking information based on text data.
-
-    Attributes:
-        api_key (str): The API key for Pinecone.
-        environment (str): The Pinecone environment setting.
-        alpha (float): The weight used to balance dense and sparse vector scores.
-        score (float): The score treshold.
-        index_name (str): The name of the Pinecone index to be used.
-        index: The Pinecone index object.
-        namespace (str): The namespace to be used for the Pinecone index.
-        top_k (int): The number of results to be returned.
-            
-    Example usage:
-    processor = HybridQueryProcessor(api_key=environ["PINECONE_API_KEY"], 
-                                 environment=environ["PINECONE_API_KEY"],
-                                 alpha=0.7, 
-                                 score=0.35,
-                                 index_name='custom_index'), 
-                                 namespace=environ["NAMESPACE"],
-                                 top_k = 10 # all params are optional
-
-    result = processor.hybrid_query("some query text")    
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """
         Initializes the HybridQueryProcessor with optional parameters.
 
@@ -1169,10 +1327,11 @@ class HybridQueryProcessor:
                 - api_key (str): The API key for Pinecone (default fetched from environment variable).
                 - environment (str): The Pinecone environment setting (default fetched from environment variable).
                 - alpha (float): Weight for balancing dense and sparse scores (default 0.5).
-                - score (float): Weight for balancing dense and sparse scores (default 0.05).
-                - index_name (str): Name of the Pinecone index to be used (default 'positive').
+                - score (float): Score threshold for filtering results (default 0.05).
+                - index_name (str): Name of the Pinecone index to be used (default 'neo-positive').
                 - namespace (str): The namespace to be used for the Pinecone index (default fetched from environment variable).
-                - top_k (int): The number of results to be returned (default 6).
+                - top_k (int): The number of results to be returned (default 5).
+                - delfi_special (Any): Additional parameter for special configurations.
         """
         self.api_key = kwargs.get('api_key', getenv('PINECONE_API_KEY'))
         self.environment = kwargs.get('environment', getenv('PINECONE_API_KEY'))
@@ -1185,8 +1344,7 @@ class HybridQueryProcessor:
         self.index = connect_to_pinecone(self.delfi_special)
         self.host = getenv("PINECONE_HOST")
 
-    def get_embedding(self, text, model="text-embedding-3-large"):
-
+    def get_embedding(self, text: str, model: str = "text-embedding-3-large") -> List[float]:
         """
         Retrieves the embedding for the given text using the specified model.
 
@@ -1195,8 +1353,7 @@ class HybridQueryProcessor:
             model (str): The model to be used for embedding. Default is "text-embedding-3-large".
 
         Returns:
-            list: The embedding vector of the given text.
-            int: The number of prompt tokens used.
+            List[float]: The embedding vector of the given text.
         """
         
         text = text.replace("\n", " ")
@@ -1204,22 +1361,30 @@ class HybridQueryProcessor:
        
         return result
     
-    def hybrid_score_norm(self, dense, sparse):
+    def hybrid_score_norm(self, dense: List[float], sparse: Dict[str, Any]) -> Tuple[List[float], Dict[str, List[float]]]:
         """
         Normalizes the scores from dense and sparse vectors using the alpha value.
 
         Args:
-            dense (list): The dense vector scores.
-            sparse (dict): The sparse vector scores.
+            dense (List[float]): The dense vector scores.
+            sparse (Dict[str, Any]): The sparse vector scores.
 
         Returns:
-            tuple: Normalized dense and sparse vector scores.
+            Tuple[List[float], Dict[str, List[float]]]: 
+                - Normalized dense vector scores.
+                - Normalized sparse vector scores with updated values.
         """
         return ([v * self.alpha for v in dense], 
                 {"indices": sparse["indices"], 
                  "values": [v * (1 - self.alpha) for v in sparse["values"]]})
     
-    def hybrid_query(self, upit, top_k=None, filter=None, namespace=None):
+    def hybrid_query(
+        self,
+        upit: str,
+        top_k: Optional[int] = None,
+        filter: Optional[Dict[str, Any]] = None,
+        namespace: Optional[str] = None
+        ) -> List[Dict[str, Any]]:
         """
         Executes a hybrid query combining both dense (embedding-based) and sparse (BM25-based) search approaches
         to retrieve the most relevant results. The query leverages embeddings for semantic understanding and
@@ -1227,12 +1392,12 @@ class HybridQueryProcessor:
 
         Args:
             upit (str): The input query string for which to search and retrieve results.
-            top_k (int, optional): The maximum number of top results to return. If not specified, uses the default value defined in `self.top_k`.
-            filter (dict, optional): An optional filter to apply to the search results. It should be a dictionary that defines criteria for filtering the results.
-            namespace (str, optional): The namespace within which to search for results. Defaults to `self.namespace` if not provided.
+            top_k (Optional[int], optional): The maximum number of top results to return. If not specified, uses the default value defined in `self.top_k`.
+            filter (Optional[Dict[str, Any]], optional): An optional filter to apply to the search results. It should be a dictionary that defines criteria for filtering the results.
+            namespace (Optional[str], optional): The namespace within which to search for results. Defaults to `self.namespace` if not provided.
 
         Returns:
-            list[dict]: A list of dictionaries where each dictionary represents a search result. Each result includes metadata such as:
+            List[Dict[str, Any]]: A list of dictionaries where each dictionary represents a search result. Each result includes metadata such as:
                 - 'context': The relevant text snippet related to the query.
                 - 'chunk': The specific chunk of the document where the match was found.
                 - 'source': The source of the document or data (could be `None` based on certain conditions).
@@ -1299,10 +1464,26 @@ class HybridQueryProcessor:
         
         return results
        
-    def process_query_results(self, upit, dict=False, device=None):
+    def process_query_results(
+        self,
+        upit: str,
+        dict: bool = False,
+        device: Optional[Any] = None
+        ) -> Any:
         """
         Processes the query results and prompt tokens based on relevance score and formats them for a chat or dialogue system.
         Additionally, returns a list of scores for items that meet the score threshold.
+
+        Args:
+            upit (str): The input query string to process.
+            dict (bool, optional): Determines the format of the returned results. If `True`, returns a list of dictionaries containing raw results.
+                                   If `False`, returns a formatted string of relevant metadata. Defaults to `False`.
+            device (Optional[Any], optional): An optional device parameter to filter results, applicable when `APP_ID` is "DentyBot". Defaults to `None`.
+
+        Returns:
+            Any: 
+                - If `dict` is `False`, returns a formatted string containing metadata of relevant documents.
+                - If `dict` is `True`, returns a list of dictionaries with raw search results.
         """
         if getenv("APP_ID") == "DentyBot":
             filter = {'device': {'$in': [device]}}
@@ -1322,45 +1503,29 @@ class HybridQueryProcessor:
             return uk_teme
         else:
             return tematika
-    
-    def search_by_device(self, query, device, top_k=10, namespace="denty-serviser"):
-        """
-        Retrieves top_k entries filtered by device.
-        """
-        # Implement the device filtering logic here
-        # For example:
-        filter = {'device': {'$in': [device]}}  # Use the 'device' parameter
-        
-        print(f"Performing search with device filter in namespace: {namespace}")
-        
-        # Perform the hybrid query with the device filter
-        results = self.hybrid_query(upit=query, top_k=top_k, filter=filter, namespace=namespace)
-        
-        print(f"Raw results: {results}")  # Debugging
-        
-        # Process the matches to include only relevant metadata
-        processed_matches = []
-        for match in results:
-            # Access fields directly from match
-            device_list = match.get('device', [])
-            if isinstance(device_list, list):
-                device_str = ', '.join(device_list)
-            else:
-                device_str = str(device_list).lower()  # Ensure it's a string
-            
-            processed_matches.append({
-                'url': match.get('url', ''),
-                'page': match.get('page', ''),
-                'text': match.get('text', ''),
-                'device': device_str,
-                'score': match.get('score', 0)  # Include score if needed
-            })
-        
-        print(f"Processed matches: {processed_matches}")  # Debugging
-        return processed_matches  # It's good practice to return the processed results
 
 
-def intelisale(query):
+def intelisale(query: str) -> str:
+    """
+    Processes a user query to retrieve and generate a comprehensive customer report.
+
+    This function connects to the 'IntelisaleTest' SQL Server database using credentials from environment variables.
+    It sends the user's query to the OpenAI API to extract the client name in the standardized format 'Customer x'.
+    Using the extracted client name, it executes a predefined SQL query to fetch relevant customer information,
+    including details such as Code, Name, CustomerId, Branch, BlueCoatsNo, PlanCurrentYear, TurnoverCurrentYear,
+    FullfilmentCurrentYear, PlaniraniIznosPoPoseti, CalculatedNumberOfVisits, PaymentAvgDays, BalanceOutOfLimit,
+    BalanceCritical, and the latest activity log note.
+
+    After retrieving the data, the function formats the results into a structured string and invokes the
+    inner `generate_defined_report` function to create a formatted report in Serbian based on the fetched data.
+
+    Args:
+        query (str): The user's input query containing information to identify and retrieve the customer's details.
+
+    Returns:
+        str: A formatted report containing detailed customer information as generated by the OpenAI API.
+             If an error occurs during processing, the function returns the error message as a string.
+    """
     # Povezivanje na bazu podataka
     server = os.getenv('MSSQL_HOST')
     database = 'IntelisaleTest'
@@ -1466,7 +1631,27 @@ def intelisale(query):
     conn.close()
 
 
-    def generate_defined_report(data):
+    def generate_defined_report(data: str) -> str:
+        """
+        Generates a structured report based on the provided customer data.
+
+        This inner function takes a formatted string containing customer data and sends a prompt to the OpenAI API
+        to generate a detailed report in Serbian. The report includes specific fields such as:
+            - Naziv kupca (Customer Name)
+            - Šifra kupca, naziv branše i broj plavih mantila (Customer Code, Branch Name, and Blue Coats Number)
+            - Plan kupca i trenutno ostvarenje (Plan for the Customer and Current Achievement)
+            - Planirani iznos po poseti i ukupan broj poseta (Planned Amount per Visit and Total Number of Visits)
+            - Prosečni dani plaćanja, dugovanje izvan valute i kritični saldo (Average Payment Days, Debt Outside Currency, and Critical Balance)
+            - Beleška sa prethodne posete (Note from the Previous Visit)
+
+        The report is generated without a summary, containing only the requested data to ensure clarity and focus.
+
+        Args:
+            data (str): The formatted string containing customer data to be included in the report.
+
+        Returns:
+            str: A generated report in Serbian containing the specified customer information.
+        """
         prompt = f"Generate report from the given data: {data}"
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -1496,3 +1681,56 @@ def intelisale(query):
     
     fin_output = generate_defined_report(output)
     return fin_output
+
+
+ZA_FUNC_CALL = """
+
+from tools import tools as yyy
+def rag_tool_answer(user_query):
+    client = OpenAI()
+
+    # Tool list definition (add your tool definitions here)
+
+    # Call the model to process the query and decide on the tool to use
+    response = client.chat.completions.create(
+        model=getenv("OPENAI_MODEL"),
+        temperature=0.0,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that chooses the most appropriate tool based on the user query. You must choose exactly one tool."},
+            {"role": "user", "content": user_query}
+        ],
+        tools=yyy,  # Provide the tool list
+        tool_choice="required"  # Allow the model to choose the tool automatically
+    )
+
+    # Check if the model made a tool call
+    if response.choices[0].message.tool_calls:
+        tool_call = response.choices[0].message.tool_calls[0]
+        tool_name = tool_call.function.name
+        tool_result = tool_call.function.arguments
+
+        tool_arguments = json.loads(tool_result)
+
+        if tool_name == "graphp":
+            tool_result = graphp(user_query)
+        elif tool_name == "hybrid_query_processor":
+            processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
+            tool_result = processor.process_query_results(user_query)
+        elif tool_name == "SelfQueryDelfi":
+            if "namespace" in tool_arguments:
+                tool_result = SelfQueryDelfi(upit=tool_arguments['upit'], namespace=tool_arguments['namespace'])
+            else:
+                tool_result = SelfQueryDelfi(user_query)
+        elif tool_name == "pineg":
+            tool_result = pineg(user_query)
+        elif tool_name == "order_delfi":
+            tool_result = order_delfi(user_query)
+        else:
+            tool_result = "Tool not found or not implemented"
+
+        return tool_result, tool_name
+    else:
+        # Handle cases where no tool was called, return a default response
+        return "No relevant tool found", "None"
+
+"""

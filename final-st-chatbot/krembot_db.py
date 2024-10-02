@@ -5,19 +5,61 @@ import streamlit as st
 from os import getenv
 
 
+import json
+import pyodbc
+import os
+from typing import Any, Dict, List, Optional, Tuple
+
 class ConversationDatabase:
     """
     A class to interact with a MSSQL database for storing and retrieving conversation data.
-    """
-    def __init__(self, host=None, user=None, password=None, database=None):
-        self.host = host if host is not None else getenv('MSSQL_HOST')
-        self.user = user if user is not None else getenv('MSSQL_USER')
-        self.password = password if password is not None else getenv('MSSQL_PASS')
-        self.database = database if database is not None else getenv('MSSQL_DB')
-        self.conn = None
-        self.cursor = None
 
-    def __enter__(self):
+    This class provides methods to create tables, insert, update, query, and delete conversation records.
+    It also handles logging of token usage and user feedback. The class is designed to be used as a
+    context manager to ensure proper opening and closing of database connections.
+    """
+
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        database: Optional[str] = None
+    ) -> None:
+        """
+        Initializes the ConversationDatabase with database connection parameters.
+
+        If parameters are not provided, they are fetched from environment variables:
+            - 'MSSQL_HOST' for the host
+            - 'MSSQL_USER' for the username
+            - 'MSSQL_PASS' for the password
+            - 'MSSQL_DB' for the database name
+
+        Args:
+            host (Optional[str], optional): The database server host. Defaults to environment variable 'MSSQL_HOST'.
+            user (Optional[str], optional): The database username. Defaults to environment variable 'MSSQL_USER'.
+            password (Optional[str], optional): The database password. Defaults to environment variable 'MSSQL_PASS'.
+            database (Optional[str], optional): The database name. Defaults to environment variable 'MSSQL_DB'.
+        """
+        self.host: str = host if host is not None else os.getenv('MSSQL_HOST')
+        self.user: str = user if user is not None else os.getenv('MSSQL_USER')
+        self.password: str = password if password is not None else os.getenv('MSSQL_PASS')
+        self.database: str = database if database is not None else os.getenv('MSSQL_DB')
+        self.conn: Optional[pyodbc.Connection] = None
+        self.cursor: Optional[pyodbc.Cursor] = None
+
+    def __enter__(self) -> 'ConversationDatabase':
+        """
+        Establishes a connection to the MSSQL database and initializes a cursor.
+
+        This method is called when entering the context of the `with` statement.
+
+        Returns:
+            ConversationDatabase: The instance of the class with an active database connection.
+        
+        Raises:
+            Exception: If there is an error connecting to the database.
+        """
         try:
             self.conn = pyodbc.connect(
                 driver='{ODBC Driver 18 for SQL Server}',
@@ -33,16 +75,46 @@ class ConversationDatabase:
             raise
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any]
+    ) -> None:
+        """
+        Closes the database cursor and connection upon exiting the context.
+
+        This method is called when exiting the context of the `with` statement, regardless of whether
+        an exception occurred.
+
+        Args:
+            exc_type (Optional[type]): The type of the exception.
+            exc_val (Optional[BaseException]): The exception instance.
+            exc_tb (Optional[Any]): The traceback object.
+
+        Returns:
+            None
+        """
         if self.cursor is not None:
             self.cursor.close()
         if self.conn is not None:
             self.conn.close()
         if exc_type or exc_val or exc_tb:
             print(f"Exception occurred: {exc_type}, {exc_val}")
-            pass
 
-    def create_sql_table(self):
+    def create_sql_table(self) -> None:
+        """
+        Creates the 'conversations' table in the database if it does not already exist.
+
+        The table includes fields for id, app_name, user_name, thread_id, and conversation.
+        This method ensures that the necessary table structure is in place for storing conversation data.
+
+        Returns:
+            None
+        
+        Raises:
+            Exception: If there is an error executing the SQL statement.
+        """
         check_table_sql = '''
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='conversations' AND xtype='U')
         CREATE TABLE conversations (
@@ -60,15 +132,30 @@ class ConversationDatabase:
             print(f"Error creating table: {e}")
             raise
 
-    def update_sql_record(self, app_name, user_name, thread_id, new_conversation):
+    def update_sql_record(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str,
+        new_conversation: List[Dict[str, Any]]
+    ) -> None:
         """
-        Replaces the existing conversation data with new conversation data for a specific record in the conversations table.
+        Updates an existing conversation record with new conversation data.
 
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier (string).
-        - new_conversation: The new conversation data to replace as a list of dictionaries.
+        This method replaces the existing conversation data with the provided `new_conversation` for a specific
+        record identified by `app_name`, `user_name`, and `thread_id`.
+
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
+            new_conversation (List[Dict[str, Any]]): The new conversation data as a list of dictionaries.
+
+        Returns:
+            None
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         new_conversation_json = json.dumps(new_conversation)
         update_sql = '''
@@ -86,17 +173,22 @@ class ConversationDatabase:
             print(f"Error updating record: {e}")
             self.conn.rollback()
 
-    def record_exists(self, app_name, user_name, thread_id):
+    def record_exists(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str
+    ) -> bool:
         """
-        Checks if a record exists in the conversations table.
+        Checks whether a specific conversation record exists in the database.
 
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier (string).
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
 
         Returns:
-        - Boolean indicating if the record exists.
+            bool: `True` if the record exists, `False` otherwise.
         """
         check_sql = '''
         SELECT COUNT(*)
@@ -107,17 +199,28 @@ class ConversationDatabase:
         count = self.cursor.fetchone()[0]
         return count > 0
 
-    def add_sql_record(self, app_name, user_name, thread_id, conversation):
+    def add_sql_record(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str,
+        conversation: List[Dict[str, Any]]
+    ) -> None:
         """
-        Adds a new record to the conversations table.
+        Inserts a new conversation record into the database.
 
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier (string).
-        - conversation: The conversation data as a list of dictionaries.
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
+            conversation (List[Dict[str, Any]]): The conversation data as a list of dictionaries.
+
+        Returns:
+            None
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
-
         conversation_json = json.dumps(conversation)
         insert_sql = '''
         INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
@@ -130,13 +233,51 @@ class ConversationDatabase:
             print(f"Error adding record: {e}")
             self.conn.rollback()
 
-    def update_or_insert_sql_record(self, app_name, user_name, thread_id, new_conversation):
+    def update_or_insert_sql_record(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str,
+        new_conversation: List[Dict[str, Any]]
+    ) -> None:
+        """
+        Updates an existing conversation record or inserts a new one if it does not exist.
+
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
+            new_conversation (List[Dict[str, Any]]): The conversation data as a list of dictionaries.
+
+        Returns:
+            None
+        """
         if self.record_exists(app_name, user_name, thread_id):
             self.update_sql_record(app_name, user_name, thread_id, new_conversation)
         else:
             self.add_sql_record(app_name, user_name, thread_id, new_conversation)
 
-    def query_sql_record(self, app_name, user_name, thread_id):
+    def query_sql_record(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Retrieves a conversation record from the database.
+
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
+
+        Returns:
+            Optional[List[Dict[str, Any]]]: The conversation data as a list of dictionaries if the record exists,
+                                             otherwise `None`.
+        
+        Raises:
+            Exception: If there is an error executing the SQL statement.
+        """
         query_sql = '''
         SELECT conversation FROM conversations 
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
@@ -152,7 +293,26 @@ class ConversationDatabase:
             print(f"Error querying record: {e}")
             raise
 
-    def delete_sql_record(self, app_name, user_name, thread_id):
+    def delete_sql_record(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str
+    ) -> None:
+        """
+        Deletes a specific conversation record from the database.
+
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
+
+        Returns:
+            None
+        
+        Raises:
+            Exception: If there is an error executing the SQL statement.
+        """
         delete_sql = '''
         DELETE FROM conversations
         WHERE app_name = ? AND user_name = ? AND thread_id = ?
@@ -164,7 +324,24 @@ class ConversationDatabase:
             print(f"Error deleting record: {e}")
             raise
 
-    def list_threads(self, app_name, user_name):
+    def list_threads(
+        self,
+        app_name: str,
+        user_name: str
+    ) -> List[str]:
+        """
+        Lists all unique thread IDs for a given application and user.
+
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+
+        Returns:
+            List[str]: A list of unique thread IDs associated with the specified application and user.
+        
+        Raises:
+            Exception: If there is an error executing the SQL statement.
+        """
         list_threads_sql = '''
         SELECT DISTINCT thread_id FROM conversations
         WHERE app_name = ? AND user_name = ?
@@ -177,7 +354,38 @@ class ConversationDatabase:
             print(f"Error listing threads: {e}")
             raise
 
-    def add_token_record_openai(self, app_id, model_name, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens):
+    def add_token_record_openai(
+        self,
+        app_id: str,
+        model_name: str,
+        embedding_tokens: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        stt_tokens: int,
+        tts_tokens: int
+    ) -> None:
+        """
+        Inserts a token usage record into the 'chatbot_token_log' table.
+
+        This method logs the number of tokens used for various components such as embeddings,
+        prompts, completions, speech-to-text (STT), and text-to-speech (TTS) for a specific application
+        and model.
+
+        Args:
+            app_id (str): The identifier for the application.
+            model_name (str): The name of the OpenAI model used.
+            embedding_tokens (int): Number of tokens used for embeddings.
+            prompt_tokens (int): Number of tokens used for prompts.
+            completion_tokens (int): Number of tokens used for completions.
+            stt_tokens (int): Number of tokens used for speech-to-text.
+            tts_tokens (int): Number of tokens used for text-to-speech.
+
+        Returns:
+            None
+        
+        Raises:
+            Exception: If there is an error executing the SQL statement.
+        """
         insert_sql = """
         INSERT INTO chatbot_token_log (app_id, embedding_tokens, prompt_tokens, completion_tokens, stt_tokens, tts_tokens, model_name)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -190,9 +398,37 @@ class ConversationDatabase:
             print(f"Error adding token record: {e}")
             raise
 
-    def insert_feedback(self, thread_id, app_name, previous_question, tool_answer, given_answer, thumbs, feedback_text):
+    def insert_feedback(
+        self,
+        thread_id: str,
+        app_name: str,
+        previous_question: str,
+        tool_answer: str,
+        given_answer: str,
+        thumbs: str,
+        feedback_text: str
+    ) -> None:
         """
-        Inserts feedback data into the Feedback table.
+        Inserts user feedback into the 'Feedback' table.
+
+        This method logs feedback provided by the user regarding the chatbot's responses. It includes
+        details such as the previous question, the tool's answer, the user's given answer, the type of
+        feedback (Good/Bad), and any optional text provided by the user.
+
+        Args:
+            thread_id (str): The thread identifier associated with the conversation.
+            app_name (str): The name of the application.
+            previous_question (str): The previous question asked by the user.
+            tool_answer (str): The answer provided by the tool.
+            given_answer (str): The answer given by the user.
+            thumbs (str): The type of feedback ('Good' or 'Bad').
+            feedback_text (str): Optional additional feedback text provided by the user.
+
+        Returns:
+            None
+        
+        Raises:
+            Exception: If there is an error executing the SQL statement.
         """
         try:
             insert_query = """
@@ -205,30 +441,77 @@ class ConversationDatabase:
             print(f"Error inserting feedback into the database: {e}")
             raise
 
-    def close(self):
+    def close(self) -> None:
+        """
+        Closes the database connection if it is open.
+
+        This method ensures that both the cursor and connection to the database are properly closed,
+        releasing any held resources. It is recommended to call this method when the database interactions
+        are complete to prevent potential memory leaks or connection issues.
+
+        Returns:
+            None
+        """
         if self.conn:
             self.conn.close()
             print("Database connection closed.")
 
 
+
+import json
+import pyodbc
+import os
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 class PromptDatabase:
     """
     A class to interact with an MSSQL database for storing and retrieving prompt templates.
+
+    This class provides methods to create tables, insert, update, query, and delete prompt records.
+    It also handles the retrieval of prompt details based on various criteria. The class is designed
+    to be used as a context manager to ensure proper opening and closing of database connections.
     """
-    def __init__(self, host=None, user=None, password=None, database=None):
+
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        database: Optional[str] = None
+    ) -> None:
         """
         Initializes the connection details for the database, with the option to use environment variables as defaults.
+
+        If parameters are not provided, they are fetched from environment variables:
+            - 'MSSQL_HOST' for the host
+            - 'MSSQL_USER' for the username
+            - 'MSSQL_PASS' for the password
+            - 'MSSQL_DB' for the database name
+
+        Args:
+            host (Optional[str], optional): The database server host. Defaults to environment variable 'MSSQL_HOST'.
+            user (Optional[str], optional): The database username. Defaults to environment variable 'MSSQL_USER'.
+            password (Optional[str], optional): The database password. Defaults to environment variable 'MSSQL_PASS'.
+            database (Optional[str], optional): The database name. Defaults to environment variable 'MSSQL_DB'.
         """
-        self.host = host if host is not None else getenv('MSSQL_HOST')
-        self.user = user if user is not None else getenv('MSSQL_USER')
-        self.password = password if password is not None else getenv('MSSQL_PASS')
-        self.database = database if database is not None else getenv('MSSQL_DB')
-        self.conn = None
-        self.cursor = None
+        self.host: str = host if host is not None else os.getenv('MSSQL_HOST')
+        self.user: str = user if user is not None else os.getenv('MSSQL_USER')
+        self.password: str = password if password is not None else os.getenv('MSSQL_PASS')
+        self.database: str = database if database is not None else os.getenv('MSSQL_DB')
+        self.conn: Optional[pyodbc.Connection] = None
+        self.cursor: Optional[pyodbc.Cursor] = None
         
-    def __enter__(self):
+    def __enter__(self) -> 'PromptDatabase':
         """
         Establishes the database connection and returns the instance itself when entering the context.
+
+        This method is called when entering the context of the `with` statement.
+
+        Returns:
+            PromptDatabase: The instance of the class with an active database connection.
+        
+        Raises:
+            pyodbc.Error: If there is an error connecting to the database.
         """
         self.conn = pyodbc.connect(
             driver='{ODBC Driver 18 for SQL Server}',
@@ -241,21 +524,55 @@ class PromptDatabase:
         self.cursor = self.conn.cursor()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any]
+    ) -> None:
         """
         Closes the database connection and cursor when exiting the context.
         Handles any exceptions that occurred within the context.
+
+        This method is called when exiting the context of the `with` statement, regardless of whether
+        an exception occurred.
+
+        Args:
+            exc_type (Optional[type]): The type of the exception.
+            exc_val (Optional[BaseException]): The exception instance.
+            exc_tb (Optional[Any]): The traceback object.
+
+        Returns:
+            None
         """
         if self.cursor is not None:
             self.cursor.close()
+            self.cursor = None
         if self.conn is not None:
             self.conn.close()
+            self.conn = None
         if exc_type or exc_val or exc_tb:
             pass
 
-    def query_sql_prompt_strings(self, prompt_names):
+    def query_sql_prompt_strings(
+        self,
+        prompt_names: List[str]
+    ) -> Dict[str, str]:
         """
         Fetches the existing prompt strings for a given list of prompt names, maintaining the order of prompt_names.
+
+        This method constructs and executes a SQL query that retrieves prompt names and their corresponding
+        prompt strings from the 'PromptStrings' table. It ensures that the results are ordered based on the
+        sequence of prompt names provided in the input list.
+
+        Args:
+            prompt_names (List[str]): A list of prompt names for which to retrieve the prompt strings.
+
+        Returns:
+            Dict[str, str]: A dictionary mapping each prompt name to its corresponding prompt string.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         order_clause = "ORDER BY CASE PromptName "
         for idx, name in enumerate(prompt_names):
@@ -270,34 +587,76 @@ class PromptDatabase:
         params = tuple(prompt_names) + tuple(prompt_names)
         self.cursor.execute(query, params)
         results = self.cursor.fetchall()
-        dict = {}
+        prompt_dict: Dict[str, str] = {}
         for result in results:
-            dict[result[0]] = result[1]
-        return dict
+            prompt_dict[result[0]] = result[1]
+        return prompt_dict
 
-    def get_records(self, query, params=None):
+    def get_records(
+        self,
+        query: str,
+        params: Optional[Tuple[Any, ...]] = None
+    ) -> List[pyodbc.Row]:
+        """
+        Executes a SQL query and retrieves all matching records.
+
+        Args:
+            query (str): The SQL query to execute.
+            params (Optional[Tuple[Any, ...]], optional): A tuple of parameters to pass with the SQL query.
+                                                           Defaults to None.
+
+        Returns:
+            List[pyodbc.Row]: A list of rows resulting from the executed query. Returns an empty list if an error occurs.
+        """
         try:
             if self.conn is None:
                 self.__enter__()
             self.cursor.execute(query, params)
             records = self.cursor.fetchall()
             return records
-        except Exception as e:
+        except Exception:
             return []
 
-    def get_records_from_column(self, table, column):
+    def get_records_from_column(
+        self,
+        table: str,
+        column: str
+    ) -> List[Any]:
         """
-        Fetch records from a specified column in a specified table.
+        Fetches distinct records from a specified column in a specified table.
+
+        Args:
+            table (str): The name of the table to query.
+            column (str): The name of the column from which to retrieve distinct records.
+
+        Returns:
+            List[Any]: A list of distinct values from the specified column. Returns an empty list if no records are found.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         query = f"SELECT DISTINCT {column} FROM {table}"
         records = self.get_records(query)
         return [record[0] for record in records] if records else []
 
-    def get_all_records_from_table(self, table_name):
+    def get_all_records_from_table(
+        self,
+        table_name: str
+    ) -> Tuple[List[pyodbc.Row], List[str]]:
         """
-        Fetch all records and all columns for a given table.
-        :param table_name: The name of the table from which to fetch records.
-        :return: A pandas DataFrame with all records and columns from the specified table.
+        Fetches all records and all columns from a given table.
+
+        Args:
+            table_name (str): The name of the table from which to fetch records.
+
+        Returns:
+            Tuple[List[pyodbc.Row], List[str]]: 
+                - A list of all records from the specified table.
+                - A list of column names corresponding to the records.
+                Returns two empty lists if an error occurs.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         query = f"SELECT * FROM {table_name}"
         try:
@@ -307,13 +666,23 @@ class PromptDatabase:
             return records, columns
         except Exception as e:
             print(f"Failed to fetch records: {e}")
-            return [], []  # Return an empty DataFrame in case of an error
+            return [], []  # Return empty lists in case of an error
 
-    def get_prompts_for_username(self, username):
+    def get_prompts_for_username(
+        self,
+        username: str
+    ) -> List[pyodbc.Row]:
         """
-        Fetch all prompt texts and matching variable names for a given username.
-        :param username: The username (or partial username) for which to fetch prompt texts and variable names.
-        :return: A pandas DataFrame with the prompt texts and matching variable names.
+        Fetches all prompt texts and matching variable names for a given username.
+
+        Args:
+            username (str): The username (or partial username) for which to fetch prompt texts and variable names.
+
+        Returns:
+            List[pyodbc.Row]: A list of records containing prompt details matching the specified username.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         query = """
         SELECT ps.PromptName, ps.PromptString, pv.VariableName, pf.Filename, pf.FilePath, u.Username 
@@ -327,7 +696,24 @@ class PromptDatabase:
         records = self.get_records(query, params)
         return records
 
-    def add_record(self, table, **fields):
+    def add_record(
+        self,
+        table: str,
+        **fields: Any
+    ) -> Optional[int]:
+        """
+        Inserts a new record into the specified table with the provided fields.
+
+        Args:
+            table (str): The name of the table to insert the record into.
+            **fields (Any): Arbitrary keyword arguments representing column-value pairs to insert.
+
+        Returns:
+            Optional[int]: The ID of the inserted record if the table has an identity column. Returns None if insertion fails.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
+        """
         columns = ', '.join(fields.keys())
         placeholders = ', '.join(['?'] * len(fields))
         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
@@ -340,9 +726,28 @@ class PromptDatabase:
             print(f"Error in add_record: {e}")
             return None
 
-    def add_new_record(self, username, filename, variablename, promptstring, promptname, comment):
+    def add_new_record(
+        self,
+        username: str,
+        filename: str,
+        variablename: str,
+        promptstring: str,
+        promptname: str,
+        comment: str
+    ) -> str:
         """
-        Adds a new record to the database, handling the relationships between users, files, variables, and prompts.
+        Adds a new prompt record to the database, handling the relationships between users, files, variables, and prompts.
+
+        Args:
+            username (str): The name of the user.
+            filename (str): The name of the Python file associated with the variable.
+            variablename (str): The name of the variable.
+            promptstring (str): The prompt string content.
+            promptname (str): The name of the prompt.
+            comment (str): Additional comments or metadata for the prompt.
+
+        Returns:
+            str: A success message if the record is added successfully, otherwise an error message.
         """
         try:
             self.cursor.execute("SELECT UserID FROM Users WHERE Username = ?", (username,))
@@ -371,13 +776,26 @@ class PromptDatabase:
             self.conn.rollback()
             return f"Failed to add the record: {e}"
 
-    def update_record(self, table, fields, condition):
+    def update_record(
+        self,
+        table: str,
+        fields: Dict[str, Any],
+        condition: Tuple[str, List[Any]]
+    ) -> str:
         """
         Updates records in the specified table based on a condition.
-    
-        :param table: The name of the table to update.
-        :param fields: A dictionary of column names and their new values.
-        :param condition: A tuple containing the condition string and its values (e.g., ("UserID = ?", [user_id])).
+
+        Args:
+            table (str): The name of the table to update.
+            fields (Dict[str, Any]): A dictionary of column names and their new values.
+            condition (Tuple[str, List[Any]]): A tuple containing the condition string and its values 
+                                               (e.g., ("UserID = ?", [user_id])).
+
+        Returns:
+            str: A success message if the record is updated successfully, otherwise an error message.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         set_clause = ', '.join([f"{key} = ?" for key in fields.keys()])
         values = list(fields.values()) + condition[1]
@@ -392,10 +810,24 @@ class PromptDatabase:
             self.conn.rollback()
             return f"Error in update_record: {e}"
         
-    def delete_prompt_by_name(self, promptname):
+    def delete_prompt_by_name(
+        self,
+        promptname: str
+    ) -> str:
         """
-        Delete a prompt record from PromptStrings by promptname.
-        This method also handles deletions or updates in related tables if necessary.
+        Deletes a prompt record from the 'PromptStrings' table by its prompt name.
+
+        This method removes the specified prompt from the database. It also handles deletions or updates in related tables
+        if necessary to maintain referential integrity.
+
+        Args:
+            promptname (str): The name of the prompt to delete.
+
+        Returns:
+            str: A success message if the prompt is deleted successfully, otherwise an error message.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         delete_query = "DELETE FROM PromptStrings WHERE PromptName = ?"
         try:
@@ -408,13 +840,25 @@ class PromptDatabase:
             self.conn.rollback()
             return f"Error deleting prompt '{promptname}': {e}"
     
-    def update_prompt_record(self, promptname, new_promptstring, new_comment):
+    def update_prompt_record(
+        self,
+        promptname: str,
+        new_promptstring: str,
+        new_comment: str
+    ) -> str:
         """
         Updates the PromptString and Comment fields of an existing prompt record identified by PromptName.
-    
-        :param promptname: The name of the prompt to update.
-        :param new_promptstring: The new value for the PromptString field.
-        :param new_comment: The new value for the Comment field.
+
+        Args:
+            promptname (str): The name of the prompt to update.
+            new_promptstring (str): The new value for the PromptString field.
+            new_comment (str): The new value for the Comment field.
+
+        Returns:
+            str: A success message if the prompt record is updated successfully, otherwise an error message.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         try:
             if self.conn is None:
@@ -434,15 +878,22 @@ class PromptDatabase:
             self.conn.rollback()
             return f"Error occurred while updating the prompt record: {e}"
 
-    def search_for_string_in_prompt_text(self, search_string):
+    def search_for_string_in_prompt_text(
+        self,
+        search_string: str
+    ) -> List[Dict[str, str]]:
         """
-        Lists all prompt_name and prompt_text where a specific string is part of the prompt_text.
+        Lists all prompt names and prompt texts where a specific string is part of the prompt text.
 
-        Parameters:
-        - search_string: The string to search for within prompt_text.
+        Args:
+            search_string (str): The string to search for within prompt texts.
 
         Returns:
-        - A list of dictionaries, each containing 'prompt_name' and 'prompt_text' for records matching the search criteria.
+            List[Dict[str, str]]: A list of dictionaries, each containing 'PromptName' and 'PromptString' 
+                                  for records matching the search criteria.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         self.cursor.execute('''
         SELECT PromptName, PromptString
@@ -454,12 +905,22 @@ class PromptDatabase:
         records = [{'PromptName': row[0], 'PromptString': row[1]} for row in results]
         return records
 
-    def get_prompt_details_by_name(self, promptname):
+    def get_prompt_details_by_name(
+        self,
+        promptname: str
+    ) -> Optional[Dict[str, str]]:
         """
         Fetches the details of a prompt record identified by PromptName.
-    
-        :param promptname: The name of the prompt to fetch details for.
-        :return: A dictionary with the details of the prompt record, or None if not found.
+
+        Args:
+            promptname (str): The name of the prompt to fetch details for.
+
+        Returns:
+            Optional[Dict[str, str]]: A dictionary containing 'PromptString' and 'Comment' of the prompt 
+                                      if found, otherwise `None`.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         query = """
         SELECT PromptName, PromptString, Comment
@@ -470,21 +931,34 @@ class PromptDatabase:
             self.cursor.execute(query, (promptname,))
             result = self.cursor.fetchone()
             if result:
-                return {"PromptString": result[0], "Comment": result[1]}
+                return {"PromptString": result[1], "Comment": result[2]}
             else:
                 return None
         except Exception as e:
             print(f"Error occurred: {e}")
             return None
 
-    def update_all_record(self, original_value, new_value, table, column):
+    def update_all_record(
+        self,
+        original_value: str,
+        new_value: str,
+        table: str,
+        column: str
+    ) -> str:
         """
         Updates a specific record identified by the original value in a given table and column.
-    
-        :param original_value: The current value to identify the record to update.
-        :param new_value: The new value to set for the specified column.
-        :param table: The table to update.
-        :param column: The column to update.
+
+        This method ensures that only valid tables and columns are updated to prevent SQL injection
+        and maintain data integrity.
+
+        Args:
+            original_value (str): The current value to identify the record to update.
+            new_value (str): The new value to set for the specified column.
+            table (str): The name of the table to update.
+            column (str): The name of the column to update.
+
+        Returns:
+            str: A success message if the record is updated successfully, otherwise an error message.
         """
         try:
             valid_tables = ['Users', 'PromptVariables', 'PythonFiles']
@@ -506,15 +980,27 @@ class PromptDatabase:
         except Exception as e:
             self.conn.rollback()
             return f"Error occurred while updating the record: {e}"
-
-    def get_prompt_details_for_all(self, value, table, column):
+    
+    def get_prompt_details_for_all(
+        self,
+        value: str,
+        table: str,
+        column: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Fetches the details of a record identified by a value in a specific table and column.
 
-        :param value: The value to fetch details for.
-        :param table: The table to fetch from.
-        :param column: The column to match the value against.
-        :return: A dictionary with the details of the record, or None if not found.
+        Args:
+            value (str): The value to fetch details for.
+            table (str): The name of the table to fetch from.
+            column (str): The name of the column to match the value against.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing the record's details if found, otherwise `None`.
+        
+        Raises:
+            ValueError: If the specified table or column is invalid.
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         valid_tables = ['Users', 'PromptVariables', 'PythonFiles']
         valid_columns = ['Username', 'VariableName', 'Filename', 'FilePath']
@@ -522,7 +1008,7 @@ class PromptDatabase:
         if table not in valid_tables or column not in valid_columns:
             print("Invalid table or column name.")
             return None
-
+    
         query = f"SELECT * FROM {table} WHERE {column} = ?"
     
         try:
@@ -537,9 +1023,16 @@ class PromptDatabase:
             print(f"Error occurred: {e}")
             return None
 
-    def close(self):
+    def close(self) -> None:
         """
         Closes the database connection and cursor, if they exist.
+
+        This method ensures that both the cursor and connection to the database are properly closed,
+        releasing any held resources. It is recommended to call this method when the database interactions
+        are complete to prevent potential memory leaks or connection issues.
+
+        Returns:
+            None
         """
         if self.cursor is not None:
             self.cursor.close()
@@ -548,15 +1041,15 @@ class PromptDatabase:
             self.conn.close()
             self.conn = None
 
-    def query_sql_record(self, prompt_name):
+    def query_sql_record(self, prompt_name: str) -> Optional[Dict[str, str]]:
         """
         Fetches the existing prompt text and comment for a given prompt name.
 
-        Parameters:
-        - prompt_name: The name of the prompt.
+        Args:
+            prompt_name (str): The name of the prompt.
 
         Returns:
-        - A dictionary with 'prompt_text' and 'comment' if record exists, else None.
+            Optional[Dict[str, str]]: A dictionary with 'prompt_text' and 'comment' if the record exists, else None.
         """
         self.cursor.execute('''
         SELECT prompt_text, comment FROM prompts
@@ -568,12 +1061,15 @@ class PromptDatabase:
         else:
             return None
 
-    def get_file_path_by_name(self, filename):
+    def get_file_path_by_name(self, filename: str) -> Optional[str]:
         """
         Fetches the FilePath for a given Filename from the PythonFiles table.
 
-        :param filename: The name of the file to fetch the path for.
-        :return: The FilePath of the file if found, otherwise None.
+        Args:
+            filename (str): The name of the file to fetch the path for.
+
+        Returns:
+            Optional[str]: The FilePath of the file if found, otherwise None.
         """
         query = "SELECT FilePath FROM PythonFiles WHERE Filename = ?"
         try:
@@ -584,14 +1080,22 @@ class PromptDatabase:
             print(f"Error occurred: {e}")
             return None
 
-    def update_filename_and_path(self, original_filename, new_filename, new_file_path):
+    def update_filename_and_path(
+        self,
+        original_filename: str,
+        new_filename: str,
+        new_file_path: str
+    ) -> Optional[str]:
         """
         Updates the Filename and FilePath in the PythonFiles table for a given original Filename.
 
-        :param original_filename: The original name of the file to update.
-        :param new_filename: The new name for the file.
-        :param new_file_path: The new path for the file.
-        :return: A success message or an error message.
+        Args:
+            original_filename (str): The original name of the file to update.
+            new_filename (str): The new name for the file.
+            new_file_path (str): The new path for the file.
+
+        Returns:
+            Optional[str]: A success message if the record is updated successfully, otherwise None.
         """
         query = "UPDATE PythonFiles SET Filename = ?, FilePath = ? WHERE Filename = ?"
         try:
@@ -603,7 +1107,25 @@ class PromptDatabase:
             print(f"Error occurred: {e}")
             return None
 
-    def add_relationship_record(self, prompt_id, user_id, variable_id, file_id):
+    def add_relationship_record(
+        self,
+        prompt_id: int,
+        user_id: int,
+        variable_id: int,
+        file_id: int
+    ) -> str:
+        """
+        Adds a new relationship record to the CentralRelationshipTable.
+
+        Args:
+            prompt_id (int): The ID of the prompt.
+            user_id (int): The ID of the user.
+            variable_id (int): The ID of the variable.
+            file_id (int): The ID of the file.
+
+        Returns:
+            str: A success message if the record is added successfully, otherwise an error message.
+        """
         query = """
         INSERT INTO CentralRelationshipTable (PromptID, UserID, VariableID, FileID)
         VALUES (?, ?, ?, ?);
@@ -611,12 +1133,32 @@ class PromptDatabase:
         try:
             self.cursor.execute(query, (prompt_id, user_id, variable_id, file_id))
             self.conn.commit()
-            return f"Record added successfully"
+            return "Record added successfully"
         except Exception as e:
             self.conn.rollback()
             return f"Error in add_relationship_record: {e}"
 
-    def update_relationship_record(self, record_id, prompt_id=None, user_id=None, variable_id=None, file_id=None):
+    def update_relationship_record(
+        self,
+        record_id: int,
+        prompt_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        variable_id: Optional[int] = None,
+        file_id: Optional[int] = None
+    ) -> str:
+        """
+        Updates a relationship record in the CentralRelationshipTable based on provided parameters.
+
+        Args:
+            record_id (int): The ID of the relationship record to update.
+            prompt_id (Optional[int], optional): The new PromptID to set. Defaults to None.
+            user_id (Optional[int], optional): The new UserID to set. Defaults to None.
+            variable_id (Optional[int], optional): The new VariableID to set. Defaults to None.
+            file_id (Optional[int], optional): The new FileID to set. Defaults to None.
+
+        Returns:
+            str: A success message if the record is updated successfully, otherwise an error message.
+        """
         updates = []
         params = []
 
@@ -647,29 +1189,50 @@ class PromptDatabase:
             self.conn.rollback()
             return f"Error in update_relationship_record: {e}"
 
-    def delete_record(self, table, condition):
+    def delete_record(
+        self,
+        table: str,
+        condition: Tuple[str, Any]
+    ) -> str:
+        """
+        Deletes a record from a specified table based on a condition.
+
+        Args:
+            table (str): The name of the table from which to delete the record.
+            condition (Tuple[str, Any]): A tuple containing the condition string and its parameters
+                                            (e.g., ("ID = ?", id_value)).
+
+        Returns:
+            str: A success message if the record is deleted successfully, otherwise an error message.
+        """
         query = f"DELETE FROM {table} WHERE {condition[0]}"
         try:
             self.cursor.execute(query, condition[1])
             self.conn.commit()
-            return f"Record deleted successfully"
+            return "Record deleted successfully"
         except Exception as e:
             self.conn.rollback()
             return f"Error in delete_record: {e}"
 
-    def get_record_by_name(self, table, name_column, value):
+    def get_record_by_name(
+        self,
+        table: str,
+        name_column: str,
+        value: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Fetches the entire record from a specified table based on a column name and value.
 
-        :param table: The table to search in.
-        :param name_column: The column name to match the value against.
-        :param value: The value to search for.
-        :return: A dictionary with the record data or None if no record is found.
+        Args:
+            table (str): The table to search in.
+            name_column (str): The column name to match the value against.
+            value (str): The value to search for.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary with the record data or None if no record is found.
         """
         query = f"SELECT * FROM {table} WHERE {name_column} = ?"
         try:
-            if self.conn is None:
-                self.__enter__()
             self.cursor.execute(query, (value,))
             result = self.cursor.fetchone()
             if result:
@@ -681,15 +1244,20 @@ class PromptDatabase:
             print(f"Error occurred: {e}")
             return None
         
-    def get_relationships_by_user_id(self, user_id):
+    def get_relationships_by_user_id(
+        self,
+        user_id: int
+    ) -> Union[List[Dict[str, Any]], bool]:
         """
         Fetches relationship records for a given user ID.
         
-        Parameters:
-        - user_id: The ID of the user for whom to fetch relationship records.
+        Args:
+            user_id (int): The ID of the user for whom to fetch relationship records.
         
         Returns:
-        - A list of dictionaries containing relationship details.
+            Union[List[Dict[str, Any]], bool]: 
+                - A list of dictionaries containing relationship details if records are found.
+                - `False` if an error occurs during the fetch.
         """
         relationships = []
         query = """
@@ -715,12 +1283,25 @@ class PromptDatabase:
                         'Filename': record[4]
                     }
                     relationships.append(relationship)
-        except Exception as e:
+        except Exception:
             return False
         
         return relationships
     
-    def fetch_relationship_data(self, prompt_id=None):
+    def fetch_relationship_data(
+        self,
+        prompt_id: Optional[int] = None
+    ) -> List[pyodbc.Row]:
+        """
+        Fetches relationship data from the CentralRelationshipTable, optionally filtered by PromptID.
+
+        Args:
+            prompt_id (Optional[int], optional): The PromptID to filter the relationship records. 
+                                                    If None, fetches all records.
+
+        Returns:
+            List[pyodbc.Row]: A list of relationship records matching the criteria.
+        """
         query = """
         SELECT crt.ID, ps.PromptName, u.Username, pv.VariableName, pf.Filename
         FROM CentralRelationshipTable crt
@@ -739,12 +1320,23 @@ class PromptDatabase:
         records = self.cursor.fetchall()
         return records
     
-    def get_prompts_contain_in_name(self, promptname):
+    def get_prompts_contain_in_name(
+        self,
+        promptname: str
+    ) -> List[Dict[str, str]]:
         """
         Fetches the details of prompt records where the PromptName contains the given string.
 
-        :param promptname: The string to search for in the prompt names.
-        :return: A list of dictionaries with the details of the matching prompt records, or an empty list if none are found.
+        Args:
+            promptname (str): The string to search for in the prompt names.
+
+        Returns:
+            List[Dict[str, str]]: 
+                - A list of dictionaries with 'PromptName', 'PromptString', and 'Comment' for matching records.
+                - An empty list if no matching records are found.
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
         query = """
         SELECT PromptName, PromptString, Comment
@@ -755,7 +1347,13 @@ class PromptDatabase:
             self.cursor.execute(query, ('%' + promptname + '%',))
             results = self.cursor.fetchall()
             if results:
-                return [{"PromptName": result[0], "PromptString": result[1], "Comment": result[2]} for result in results]
+                return [
+                    {
+                        "PromptName": result[0],
+                        "PromptString": result[1],
+                        "Comment": result[2]
+                    } for result in results
+                ]
             else:
                 return []
         except Exception as e:
@@ -764,7 +1362,23 @@ class PromptDatabase:
 
 
 @st.cache_data
-def work_prompts():
+def work_prompts() -> Dict[str, str]:
+    """
+    Retrieves and constructs a mapping of prompt names to their corresponding prompt strings.
+
+    This function performs the following steps:
+        1. Defines a default prompt string to be used as a fallback.
+        2. Initializes a dictionary of prompt names mapped to the default prompt.
+        3. Retrieves environment variable values corresponding to each prompt name.
+        4. Uses the `PromptDatabase` class to fetch prompt strings from the database based on the environment variable values.
+        5. Constructs the final `prompt_map` dictionary by:
+            - Assigning the fetched prompt string if available.
+            - Falling back to the default prompt if no database entry is found.
+
+    Returns:
+        Dict[str, str]: A dictionary mapping each prompt name to its corresponding prompt string.
+                        If a prompt string is not found in the database, the default prompt is used.
+    """
     default_prompt = "You are a helpful assistant."
 
     all_prompts = {
@@ -790,7 +1404,7 @@ def work_prompts():
         sql_results = db.query_sql_prompt_strings(env_vars)
 
     # Build the output dictionary with original prompt names as keys
-    prompt_map = {}
+    prompt_map: Dict[str, str] = {}
     for prompt_name in prompt_names:
         env_var = prompt_env_map[prompt_name]
         prompt_string = sql_results.get(env_var)
