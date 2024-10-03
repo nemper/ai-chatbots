@@ -12,7 +12,7 @@ os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
 """
 
-_ = """
+#_ = """
 import os
 os.environ["CLIENT_FOLDER"] = "Delfi"
 os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
@@ -20,7 +20,7 @@ os.environ["APP_ID"] = "DelfiBot"
 os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
 os.environ["OPENAI_MODEL"] = "gpt-4o"
 os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
-"""
+#"""
 
 _ = """
 import os
@@ -33,11 +33,11 @@ os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.p
 """
 from openai import OpenAI
 from os import getenv
-from streamlit_mic_recorder import mic_recorder
+# from streamlit_mic_recorder import mic_recorder
 
-from krembot_tools import rag_tool_answer
+from krembot_tools import rag_tool_answer_fc
 from krembot_db import ConversationDatabase, work_prompts
-#from krembot_stui import *
+# from krembot_stui import *
 from krembot_funcs import *
 
 from streamlit_feedback import streamlit_feedback
@@ -478,9 +478,9 @@ def main():
             if not x:
                 st.error("Niste izabrali uređaj.")
             else:
-                result, tool = rag_tool_answer(st.session_state.prompt, selected_device)
+                result, tool = rag_tool_answer_fc(st.session_state.prompt, selected_device)
         else:
-            result, tool = rag_tool_answer(st.session_state.prompt, 1)
+            result, tool = rag_tool_answer_fc(st.session_state.prompt, 1)
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,
@@ -545,7 +545,6 @@ def main():
                 # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
                 cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1]
                 cc_messages.append(temp_full_prompt)
-                print(f"\n\n\ncc_messages: {cc_messages}")
                 message_placeholder = st.empty()
                 full_response = ""
                 for response in client.chat.completions.create(

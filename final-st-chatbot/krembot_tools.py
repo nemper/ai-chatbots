@@ -17,10 +17,49 @@ from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict, Any, Tuple, Union, Optional
 from krembot_db import work_prompts
-
+os.environ["CLIENT_FOLDER"] = "Delfi"
 mprompts = work_prompts()
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
+
+def extract_descriptions(mprompt_text: str) -> Dict[str, str]:
+    """
+    Extract tool descriptions from the mprompt string.
+    Tool names are between '-' and ':', and the description follows until the next tool name or end of the string.
+    """
+    tool_descriptions = {}
+    # Regex to capture tool names and descriptions
+    pattern = re.compile(r"- (\w+):\s(.*?)(?=\s+- \w+:|\s*$)", re.DOTALL)
+    matches = pattern.findall(mprompt_text)
+
+    for match in matches:
+        tool_name, description = match
+        tool_descriptions[tool_name] = description.strip()
+
+    return tool_descriptions
+
+
+def get_tools() -> List[Dict[str, Any]]:
+    """
+    Loads the tools from the JSON file based on the 'CLIENT_FOLDER' environment variable.
+    """
+    json_file_path = os.path.join("Clients", os.getenv("CLIENT_FOLDER"), "tools.json")
+    with open(json_file_path, "r") as file:
+        tools = json.load(file)
+
+    tool_descriptions = extract_descriptions(mprompts["choose_rag"])
+
+    # Update the tools list with the matching descriptions
+    for tool in tools:
+        tool_name = tool['function']['name']
+        if tool_name in tool_descriptions:
+            description = tool_descriptions[tool_name]
+            # Truncate the description if it exceeds 1024 characters
+            if len(description) > 1024:
+                description = description[:1000]
+            tool['function']['description'] = description
+
+    return tools
 
 def connect_to_neo4j() -> neo4j.Driver:
     """
@@ -56,100 +95,46 @@ def connect_to_pinecone(x: int) -> Any:
     return pinecone_client.Index(host=pinecone_host)
 
 
-def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
-    """
-    Generates an answer using the RAG (Retrieval-Augmented Generation) tool based on the provided prompt and context.
-
-    The function behavior varies depending on the 'APP_ID' environment variable. It utilizes different processors
-    and tools to fetch and generate the appropriate response.
-
-    Args:
-        prompt (str): The input query or prompt for which an answer is to be generated.
-        x (int): Additional parameter that may influence the processing logic, such as device selection.
-
-    Returns:
-        Tuple[Any, str]: A tuple containing the generated context or search results and the RAG tool used.
-    """
-    rag_tool = "ClientDirect"
-    app_id = os.getenv("APP_ID")
-
-    if app_id == "InteliBot":
-        return intelisale(prompt), rag_tool
-
-    elif app_id == "DentyBot":
-        processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
-        search_results = processor.process_query_results(upit=prompt, device=x)
-        return search_results, rag_tool
-
-    elif app_id == "DentyBotS":
-        processor = HybridQueryProcessor(namespace="denty-komercijalista", delfi_special=1)
-        context = processor.process_query_results(prompt)
-        return context, rag_tool
-
-    elif app_id == "ECDBot":
-        processor = HybridQueryProcessor(namespace="ecd", delfi_special=1)
-        return processor.process_query_results(prompt), rag_tool
-
-    context = " "
-    rag_tool = get_structured_decision_from_model(prompt)
-
-    if rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
-        context = processor.process_query_results(prompt)
-
-    elif rag_tool == "Opisi":
-        uvod = mprompts["rag_self_query"]
-        combined_prompt = uvod + prompt
-        context = SelfQueryDelfi(combined_prompt)
-
-    elif rag_tool == "Korice":
-        uvod = mprompts["rag_self_query"]
-        combined_prompt = uvod + prompt
-        context = SelfQueryDelfi(upit=combined_prompt, namespace="korice")
-
-    elif rag_tool == "Graphp":
-        context = graphp(prompt)
-
-    elif rag_tool == "Pineg":
-        context = pineg(prompt)
-
-    elif rag_tool == "Natop":
-        context = get_items_by_category(prompt)
-
-    elif rag_tool == "Orders":
-        context = order_delfi(prompt)
-
-    return context, rag_tool
-
-
-def get_structured_decision_from_model(user_query: str) -> str:
-    """
-    Determines the appropriate tool to handle a user's query using the OpenAI model.
-
-    This function sends the user's query to the OpenAI API with a specific system prompt to obtain a structured
-    decision in JSON format. It parses the JSON response to extract the selected tool.
-
-    Args:
-        user_query (str): The user's input query for which a structured decision is to be made.
-
-    Returns:
-        str: The name of the tool determined by the model to handle the user's query. If the 'tool' key is not present,
-             it returns the first value from the JSON response.
-    """
-    client = OpenAI()
+def rag_tool_answer_fc(prompt: str, x: int) -> Tuple[Any, str]:
+    mytools = get_tools()
     response = client.chat.completions.create(
-        model=getenv("OPENAI_MODEL"),
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-        {"role": "system", "content": mprompts["choose_rag"]},
-        {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}],
-        )
-    json_string = response.choices[0].message.content
-    # Parse the JSON string into a Python dictionary
-    data_dict = json.loads(json_string)
-    # Access the 'tool' value
-    return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
+        model="gpt-4o",
+        messages=[{"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."}, 
+                  {"role": "user", "content": prompt}],
+        tools=mytools,
+        temperature=0.0,
+        tool_choice="required",
+    )
+    assistant_message = response.choices[0].message
+    finish_reason = response.choices[0].finish_reason
+    print(f"Assistant message: {assistant_message}")
+    print(f"Finish reason: {finish_reason}")
+    # Check if the model made a tool call
+    if finish_reason == "tool_calls" or "stop":
+        # The assistant made function call(s)
+
+        tool = assistant_message.tool_calls[0].function.name
+        
+        # Map function name to actual function and call it
+        if tool == 'Graphp':
+            result = graphp(prompt)
+        elif tool == 'Pineg':
+            result = pineg(prompt)
+        elif tool == 'Orders':
+            result = order_delfi(prompt)
+        elif tool == 'Natop':
+            result = get_items_by_category(prompt)
+        elif tool == 'Korice':
+            result = SelfQueryDelfi(mprompts["rag_self_query"] + prompt, namespace="korice")
+        elif tool == 'Hybrid':
+            processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
+            result = processor.process_query_results(prompt)
+        else:
+            result = "I'm sorry, I don't recognize that function."
+
+        return result, tool
+    else:
+        return "No function was called", "None"
 
 
 def graphp(pitanje):
@@ -884,7 +869,6 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         orders_info = []
         for order_id in order_ids:
             json_data = get_order_info(order_id)
-            print(json_data)  # Debugging print to see raw JSON response
             order_info = parse_order_info(json_data)
             if order_info:
                 orders_info.append(order_info)
@@ -898,38 +882,32 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         orders_info = "No orders found for the given IDs."
     tc = [x for x in tc if x is not None]
     if len(tc) > 0:
-        orders_info.append(API_search_aks(tc))
-
+        o2 = API_search_aks(tc)
+        print(o2)
+        orders_info.append(o2)
     return orders_info
 
 
 import re
 def order_delfi(prompt: str) -> str:
-    def extract_orders_from_string(text: str) -> List[int]:
-        """
-        Extracts all integer order IDs consisting of five or more digits from the provided text.
+    """
+    Extracts all integer order IDs consisting of five or more digits from the provided text.
 
-        Args:
-            text (str): The input string containing potential order IDs.
+    Args:
+        prompt (str): The input string containing potential order IDs.
 
-        Returns:
-            List[int]: A list of extracted order IDs as integers.
-        """
-        # Define a regular expression pattern to match 5 or more digit integers
-        pattern = r'\b\d{5,}\b'
-        
-        # Use re.findall to extract all matching patterns
-        orders = re.findall(pattern, text)
-        
-        # Convert the matched strings to integers
-        return [int(order) for order in orders]
+    Returns:
+        str: A list of extracted order IDs as integers.
+    """
+    # Define a regular expression pattern to match 5 or more digit integers
+    pattern = r'\b\d{5,}\b'
+    
+    # Use re.findall to extract all matching patterns
+    orders = re.findall(pattern, prompt)
 
-    order_ids = extract_orders_from_string(prompt)
-    print(order_ids)
+    order_ids = [int(order) for order in orders]
     if len(order_ids) > 0:
         return API_search_2(order_ids)
-        if o[0]['package_status'] == "MAIL_SENT":
-            return "Nema informacija o porudžbini."
     else:
         return "Morate uneti tačan broj porudžbine/a."
 

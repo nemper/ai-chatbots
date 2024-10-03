@@ -1,0 +1,117 @@
+[
+    {
+      "type": "function",
+      "function": {
+        "name": "Graphp",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The user's request or question."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "Pineg",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The user's request or question."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "Orders",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The user's request or question."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "Natop",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The user's request or question."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "Korice",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The user's description of the book cover."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "Hybrid",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The user's customer support question."
+            }
+          },
+          "required": ["query"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  ]
+  
