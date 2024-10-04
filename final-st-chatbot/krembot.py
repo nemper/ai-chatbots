@@ -471,16 +471,10 @@ def main():
                         st.session_state.success = True
                         st.session_state.prompt = transcript.text
 
-    # Main conversation answer
+
     if st.session_state.prompt:
-        if getenv("APP_ID") == "DentyBot":
-            x = selected_device
-            if not x:
-                st.error("Niste izabrali uređaj.")
-            else:
-                result, tool = rag_tool_answer_fc(st.session_state.prompt, selected_device)
-        else:
-            result, tool = rag_tool_answer_fc(st.session_state.prompt, 1)
+        x = selected_device if getenv("APP_ID") == "DentyBot" else 1
+        result, tool = rag_tool_answer_fc(st.session_state.prompt, x)
         # After getting the tool output
         st.session_state.tool_outputs.append({
             'user_message': st.session_state.prompt,

@@ -96,7 +96,27 @@ def connect_to_pinecone(x: int) -> Any:
 
 
 def rag_tool_answer_fc(prompt: str, x: int) -> Tuple[Any, str]:
+    app_id = os.getenv("APP_ID")
+    rag_tool = "ClientDirect"
+    if app_id == "InteliBot":
+        return intelisale(prompt), rag_tool
+
+    elif app_id == "DentyBot":
+        processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
+        search_results = processor.process_query_results(upit=prompt, device=x)
+        return search_results, rag_tool
+
+    elif app_id == "DentyBotS":
+        processor = HybridQueryProcessor(namespace="denty-komercijalista", delfi_special=1)
+        context = processor.process_query_results(prompt)
+        return context, rag_tool
+
+    elif app_id == "ECDBot":
+        processor = HybridQueryProcessor(namespace="ecd", delfi_special=1)
+        return processor.process_query_results(prompt), rag_tool
+    
     mytools = get_tools()
+
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."}, 
