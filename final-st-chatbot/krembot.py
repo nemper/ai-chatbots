@@ -33,7 +33,7 @@ os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.p
 """
 from openai import OpenAI
 from os import getenv
-from streamlit_mic_recorder import mic_recorder
+# from streamlit_mic_recorder import mic_recorder
 
 from krembot_tools import rag_tool_answer
 from krembot_db import ConversationDatabase, work_prompts
