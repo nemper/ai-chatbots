@@ -1398,7 +1398,6 @@ def work_prompts() -> Dict[str, str]:
 
     # Extract the environment variable values
     env_vars = list(prompt_env_map.values())
-
     with PromptDatabase() as db:
         # Fetch the prompt strings from the database using the environment variable values
         sql_results = db.query_sql_prompt_strings(env_vars)
@@ -1413,5 +1412,4 @@ def work_prompts() -> Dict[str, str]:
         else:
             # Use the default prompt if no result is found in the database
             prompt_map[prompt_name] = all_prompts[prompt_name]
-
     return prompt_map
