@@ -28,7 +28,9 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        env:
+          GH_TOKEN: ${{ secrets.AZURE_TOKEN }}
+        run: pip install --quiet -r requirements.txt
 
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
       - name: Zip artifact for deployment
@@ -65,3 +67,5 @@ jobs:
           app-name: 'delfi-tool-answer'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_B16E0674F84447C996384E5FF5B49BCB }}
+        env:
+          GH_TOKEN: ${{ secrets.AZURE_TOKEN }}
