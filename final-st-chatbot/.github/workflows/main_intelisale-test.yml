@@ -24,7 +24,9 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        env:
+          GH_TOKEN: ${{ secrets.AZURE_TOKEN }}
+        run: pip install --quiet -r requirements.txt
 
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
       - name: Zip artifact for deployment
@@ -62,4 +64,5 @@ jobs:
           app-name: 'intelisale-test'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9AD8EAEB83F542C6BBA83B41406958DA }}
-          
+        env:
+          GH_TOKEN: ${{ secrets.AZURE_TOKEN }}
