@@ -28,7 +28,9 @@ jobs:
           source venv/bin/activate
       
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        env:
+          GH_TOKEN: ${{ secrets.AZURE_TOKEN }}
+        run: pip install --quiet -r requirements.txt
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
@@ -67,3 +69,5 @@ jobs:
           app-name: 'ecd-test'
           slot-name: 'production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A85C41A2D6784C51A41C9F56042F347D }}
+        env:
+          GH_TOKEN: ${{ secrets.AZURE_TOKEN }}
