@@ -1,6 +1,7 @@
 import json
 import neo4j
 import pyodbc
+import re
 import requests
 import xml.etree.ElementTree as ET
 
@@ -55,6 +56,145 @@ def connect_to_pinecone(x: int) -> Any:
     pinecone_client = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
     return pinecone_client.Index(host=pinecone_host)
 
+tools = ["Graphp", "Pineg", "Orders", "Natop", "Korice", "Hybrid", "Actions"]
+
+# Build a regex pattern to match '- ToolName:' with exact tool names
+pattern = r'-\s*({0}):'.format("|".join(tools))
+
+# Find all matches of tool names in the text
+matches = list(re.finditer(pattern, mprompts['choose_rag']))
+
+# Initialize an empty dictionary to store tool descriptions
+tools_dict = {}
+
+# Loop over matches to extract descriptions
+for i, match in enumerate(matches):
+    tool = match.group(1)
+    start = match.end()
+    if i + 1 < len(matches):
+        end = matches[i + 1].start()
+    else:
+        end = len(mprompts['choose_rag'])
+    description = mprompts['choose_rag'][start:end].strip()
+    tools_dict[tool] = description
+
+all_tools = [
+{
+    "type": "function",
+    "function": {
+        "name": "Hybrid",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "query": {
+                "type": "string",
+                "description": tools_dict["Hybrid"]
+            }
+            },
+            "required": ["query"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+},
+{
+    "type": "function",
+    "function": {
+        "name": "Pineg",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "query": {
+                "type": "string",
+                "description": tools_dict["Pineg"]
+            }
+            },
+            "required": ["query"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+},
+{
+    "type": "function",
+    "function": {
+        "name": "Graphp",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "query": {
+                "type": "string",
+                "description": tools_dict["Graphp"]
+            }
+            },
+            "required": ["query"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+},
+{
+    "type": "function",
+    "function": {
+        "name": "Orders",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "query": {
+                "type": "string",
+                "description": tools_dict["Orders"]
+            }
+            },
+            "required": ["query"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+},
+{
+    "type": "function",
+    "function": {
+        "name": "Natop",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "query": {
+                "type": "string",
+                "description": tools_dict["Natop"]
+            }
+            },
+            "required": ["query"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+},
+{
+    "type": "function",
+    "function": {
+        "name": "Actions",
+        "description": "",
+        "parameters": {
+            "type": "object",
+            "properties": {
+            "query": {
+                "type": "string",
+                "description": tools_dict["Actions"]
+            }
+            },
+            "required": ["query"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+},
+]
+
 
 def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     """
@@ -91,16 +231,28 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         return processor.process_query_results(prompt), rag_tool
 
     context = " "
-    rag_tool = get_structured_decision_from_model(prompt)
+    # rag_tool = get_structured_decision_from_model(prompt)
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."}, 
+                  {"role": "user", "content": prompt}],
+        tools=all_tools,
+        temperature=0.0,
+        tool_choice="required",
+    )
+    assistant_message = response.choices[0].message
+    finish_reason = response.choices[0].finish_reason
+
+    if finish_reason == "tool_calls" or "stop":
+        rag_tool = assistant_message.tool_calls[0].function.name
+    else:
+        rag_tool = "None chosen"
+    print("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", rag_tool)
 
     if rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
         context = processor.process_query_results(prompt)
-
-    elif rag_tool == "Opisi":
-        uvod = mprompts["rag_self_query"]
-        combined_prompt = uvod + prompt
-        context = SelfQueryDelfi(combined_prompt)
 
     elif rag_tool == "Korice":
         uvod = mprompts["rag_self_query"]
@@ -118,6 +270,11 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
 
     elif rag_tool == "Orders":
         context = order_delfi(prompt)
+
+    elif rag_tool == "Actions":
+        api_url = 'https://delfi.rs/api/pc-frontend-api/actions-page'
+        fetcher = ActionFetcher(api_url)
+        context = fetcher.decide_and_respond(prompt)
 
     return context, rag_tool
 
@@ -902,8 +1059,6 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
 
     return orders_info
 
-
-import re
 def order_delfi(prompt: str) -> str:
     def extract_orders_from_string(text: str) -> List[int]:
         """
@@ -1683,3 +1838,377 @@ def intelisale(query: str) -> str:
     
     fin_output = generate_defined_report(output)
     return fin_output
+
+
+from datetime import datetime
+
+class ActionFetcher:
+    def __init__(self, api_url):
+        """
+        Inicijalizuje instancu klase sa zadatim URL-om API-ja.
+
+        Args:
+            api_url (str): URL API-ja odakle će se preuzimati podaci.
+        """
+        self.api_url = api_url
+        self.today = datetime.now()
+        self.unique_actions = set()
+
+    def fetch_data(self):
+        """
+        Preuzima podatke sa API-ja.
+
+        Returns:
+            dict: Sirovi podaci preuzeti sa API-ja u JSON formatu.
+            None: Vraća None ako dođe do greške prilikom preuzimanja podataka.
+        """
+        try:
+            response = requests.get(self.api_url)
+            response.raise_for_status()
+            data = response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Greška pri povezivanju sa API-jem: {e}")
+            data = None
+        return data
+
+    def fetch_actions(self, data):
+        """
+        Procesira podatke o akcijama i izdvaja unikatne aktuelne akcije.
+
+        Args:
+            data (dict): JSON podaci preuzeti sa API-ja, koji sadrže sekcije i akcije.
+
+        Returns:
+            None: Podaci se interno dodaju u `self.unique_actions`.
+        """
+        if data:
+            for section in data.get('data', {}).get('sections', []):
+                products = section.get('content', {}).get('products', [])
+                for product in products:
+                    for action in product.get('actions', []):
+                        end_at = action.get('endAt')
+                        if end_at:
+                            try:
+                                end_date = datetime.fromisoformat(end_at.replace('Z', ''))
+                            except ValueError:
+                                continue
+                            if end_date > self.today:
+                                action_type = action.get('actionType')
+                                action_title = action.get('actionTitle')
+                                action_description = action.get('raw', {}).get('description', 'Nema opisa')
+                                end_date_str = end_date.strftime('%d.%m.%Y. %H:%M:%S')
+                                self.unique_actions.add((action_type, action_title, action_description, end_date_str))
+
+    def get_all_actions(self):
+        """
+        Vraća listu unikatnih akcija sa opisima i krajnjim datumima.
+
+        Returns:
+            list: Lista akcija gde svaka akcija sadrži naslov, opis i krajnji datum.
+            Svaki element liste je rečnik sa ključevima:
+                - 'action_title' (str): Naslov akcije.
+                - 'action_description' (str): Opis akcije.
+                - 'end_date' (str): Krajnji datum akcije u formatu 'dd.mm.yyyy. HH:MM:SS'.
+        """
+        actions = []
+        for action in self.unique_actions:
+            actions.append({
+                'action_title': action[0],
+                'action_description': action[1],
+                'end_date': action[2]
+            })
+        return actions
+
+    def fetch_books_for_action(self, action_name):
+        """
+        Procesira podatke o knjigama za zadatu akciju i vraća listu knjiga sa svim relevantnim podacima.
+
+        Args:
+            action_name (str): Naziv akcije za koju treba pronaći knjige.
+
+        Returns:
+            list: Lista rečnika gde svaki rečnik sadrži informacije o knjizi.
+
+        Napomena:
+            Ako je pronađeno više od 9 knjiga koje odgovaraju akciji, metoda će vratiti prvih 9 knjiga.
+        """
+        
+        books = []
+        data = self.fetch_data()
+        if data:
+            action_name_lower = action_name.lower()
+            for section in data.get('data', {}).get('sections', []):
+                products = section.get('content', {}).get('products', [])
+                for product in products:
+                    # Proveravamo samo akcije pre nego što obrađujemo proizvode
+                    relevant_action = None
+                    for action in product.get('actions', []):
+                        if action_name_lower in action.get('actionTitle', '').lower():
+                            relevant_action = action
+                            break  # Pronašli smo relevantnu akciju, nema potrebe da tražimo dalje
+                    
+                    # Ako smo našli akciju, onda nastavljamo sa obradom proizvoda
+                    if relevant_action:
+                        # Extract common book data
+                        title = product.get('title', 'Nema naslova')
+                        description = product.get('description', 'Nema opisa')
+                        authors = [author.get('authorName', 'Nepoznat autor') for author in product.get('authors', [])]
+                        genres = [genre.get('genreName', 'Nepoznat žanr') for genre in product.get('genres', [])]
+                        eBook = product.get('eBook', False)
+                        category = product['category'].lower().replace(' ', '_')
+                        oldProductId = product.get('oldProductId', 'Nepoznat ID')
+                        url = f"https://delfi.rs/{category}/{oldProductId}"
+                        collection_price = product.get('collectionFullPrice', 'N/A')
+                        price_list = product.get('priceList', {})
+                        full_price = price_list.get('fullPrice', 'N/A')
+                        ebook_price = price_list.get('eBookPrice', 'N/A')
+                        regular_discount_price = price_list.get('regularDiscountPrice', 'N/A')
+                        premium_discount_price = price_list.get('regularDiscountPremiumPrice', 'N/A')
+
+                        # Extract action data
+                        action_type = relevant_action.get('actionType', 'N/A')
+                        end_at = relevant_action.get('endAt')
+                        action_title = relevant_action.get('actionTitle', 'N/A')
+                        action_description = relevant_action.get('actionDescription', 'N/A')
+                        # print(f"action_title: {action_title}")
+
+                        # Create the base data dictionary
+                        book_data = {
+                            'title': title,
+                            'authors': authors,
+                            'genres': genres,
+                            'eBook': eBook,
+                            'url': url,
+                            'description': description,
+                            'actionType': action_type,
+                            'actionTitle': action_title,
+                            'endAt':end_at,
+                            'actionDescription': action_description,
+                            'collectionFullPrice': collection_price,
+                            'fullPrice': full_price,
+                            'eBookPrice': ebook_price,
+                        }
+
+                        # Depending on the action type, add extra data
+                        if action_type == 'fixedDiscount':
+                            price_regular_standard = action.get('priceRegularStandard', 'N/A')
+                            price_regular_premium = action.get('priceRegularPremium', 'N/A')
+                            price_quantity_standard = action.get('priceQuantityStandard', 'N/A')
+                            price_quantity_premium = action.get('priceQuantityPremium', 'N/A')
+                            if price_regular_standard == price_regular_premium == price_quantity_standard == price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard
+                                })
+                            elif price_regular_standard == price_regular_premium and price_quantity_standard == price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska cena sa količinskim popustom': price_quantity_standard,
+                                })
+                            elif price_regular_standard == price_quantity_standard and price_regular_premium == price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena': price_regular_premium
+                                })
+                            elif price_regular_standard == price_regular_premium == price_quantity_standard != price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena sa količinskim popustom': price_quantity_premium
+                                })
+                            elif price_regular_standard == price_quantity_standard and price_regular_premium != price_regular_standard and price_quantity_premium != price_quantity_standard and price_regular_premium != price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena': price_regular_premium,
+                                    'akcijska premium cena sa količinskim popustom': price_quantity_premium
+                                })
+                            else:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena': price_regular_premium,
+                                    'akcijska cena sa količinskim popustom': price_quantity_standard,
+                                    'akcijska premium cena sa količinskim popustom': price_quantity_premium,
+                                })
+                        elif action_type == 'fixedPrice':
+                            price_regular_standard = action.get('priceRegularStandard', 'N/A')
+                            price_regular_premium = action.get('priceRegularPremium', 'N/A')
+                            price_quantity_standard = action.get('priceQuantityStandard', 'N/A')
+                            price_quantity_premium = action.get('priceQuantityPremium', 'N/A')
+                            fixed_price = action.get('raw', {}).get('fixedPrice', 'N/A')
+                            fixed_price_limit = action.get('raw', {}).get('fixedPriceCount', 'N/A')
+                            book_data.update({
+                                'fiksna cena': fixed_price,
+                                'potrebna količina za ostvarivanje akcije': fixed_price_limit
+                            })
+                            if price_regular_standard == price_regular_premium == price_quantity_standard == price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard
+                                })
+                            elif price_regular_standard == price_regular_premium and price_quantity_standard == price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska cena sa količinskim popustom': price_quantity_standard,
+                                })
+                            elif price_regular_standard == price_quantity_standard and price_regular_premium == price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena': price_regular_premium
+                                })
+                            elif price_regular_standard == price_regular_premium == price_quantity_standard != price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena sa količinskim popustom': price_quantity_premium
+                                })
+                            elif price_regular_standard == price_quantity_standard and price_regular_premium != price_regular_standard and price_quantity_premium != price_quantity_standard and price_regular_premium != price_quantity_premium:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena': price_regular_premium,
+                                    'akcijska premium cena sa količinskim popustom': price_quantity_premium
+                                })
+                            else:
+                                book_data.update({
+                                    'akcijska cena': price_regular_standard,
+                                    'akcijska premium cena': price_regular_premium,
+                                    'akcijska cena sa količinskim popustom': price_quantity_standard,
+                                    'akcijska premium cena sa količinskim popustom': price_quantity_premium,
+                                })
+                        elif action_type == 'exponentialDiscount':
+                            levels = action.get('levels', [])
+                            level_list = []
+                            for level in levels:
+                                level_percentage = level.get('levelPercentage', 'N/A')
+                                level_price = level.get('levelPrice', 'N/A')
+                                level_list.append({
+                                    'procenat': level_percentage,
+                                    'akcijska cena': level_price,
+                                })
+                            book_data.update({
+                                'stepenasti popust': level_list
+                            })
+                        elif action_type == 'quantityDiscount2':
+                            price_quantity_standard = relevant_action.get('priceQuantityStandard', 'N/A')
+                            price_quantity_premium = relevant_action.get('priceQuantityPremium', 'N/A')
+                            quantity_discount2_limit = relevant_action.get('quantityDiscount2Limit', 'N/A')
+                            if regular_discount_price == premium_discount_price and price_quantity_standard == price_quantity_premium:
+                                book_data.update({
+                                    'cena sa popustom': regular_discount_price,
+                                    'akcijska cena sa količiniskim popustom': price_quantity_standard,
+                                    'limit za količinski popust': quantity_discount2_limit,
+                                })
+                            else:
+                                book_data.update({
+                                    'cena sa redovnim popustom': regular_discount_price,
+                                    'cena sa premium popustom': premium_discount_price,
+                                    'akcijska cena sa količiniskim popustom': price_quantity_standard,
+                                    'akcijska premium cena sa količiniskim popustom': price_quantity_premium,
+                                    'limit za količinski popust': quantity_discount2_limit,
+                                })
+
+                        # Add the book data to the list
+                        books.append(book_data)
+
+                        if len(books) >= 9:
+                            return books
+        return books
+
+    def decide_and_respond(self, question):
+        """
+        Odlučuje koju funkciju pozvati na osnovu korisnikovog pitanja, koristeći LLM (Language Model).
+
+        Args:
+            question (str): Pitanje korisnika koje može biti vezano za aktuelne akcije ili proizvode na određenoj akciji.
+
+        Returns:
+            list: Ako korisnik pita za aktuelne akcije, vraća listu svih trenutno dostupnih akcija.
+            list: Ako korisnik pita za proizvode na određenoj akciji, vraća listu knjiga koje su deo te akcije.
+            dict: Ako dođe do greške u odlučivanju, vraća rečnik sa ključem "error" i opisom greške.
+        
+        Raises:
+            KeyError: Ako ne postoji odgovarajući API ključ ili ako dođe do greške prilikom pristupa API-ju.
+            ValueError: Ako LLM ne može da odluči između akcija i knjiga na osnovu korisničkog pitanja.
+        
+        Proces:
+            - Prvo koristi LLM da odluči da li korisnik pita o aktuelnim akcijama ili knjigama na specifičnoj akciji.
+            - Ako je odgovor 'actions', vraća sve trenutno dostupne akcije.
+            - Ako je odgovor 'books', iz korisnikovog pitanja se izvlači naziv akcije i vraćaju se knjige za tu akciju.
+            - Ako odluka nije jasna, vraća se poruka o grešci.
+        """
+
+        tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "Books",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "If the user asks about products on some of the actions"
+                    }
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "Actions",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "If the user asks about current actions in the store."
+                    }
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        }
+        ]
+         
+        response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."},
+                        {"role": "user", "content": question}],
+                tools=tools,
+                temperature=0.0,
+                tool_choice="required",
+            )
+        assistant_message = response.choices[0].message
+        finish_reason = response.choices[0].finish_reason
+        
+        if finish_reason == "tool_calls" or "stop":
+            decision = assistant_message.tool_calls[0].function.name
+        else:
+            decision = "Warning: No function was called"
+
+        if decision == 'Actions':
+            # Korisnik pita za aktuelne akcije
+            data = self.fetch_data()
+            self.fetch_actions(data)
+            return self.get_all_actions()
+
+        elif decision == 'Books':
+            # Korisnik pita za knjige iz specifične akcije
+            prompt_for_action = f"The user question: {question}"
+            action_name_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0.0,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant. The user is asking about books for one of the current promotion. You need to extract the specific promotion name from the question. Return only the name of the promotion in order to the function filter the data for books on that specific promotion."},
+                    {"role": "user", "content": prompt_for_action}
+                ]
+            )
+            action_name = action_name_response.choices[0].message.content.strip()
+            print(f"naziv akcije: ", action_name)
+            return self.fetch_books_for_action(action_name)
+
+        else:
+            return {"error": "Nije moguće odlučiti šta korisnik želi."}
