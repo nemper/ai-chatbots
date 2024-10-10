@@ -1,5 +1,10 @@
 import os
+from os import getenv
+from neo4j import GraphDatabase, Driver
+from neo4j.graph import Node
 import json
+from pinecone import Pinecone
+from typing import Any
 
 # Load the configurations from JSON file located in the 'clients' folder
 def load_config(client_key):
@@ -17,7 +22,68 @@ def load_config(client_key):
     except FileNotFoundError:
         print(f"Configuration file not found at {config_path}")
 
+# Load only the tools from the JSON file that exist in tools_dict
+def load_matching_tools(tools_dict):
+    config_path = os.path.join('clients', 'all_tools.json')  # Path to the JSON file in the 'clients' folder
 
+    try:
+        with open(config_path, 'r') as json_file:
+            all_tools_json = json.load(json_file)  # Load the JSON content
+
+            # Filter and load only the dictionaries whose keys exist in tools_dict
+            matching_tools = []
+            for tool_name in tools_dict.keys():
+                if tool_name in all_tools_json:
+                    # Update the description with the one in tools_dict
+                    tool_dict = all_tools_json[tool_name]
+                    tool_dict["function"]["parameters"]["properties"]["query"]["description"] = tools_dict[tool_name]
+                    matching_tools.append(tool_dict)
+
+            return matching_tools
+
+    except FileNotFoundError:
+        print(f"Configuration file not found at {config_path}")
+        return []
+
+
+def connect_to_neo4j() -> Driver:
+    """
+    Establishes a connection to the Neo4j database using credentials from environment variables.
+
+    Returns:
+        neo4j.Driver: A Neo4j driver instance for interacting with the database.
+    """
+    uri = getenv("NEO4J_URI")
+    user = getenv("NEO4J_USER")
+    password = getenv("NEO4J_PASS")
+    return GraphDatabase.driver(uri, auth=(user, password))
+
+
+def neo4j_isinstance(value: Any) -> dict:
+    if isinstance(value, Node):
+    # Ako je vrednost Node objekat, pristupamo properties atributima
+        return {k: v for k, v in value._properties.items()}
+
+
+def connect_to_pinecone(x: int) -> Any:
+    """
+    Connects to a Pinecone index based on the provided parameter.
+
+    Args:
+        x (int): Determines which Pinecone host to connect to. If x is 0, connects to the primary host;
+                 otherwise, connects to the secondary host.
+
+    Returns:
+        Any: An instance of Pinecone Index connected to the specified host.
+    """
+    pinecone_api_key = getenv('PINECONE_API_KEY')
+    pinecone_host = (
+        "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
+        if x == 0
+        else "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+    )
+    pinecone_client = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
+    return pinecone_client.Index(host=pinecone_host)
 
 
 CATEGORY_DEVICE_MAPPING = {
@@ -209,3 +275,35 @@ CATEGORY_DEVICE_MAPPING = {
         "SIUCOM, SIVISION"
     ]
 }
+
+
+#               OLD METHOD
+
+# def get_structured_decision_from_model(user_query: str) -> str:
+#     """
+#     Determines the appropriate tool to handle a user's query using the OpenAI model.
+#
+#     This function sends the user's query to the OpenAI API with a specific system prompt to obtain a structured
+#     decision in JSON format. It parses the JSON response to extract the selected tool.
+#
+#     Args:
+#         user_query (str): The user's input query for which a structured decision is to be made.
+#
+#     Returns:
+#         str: The name of the tool determined by the model to handle the user's query. If the 'tool' key is not present,
+#              it returns the first value from the JSON response.
+#     """
+#     client = OpenAI()
+#     response = client.chat.completions.create(
+#         model=getenv("OPENAI_MODEL"),
+#         temperature=0,
+#         response_format={"type": "json_object"},
+#         messages=[
+#         {"role": "system", "content": mprompts["choose_rag"]},
+#         {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}],
+#         )
+#     json_string = response.choices[0].message.content
+#     # Parse the JSON string into a Python dictionary
+#     data_dict = json.loads(json_string)
+#     # Access the 'tool' value
+#     return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]

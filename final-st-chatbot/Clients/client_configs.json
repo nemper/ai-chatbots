@@ -1,8 +1,16 @@
 {
-    "Denty": {
+    "DentyR": {
         "CLIENT_FOLDER": "Denty",
         "SYS_RAGBOT": "DENTY_REPAIRER",
-        "APP_ID": "DentyBot",
+        "APP_ID": "DentyBotR",
+        "CHOOSE_RAG": "GENERAL_CHOOSE_RAG",
+        "OPENAI_MODEL": "gpt-4o",
+        "PINECONE_HOST": "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+    },
+    "DentyS": {
+        "CLIENT_FOLDER": "Denty",
+        "SYS_RAGBOT": "DENTY_SALES",
+        "APP_ID": "DentyBotS",
         "CHOOSE_RAG": "GENERAL_CHOOSE_RAG",
         "OPENAI_MODEL": "gpt-4o",
         "PINECONE_HOST": "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
