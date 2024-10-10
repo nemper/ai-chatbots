@@ -1,0 +1,116 @@
+{
+    "Hybrid": {
+        "type": "function",
+        "function": {
+            "name": "Hybrid",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
+    },
+    "Pineg": {
+        "type": "function",
+        "function": {
+            "name": "Pineg",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
+    },
+    "Graphp": {
+        "type": "function",
+        "function": {
+            "name": "Graphp",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
+    },
+    "Orders": {
+        "type": "function",
+        "function": {
+            "name": "Orders",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
+    },
+    "Natop": {
+        "type": "function",
+        "function": {
+            "name": "Natop",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
+    },
+    "Promotion": {
+        "type": "function",
+        "function": {
+            "name": "Promotion",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
+    }
+}

@@ -1,5 +1,4 @@
 import json
-import neo4j
 import pyodbc
 import re
 import requests
@@ -14,47 +13,13 @@ from langchain_openai.chat_models import ChatOpenAI
 from openai import OpenAI
 import os
 from os import getenv
-from pinecone import Pinecone
 from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict, Any, Tuple, Union, Optional
 from krembot_db import work_prompts
-
+from krembot_auxiliary import load_matching_tools, connect_to_neo4j, connect_to_pinecone, neo4j_isinstance
 mprompts = work_prompts()
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
-
-def connect_to_neo4j() -> neo4j.Driver:
-    """
-    Establishes a connection to the Neo4j database using credentials from environment variables.
-
-    Returns:
-        neo4j.Driver: A Neo4j driver instance for interacting with the database.
-    """
-    uri = getenv("NEO4J_URI")
-    user = getenv("NEO4J_USER")
-    password = getenv("NEO4J_PASS")
-    return neo4j.GraphDatabase.driver(uri, auth=(user, password))
-
-
-def connect_to_pinecone(x: int) -> Any:
-    """
-    Connects to a Pinecone index based on the provided parameter.
-
-    Args:
-        x (int): Determines which Pinecone host to connect to. If x is 0, connects to the primary host;
-                 otherwise, connects to the secondary host.
-
-    Returns:
-        Any: An instance of Pinecone Index connected to the specified host.
-    """
-    pinecone_api_key = getenv('PINECONE_API_KEY')
-    pinecone_host = (
-        "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
-        if x == 0
-        else "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-    )
-    pinecone_client = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
-    return pinecone_client.Index(host=pinecone_host)
 
 tools = ["Graphp", "Pineg", "Orders", "Natop", "Korice", "Hybrid", "Promotion"]
 
@@ -77,124 +42,9 @@ for i, match in enumerate(matches):
         end = len(mprompts['choose_rag'])
     description = mprompts['choose_rag'][start:end].strip()
     tools_dict[tool] = description
-print(2222, mprompts['choose_rag'])
-print(1111, tools_dict)
-all_tools = [
-{
-    "type": "function",
-    "function": {
-        "name": "Hybrid",
-        "description": "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "query": {
-                "type": "string",
-                "description": tools_dict["Hybrid"]
-            }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        },
-        "strict": True
-    }
-},
-{
-    "type": "function",
-    "function": {
-        "name": "Pineg",
-        "description": "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "query": {
-                "type": "string",
-                "description": tools_dict["Pineg"]
-            }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        },
-        "strict": True
-    }
-},
-{
-    "type": "function",
-    "function": {
-        "name": "Graphp",
-        "description": "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "query": {
-                "type": "string",
-                "description": tools_dict["Graphp"]
-            }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        },
-        "strict": True
-    }
-},
-{
-    "type": "function",
-    "function": {
-        "name": "Orders",
-        "description": "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "query": {
-                "type": "string",
-                "description": tools_dict["Orders"]
-            }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        },
-        "strict": True
-    }
-},
-{
-    "type": "function",
-    "function": {
-        "name": "Natop",
-        "description": "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "query": {
-                "type": "string",
-                "description": tools_dict["Natop"]
-            }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        },
-        "strict": True
-    }
-},
-{
-    "type": "function",
-    "function": {
-        "name": "Promotion",
-        "description": "",
-        "parameters": {
-            "type": "object",
-            "properties": {
-            "query": {
-                "type": "string",
-                "description": tools_dict["Promotion"]
-            }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        },
-        "strict": True
-    }
-},
-]
+
+
+all_tools = load_matching_tools(tools_dict)
 
 
 def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
@@ -217,7 +67,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     if app_id == "InteliBot":
         return intelisale(prompt), rag_tool
 
-    elif app_id == "DentyBot":
+    elif app_id == "DentyBotR":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
         search_results = processor.process_query_results(upit=prompt, device=x)
         return search_results, rag_tool
@@ -232,7 +82,6 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         return processor.process_query_results(prompt), rag_tool
 
     context = " "
-    # rag_tool = get_structured_decision_from_model(prompt)
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -249,7 +98,6 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         rag_tool = assistant_message.tool_calls[0].function.name
     else:
         rag_tool = "None chosen"
-    print("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", rag_tool)
 
     if rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
@@ -278,36 +126,6 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         context = fetcher.decide_and_respond(prompt)
 
     return context, rag_tool
-
-
-def get_structured_decision_from_model(user_query: str) -> str:
-    """
-    Determines the appropriate tool to handle a user's query using the OpenAI model.
-
-    This function sends the user's query to the OpenAI API with a specific system prompt to obtain a structured
-    decision in JSON format. It parses the JSON response to extract the selected tool.
-
-    Args:
-        user_query (str): The user's input query for which a structured decision is to be made.
-
-    Returns:
-        str: The name of the tool determined by the model to handle the user's query. If the 'tool' key is not present,
-             it returns the first value from the JSON response.
-    """
-    client = OpenAI()
-    response = client.chat.completions.create(
-        model=getenv("OPENAI_MODEL"),
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-        {"role": "system", "content": mprompts["choose_rag"]},
-        {"role": "user", "content": f"Please provide the response in JSON format: {user_query}"}],
-        )
-    json_string = response.choices[0].message.content
-    # Parse the JSON string into a Python dictionary
-    data_dict = json.loads(json_string)
-    # Access the 'tool' value
-    return data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
 
 
 def graphp(pitanje):
@@ -349,9 +167,9 @@ def graphp(pitanje):
             for record in results:
                 cleaned_record = {}
                 for key, value in record.items():
-                    if isinstance(value, neo4j.graph.Node):
-                        # Ako je vrednost Node objekat, pristupamo properties atributima
-                        properties = {k: v for k, v in value._properties.items()}
+                    result_node = neo4j_isinstance(value)
+                    if result_node:
+                        properties = result_node
                     else:
                         # Ako je vrednost obična vrednost, samo je dodamo
                         properties = {key: value}
