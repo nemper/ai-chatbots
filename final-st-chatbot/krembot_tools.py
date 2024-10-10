@@ -879,8 +879,6 @@ def order_delfi(prompt: str) -> str:
     print(order_ids)
     if len(order_ids) > 0:
         return API_search_2(order_ids)
-        if o[0]['package_status'] == "MAIL_SENT":
-            return "Nema informacija o porudžbini."
     else:
         return "Morate uneti tačan broj porudžbine/a."
 
@@ -980,14 +978,14 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                     full_price = float(price_list.find('fullPrice').text)
                     eBook_price = float(price_list.find('eBookPrice').text)
                     regular_discount_price = float(price_list.find('regularDiscountPrice').text)
-                    regular_discount_percentage = float(price_list.find('regularDiscountPercentage').text)
+                    #regular_discount_percentage = float(price_list.find('regularDiscountPercentage').text)
                     quantity_discount_price = float(price_list.find('quantityDiscountPrice').text)
-                    quantity_discount_percentage = float(price_list.find('quantityDiscountPercentage').text)
+                    #quantity_discount_percentage = float(price_list.find('quantityDiscountPercentage').text)
                     quantity_discount_limit = int(price_list.find('quantityDiscountLimit').text)
                     premium_discount_price = float(price_list.find('regularDiscountPremiumPrice').text)
-                    premium_discount_percentage = float(price_list.find('regularDiscountPremiumPercentage').text)
+                    #premium_discount_percentage = float(price_list.find('regularDiscountPremiumPercentage').text)
                     premium_quantity_discount_price = float(price_list.find('quantityDiscountPremiumPrice').text)
-                    premium_quantity_discount_percentage = float(price_list.find('quantityDiscountPremiumPercentage').text)
+                    #premium_quantity_discount_percentage = float(price_list.find('quantityDiscountPremiumPercentage').text)
                     premium_quantity_discount_limit = int(price_list.find('quantityDiscountPremiumLimit').text)
 
                     cene = {

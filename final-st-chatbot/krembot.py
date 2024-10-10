@@ -5,13 +5,12 @@ from openai import OpenAI
 from os import getenv
 # from streamlit_mic_recorder import mic_recorder
 
-from krembot_auxiliary import load_config, CATEGORY_DEVICE_MAPPING
-# Delfi, Denty, ECD
+from krembot_auxiliary import load_config, CATEGORY_DEVICE_MAPPING, reset_memory, handle_feedback, initialize_session_state
+
+# IZABERI JEDAN OD: Delfi, DentyR, DentyS, ECD
 which_client_locally = "Delfi"
 
 load_config(which_client_locally)
-
-
 
 
 from krembot_tools import rag_tool_answer
@@ -27,12 +26,13 @@ with st.expander("Promptovi"):
     st.write(mprompts)
 import os
 
-
 client_folder = os.getenv("CLIENT_FOLDER")
 # avatar_bg = os.path.join("clients", client_folder, "bg.png")
 avatar_ai = os.path.join("clients", client_folder, "avatar.png")
 avatar_user = os.path.join("clients", client_folder, "user.webp")
 avatar_sys = os.path.join("clients", client_folder, "logo.png")
+
+
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
@@ -74,72 +74,6 @@ if os.getenv("APP_ID") == "DentyBot":
     devices = CATEGORY_DEVICE_MAPPING[selected_category]
     selected_device = st.sidebar.selectbox("Select a Device", devices)
 
-
-def handle_feedback() -> None:
-    """
-    Processes and stores user feedback within the Streamlit application.
-
-    This function retrieves feedback data from the Streamlit session state, structures it into a predefined
-    format, and stores it in the database using the `ConversationDatabase` context manager. The feedback
-    includes details such as the previous question, the tool's answer, the user's given answer, the type
-    of feedback (Good/Bad), and any optional text provided by the user.
-
-    Upon successful storage, a success toast message is displayed. If an error occurs during the storage
-    process, an error message is shown to the user.
-
-    Returns:
-        None
-
-    Raises:
-        None: All exceptions are handled internally and do not propagate.
-    """
-    feedback = st.session_state.get("fb_k", {})
-    # print("Feedback received:", feedback)
-    feedback_text = feedback.get('text', '')
-    feedback_data = {
-        "previous_question": st.session_state.get("previous_question", ""),
-        "tool_answer": st.session_state.get("tool_answer", ""),
-        "given_answer": st.session_state.get("given_answer", ""),
-        "feedback_type": "Good" if feedback.get('score') == "👍" else "Bad",
-        "optional_text": feedback_text
-    }
-    st.session_state.feedback = feedback_data
-
-    # Store feedback data in the database
-    try:
-        with ConversationDatabase() as db:
-            db.insert_feedback(
-                thread_id=st.session_state.thread_id,
-                app_name=st.session_state.app_name,
-                previous_question=feedback_data["previous_question"],
-                tool_answer=feedback_data["tool_answer"],
-                given_answer=feedback_data["given_answer"],
-                thumbs=feedback_data["feedback_type"],
-                feedback_text=feedback_data["optional_text"]
-            )
-        st.toast("✔️ Feedback received and stored in the database!")
-    except Exception as e:
-        st.error(f"Error storing feedback: {e}")
-
-def reset_memory() -> None:
-    """
-    Resets the conversation memory for the current thread within the Streamlit session.
-
-    This function clears the message history by resetting the `messages` dictionary for the current
-    `thread_id` in the session state to its initial state, which contains only the system prompt.
-    Additionally, it clears any filtered messages stored in the session state.
-
-    This is useful for starting a new conversation thread or clearing the existing context to ensure
-    that subsequent interactions are not influenced by previous exchanges.
-
-    Returns:
-        None
-
-    Raises:
-        None: The function performs operations on the session state without raising exceptions.
-    """
-    st.session_state.messages[st.session_state.thread_id] = [{'role': 'system', 'content': mprompts["sys_ragbot"]}]
-    st.session_state.filtered_messages = ""
 
 def main():
     if 'tool_outputs' not in st.session_state:
@@ -336,7 +270,6 @@ def main():
                 # cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1] + [temp_full_prompt]
                 cc_messages = [msg for msg in st.session_state.messages[current_thread_id] if msg.get("role") != "tool"][:-1]
                 cc_messages.append(temp_full_prompt)
-                print(f"\n\n\ncc_messages: {cc_messages}")
                 message_placeholder = st.empty()
                 full_response = ""
                 for response in client.chat.completions.create(
@@ -403,25 +336,6 @@ def main():
             st.button("🗑 Obriši", on_click=reset_memory)
     """
 
-def main_wrap_for_st() -> None:
-    """
-    Wraps the main application logic with OpenAI error handling for the Streamlit application.
-
-    This function serves as a wrapper that executes the main application function (`main`) within the
-    `check_openai_errors` context. It ensures that any OpenAI-related errors encountered during the
-    execution of the main function are gracefully handled and appropriate warning messages are
-    displayed to the user using Streamlit's `st.warning`.
-
-    This abstraction allows for cleaner main application code by centralizing error handling related
-    to OpenAI API interactions.
-
-    Returns:
-        None
-
-    Raises:
-        None: All exceptions are handled within the `check_openai_errors` function and do not propagate.
-    """
-    check_openai_errors(main)
  
 if __name__ == "__main__":
     main()
