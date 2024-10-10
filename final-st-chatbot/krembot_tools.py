@@ -24,6 +24,20 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 all_tools = load_matching_tools(mprompts["choose_rag"])
 
 
+@lru_cache(maxsize=128)
+def get_cached_tool_response(prompt: str):
+    """Function to cache external API tool responses if needed."""
+    return client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."}, 
+            {"role": "user", "content": prompt}
+        ],
+        tools=all_tools,
+        temperature=0.0,
+        tool_choice="required",
+    )
+
 def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     """
     Generates an answer using the RAG (Retrieval-Augmented Generation) tool based on the provided prompt and context.
@@ -60,14 +74,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
 
     context = " "
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."}, 
-                  {"role": "user", "content": prompt}],
-        tools=all_tools,
-        temperature=0.0,
-        tool_choice="required",
-    )
+    response = get_cached_tool_response(prompt)
     assistant_message = response.choices[0].message
     finish_reason = response.choices[0].finish_reason
 
@@ -76,31 +83,19 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     else:
         rag_tool = "None chosen"
 
-    if rag_tool == "Hybrid":
-        processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
-        context = processor.process_query_results(prompt)
+    common_processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
+    tool_processors = {
+        "Hybrid": lambda: common_processor.process_query_results(prompt),
+        "Korice": lambda: SelfQueryDelfi(upit=mprompts["rag_self_query"] + prompt, namespace="korice"),
+        "Graphp": lambda: graphp(prompt),
+        "Pineg": lambda: pineg(prompt),
+        "Natop": lambda: get_items_by_category(prompt),
+        "Orders": lambda: order_delfi(prompt),
+        "Promotion": lambda: ActionFetcher('https://delfi.rs/api/pc-frontend-api/actions-page').decide_and_respond(prompt),
+    }
 
-    elif rag_tool == "Korice":
-        uvod = mprompts["rag_self_query"]
-        combined_prompt = uvod + prompt
-        context = SelfQueryDelfi(upit=combined_prompt, namespace="korice")
-
-    elif rag_tool == "Graphp":
-        context = graphp(prompt)
-
-    elif rag_tool == "Pineg":
-        context = pineg(prompt)
-
-    elif rag_tool == "Natop":
-        context = get_items_by_category(prompt)
-
-    elif rag_tool == "Orders":
-        context = order_delfi(prompt)
-
-    elif rag_tool == "Promotion":
-        api_url = 'https://delfi.rs/api/pc-frontend-api/actions-page'
-        fetcher = ActionFetcher(api_url)
-        context = fetcher.decide_and_respond(prompt)
+    # Return the corresponding function for the chosen RAG tool
+    context = tool_processors.get(rag_tool, lambda: "No tool chosen")()
 
     return context, rag_tool
 
