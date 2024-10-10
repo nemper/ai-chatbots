@@ -56,7 +56,7 @@ def connect_to_pinecone(x: int) -> Any:
     pinecone_client = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
     return pinecone_client.Index(host=pinecone_host)
 
-tools = ["Graphp", "Pineg", "Orders", "Natop", "Korice", "Hybrid", "Actions"]
+tools = ["Graphp", "Pineg", "Orders", "Natop", "Korice", "Hybrid", "Promotion"]
 
 # Build a regex pattern to match '- ToolName:' with exact tool names
 pattern = r'-\s*({0}):'.format("|".join(tools))
@@ -177,14 +177,14 @@ all_tools = [
 {
     "type": "function",
     "function": {
-        "name": "Actions",
+        "name": "Promotion",
         "description": "",
         "parameters": {
             "type": "object",
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict["Actions"]
+                "description": tools_dict["Promotion"]
             }
             },
             "required": ["query"],
@@ -271,7 +271,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     elif rag_tool == "Orders":
         context = order_delfi(prompt)
 
-    elif rag_tool == "Actions":
+    elif rag_tool == "Promotion":
         api_url = 'https://delfi.rs/api/pc-frontend-api/actions-page'
         fetcher = ActionFetcher(api_url)
         context = fetcher.decide_and_respond(prompt)
