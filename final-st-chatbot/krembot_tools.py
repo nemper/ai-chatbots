@@ -77,7 +77,8 @@ for i, match in enumerate(matches):
         end = len(mprompts['choose_rag'])
     description = mprompts['choose_rag'][start:end].strip()
     tools_dict[tool] = description
-
+print(2222, mprompts['choose_rag'])
+print(1111, tools_dict)
 all_tools = [
 {
     "type": "function",
