@@ -10,6 +10,7 @@ from langchain_community.vectorstores import Pinecone as LangPine
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
+from functools import lru_cache
 from openai import OpenAI
 import os
 from os import getenv
@@ -330,24 +331,11 @@ def graphp(pitanje):
             x += "\n\n"
         return x
 
-
     def is_valid_cypher(cypher_query):
         # Provera validnosti Cypher upita (osnovna provera)
         if not cypher_query or "MATCH" not in cypher_query.upper():
             return False
         return True
-
-    # def formulate_answer_with_llm(question, graph_data):
-    #     input_text = f"Pitanje: '{question}'\nPodaci iz grafa: {graph_data}\nMolimo formulišite odgovor na osnovu ovih podataka."
-    #     response = client.chat.completions.create(
-    #         model="gpt-4o",
-    #         temperature=0.0,
-    #         messages=[
-    #             {"role": "system", "content": "You are a helpful assistant that formulates answers based on given data. You have been provided with a user question and data returned from a graph database. Please formulate an answer based on these inputs."},
-    #             {"role": "user", "content": input_text}
-    #         ]
-    #     )
-    #     return response.choices[0].message.content.strip()
     
     cypher_query = generate_cypher_query(pitanje)
     print(f"Generated Cypher Query: {cypher_query}")
@@ -680,13 +668,19 @@ def pineg(pitanje):
     return combined_results
 
 
+# Using lru_cache to cache the API response to avoid repeated requests
+@lru_cache(maxsize=128)
+def fetch_toplists_data():
+    try:
+        response = requests.get("https://delfi.rs/api/pc-frontend-api/toplists")
+        response.raise_for_status()  # Ensure the request was successful
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return None
+
 def get_items_by_category(prompt: str) -> str:
     """
     Retrieves items from a specific category based on the user's prompt.
-
-    This function uses the OpenAI API to determine the category of the user's query. It then sends a GET request
-    to an external API to fetch items belonging to the identified category. The function formats and returns
-    the relevant item details such as title, authors, and genres.
 
     Args:
         prompt (str): The user's input prompt used to determine the category of items to retrieve.
@@ -695,6 +689,7 @@ def get_items_by_category(prompt: str) -> str:
         str: A formatted string containing the details of items in the identified category. If an error occurs
              during the API request, it returns an error message.
     """
+    # Original category search logic with OpenAI API interaction
     response = client.chat.completions.create(
         model=getenv("OPENAI_MODEL"),
         temperature=0.0,
@@ -705,40 +700,41 @@ def get_items_by_category(prompt: str) -> str:
          
          You may only return the name of the category (with the capitalization as provided above). Do not include any additional information."""},
         {"role": "user", "content": f"Please provide the response in JSON format: {prompt}"}],
-        )
-    data_dict = json.loads(response.choices[0].message.content)
-    # Access the 'tool' value
-    category = data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
+    )
     
-    try:
-        # Slanje GET zahteva prema API-ju
-        response = requests.get("https://delfi.rs/api/pc-frontend-api/toplists")
-        response.raise_for_status()  # Provera uspešnosti zahteva
+    data_dict = json.loads(response.choices[0].message.content)
+    category = data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
 
-        # Parsiranje odgovora iz JSON formata
-        result_string = ""
-        data = response.json()
-        for item in data.get('data', {}).get('sections', []):
-            for product in item.get('content', {}).get('products', []):
-                if product.get('category') == category:
-                    title = product.get('title', 'N/A')
-                    authors = product.get('authors', [])
-                    genres = product.get('genres', [])
-                    
-                    # Convert authors and genres to a string format
-                    authors_str = ', '.join([author.get('authorName', 'Unknown') for author in authors])
-                    genres_str = ', '.join([genre.get('genreName', 'Unknown') for genre in genres])
-                    
-                    # Append the collected information to the result string
-                    result_string += f"Title: {title}\n"
-                    result_string += f"Authors: {authors_str}\n"
-                    result_string += f"Genres: {genres_str}\n"
-                    result_string += "-" * 40 + "\n"  # Separator for readability
-                    
-        return result_string
+    if not category:
+        return "Category not recognized."
 
-    except requests.exceptions.RequestException as e:
-        return f"Došlo je do greške prilikom povezivanja sa API-jem: {e}"
+    # Fetch cached API data
+    data = fetch_toplists_data()
+    
+    if not data:
+        return "Došlo je do greške prilikom povezivanja sa API-jem."
+
+    # Filter and collect the relevant products
+    relevant_products = [
+        product for item in data.get('data', {}).get('sections', [])
+        for product in item.get('content', {}).get('products', [])
+        if product.get('category') == category
+    ]
+
+    if not relevant_products:
+        return f"No products found for category {category}."
+
+    # Build result strings using list comprehension
+    result_list = [
+        f"Title: {product.get('title', 'N/A')}\n"
+        f"Authors: {', '.join([author.get('authorName', 'Unknown') for author in product.get('authors', [])])}\n"
+        f"Genres: {', '.join([genre.get('genreName', 'Unknown') for genre in product.get('genres', [])])}\n"
+        + "-" * 40
+        for product in relevant_products
+    ]
+
+    # Join all the results into one string
+    return "\n".join(result_list)
 
 
 def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
