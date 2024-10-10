@@ -1,6 +1,7 @@
 import json
 import neo4j
 import pyodbc
+import re
 import requests
 import xml.etree.ElementTree as ET
 
@@ -55,13 +56,27 @@ def connect_to_pinecone(x: int) -> Any:
     pinecone_client = Pinecone(api_key=pinecone_api_key, host=pinecone_host)
     return pinecone_client.Index(host=pinecone_host)
 
+tools = ["Graphp", "Pineg", "Orders", "Natop", "Korice", "Hybrid", "Actions"]
 
-tool_pattern = r"- (\w+): (.+?)(?=\n-|\Z)"
-tools = re.findall(tool_pattern, mprompts["choose_rag"], re.DOTALL)
+# Build a regex pattern to match '- ToolName:' with exact tool names
+pattern = r'-\s*({0}):'.format("|".join(tools))
 
-# Convert to dictionary
-tools_dict = {tool: description.strip() for tool, description in tools}
+# Find all matches of tool names in the text
+matches = list(re.finditer(pattern, mprompts['choose_rag']))
 
+# Initialize an empty dictionary to store tool descriptions
+tools_dict = {}
+
+# Loop over matches to extract descriptions
+for i, match in enumerate(matches):
+    tool = match.group(1)
+    start = match.end()
+    if i + 1 < len(matches):
+        end = matches[i + 1].start()
+    else:
+        end = len(mprompts['choose_rag'])
+    description = mprompts['choose_rag'][start:end].strip()
+    tools_dict[tool] = description
 
 all_tools = [
 {
@@ -74,7 +89,7 @@ all_tools = [
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict("Hybrid")
+                "description": tools_dict["Hybrid"]
             }
             },
             "required": ["query"],
@@ -93,7 +108,7 @@ all_tools = [
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict("Pineg")
+                "description": tools_dict["Pineg"]
             }
             },
             "required": ["query"],
@@ -112,7 +127,7 @@ all_tools = [
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict("Graphp")
+                "description": tools_dict["Graphp"]
             }
             },
             "required": ["query"],
@@ -131,7 +146,7 @@ all_tools = [
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict("Orders")
+                "description": tools_dict["Orders"]
             }
             },
             "required": ["query"],
@@ -150,7 +165,7 @@ all_tools = [
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict("Natop")
+                "description": tools_dict["Natop"]
             }
             },
             "required": ["query"],
@@ -169,7 +184,7 @@ all_tools = [
             "properties": {
             "query": {
                 "type": "string",
-                "description": tools_dict("Actions")
+                "description": tools_dict["Actions"]
             }
             },
             "required": ["query"],
@@ -233,7 +248,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         rag_tool = assistant_message.tool_calls[0].function.name
     else:
         rag_tool = "None chosen"
-
+    print("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", rag_tool)
 
     if rag_tool == "Hybrid":
         processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
@@ -1044,8 +1059,6 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
 
     return orders_info
 
-
-import re
 def order_delfi(prompt: str) -> str:
     def extract_orders_from_string(text: str) -> List[int]:
         """
