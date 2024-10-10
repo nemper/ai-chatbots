@@ -1,0 +1,211 @@
+import os
+import json
+
+# Load the configurations from JSON file located in the 'clients' folder
+def load_config(client_key):
+    config_path = os.path.join('clients', 'client_configs.json')  # Adjust path to the 'clients' folder
+    try:
+        with open(config_path, 'r') as config_file:
+            configs = json.load(config_file)
+            
+            if client_key in configs:
+                for key, value in configs[client_key].items():
+                    os.environ[key] = value
+                    print(os.environ[key])
+            else:
+                print(f"Client '{client_key}' not found in the config.")
+    except FileNotFoundError:
+        print(f"Configuration file not found at {config_path}")
+
+
+
+
+CATEGORY_DEVICE_MAPPING = {
+    "CAD/CAM Systems": [
+        "CEREC AC",
+        "CEREC AF",
+        "CEREC AI",
+        "CEREC MC",
+        "CEREC MC XL",
+        "CEREC NETWORK",
+        "CEREC OMNICAM",
+        "CEREC PRIMEMILL",
+        "CEREC PRIMESCAN",
+        "CEREC SPEEDFIRE",
+        "CEREC PRIMEPRINT",
+        "CEREC PRIMESCAN",
+        "CEREC OMNICAM",
+        "CEREC SPEEDFIRE",
+        "PRIMEPRINT",
+        "PRIMEPRINT PPU",
+        "INEOS BLUE",
+        "INLAB MC",
+        "INLAB PC",
+        "INLAB PROFIRE",
+        "INFIRE HTC",
+        "CEREC PRIMEPRINT",
+        "PRIMESCAN",
+        "PRIMESCAN AC"
+    ],
+    "Imaging Systems": [
+        "GALILEOS",
+        "GALILEOS COMFORT",
+        "GALILEOS GAX5",
+        "GALILEOS X-RAY UNIT",
+        "FACESCAN",
+        "PERIOSCAN",
+        "SIDEXIS 4",
+        "SIDEXIS XG",
+        "XIOS",
+        "SIM INTEGO",
+        "SIMULATION UNIT",
+        "ORTHOPHOS XG",
+        "ORTHOPHOS E",
+        "ORTHOPHOS S",
+        "ORTHOPHOS SL",
+        "ORTHOPHOS XG",
+        "XIOS"
+    ],
+    "Dental Units": [
+        "HELIODENT",
+        "HELIODENT DS",
+        "HELIODENT PLUS",
+        "HELIODENT VARIO",
+        "C2",
+        "C5",
+        "C8",
+        "CEREC MC",
+        "CEREC MC XL",
+        "INLAB MC",
+        "INLAB MC X5",
+        "INLAB MC XL",
+        "INLAB PC",
+        "INLAB PROFIRE",
+        "SIROTORQUE L",
+        "T1 CLASSIC",
+        "T1 ENERGO",
+        "T1 HIGHSPEED",
+        "T1 LINE",
+        "T1 TURBINE",
+        "T2 ENERGO",
+        "T2 HIGHSPEED",
+        "T2 LINE",
+        "T2 REVO",
+        "T3 HIGHSPEED",
+        "T3 LINE",
+        "T3 RACER",
+        "T3 TURBINE",
+        "T4 LINE",
+        "T4 RACER",
+        "TURBINE",
+        "TURBINES SIROBOOST",
+        "TURBINES T1 CONTROL",
+        "VARIO DG",
+        "AXANO",
+        "AXEOS",
+        "C2",
+        "C5",
+        "C8",
+        "M1",
+        "MM2-SINTER",
+        "HEAT-DUO",
+        "MOTORCAST COMPACT",
+        "MULTIMAT",
+        "ORTHOPHOS E",
+        "ORTHOPHOS S",
+        "ORTHOPHOS SL",
+        "ORTHOPHOS XG",
+        "VARIO DG"
+    ],
+    "Lasers": [
+        "FONALASER",
+        "SIROLASER",
+        "SIROLASER XTEND",
+        "SIROENDO",
+        "SIROCAM",
+        "SIROLUX",
+        "SIROPURE",
+        "FONALASER"
+    ],
+    "Intraoral Scanners": [
+        "INLAB MC",
+        "INLAB MC X5",
+        "INLAB MC XL",
+        "PRIMESCAN AC",
+        "SIM INTEGO",
+        "INTEGO",
+        "PRIMESCAN",
+        "PRIMESCAN AC",
+        "CEREC PRIMESCAN"
+    ],
+    "Dental Instruments and Tools": [
+        "AE SENSOR",
+        "APOLLO DI",
+        "AXANO",
+        "AXEOS",
+        "CARL",
+        "PAUL",
+        "CEILING MODEL",
+        "CERCON",
+        "ENDO",
+        "HEAT-DUO",
+        "LEDLIGHT",
+        "LEDVIEW",
+        "M1",
+        "MAILLEFER",
+        "MIDWEST",
+        "MM2-SINTER",
+        "MOTORCAST COMPACT",
+        "MULTIMAT",
+        "PROFEEL",
+        "PROFIRE",
+        "SIMULATION UNIT",
+        "SINIUS",
+        "SIROCAM",
+        "SIROENDO",
+        "SIROLUX",
+        "SIROPURE",
+        "SIROTORQUE L",
+        "SIUCOM",
+        "SIVISION",
+        "TEMPERATURE TABLE",
+        "TENEO",
+        "TULSA",
+        "VARIO DG",
+        "TURBINES SIROBOOST",
+        "TURBINES T1 CONTROL"
+    ],
+    "Other Equipment/Accessories": [
+        "INTRAORAL PRODUCTS",
+        "DAC UNIVERSAL",
+        "VARIO DG",
+        "TENEO"
+    ],
+    "Hybrid or Multi-Category Devices": [
+        "CEREC AC, CEREC OMNICAM",
+        "CEREC AC, INEOS BLUE",
+        "CEREC AC, INLAB MC",
+        "CEREC AF, CEREC AI",
+        "CEREC MC, CEREC AC, CEREC SPEEDFIRE, INLAB MC, CEREC PRIMEPRINT, CEREC PRIMESCAN, CEREC OMNICAM",
+        "CEREC MC, CEREC PRIMEMILL, CEREC AC, CEREC OMNICAM, PRIMESCAN, INLAB MC, CEREC SPEEDFIRE, PRIMEPRINT",
+        "CEREC MC, INLAB MC",
+        "CEREC PRIMESCAN, CEREC OMNICAM",
+        "ENDO, VDW, TULSA, MAILLEFER, MIDWEST",
+        "HELIODENT, LEDVIEW",
+        "SIROLASER, FONALASER",
+        "SIROLUX, HELIODENT",
+        "SIROLUX, LEDVIEW, HELIODENT",
+        "T1 CLASSIC, T1 LINE, T2 LINE, T3 LINE, T4 LINE",
+        "T1 ENERGO, T2 ENERGO",
+        "T1 HIGHSPEED, T2 HIGHSPEED, T3 HIGHSPEED",
+        "T1 LINE, T2 LINE, T3 LINE",
+        "T1 TURBINE, T2, TURBINE, T3 TURBINE",
+        "T3 RACER, T4 RACER",
+        "TENEO, SINIUS, INTEGO",
+        "ORTHOPHOS S, ORTHOPHOS SL",
+        "ORTHOPHOS SL, ORTHOPHOS S",
+        "ORTHOPHOS XG, GALILEOS",
+        "ORTHOPHOS XG, GALILEOS, XIOS",
+        "SIUCOM, SIVISION"
+    ]
+}

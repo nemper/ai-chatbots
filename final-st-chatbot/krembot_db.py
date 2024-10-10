@@ -4,7 +4,6 @@ import streamlit as st
 
 from os import getenv
 
-
 import json
 import pyodbc
 import os

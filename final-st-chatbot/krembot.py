@@ -1,39 +1,18 @@
 import io
 import streamlit as st
 import uuid
-
-_ = """
-import os
-os.environ["CLIENT_FOLDER"] = "Denty"
-os.environ["SYS_RAGBOT"] = "DENTY_REPAIRER"
-os.environ["APP_ID"] = "DentyBot"
-os.environ["CHOOSE_RAG"] = "GENERAL_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o"
-os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-"""
-
-_ = """
-import os
-os.environ["CLIENT_FOLDER"] = "Delfi"
-os.environ["SYS_RAGBOT"] = "DELFI_SYS_RAGBOT"
-os.environ["APP_ID"] = "DelfiBot"
-os.environ["CHOOSE_RAG"] = "DELFI_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o"
-os.environ["PINECONE_HOST"] = "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
-"""
-
-_ = """
-import os
-os.environ["CLIENT_FOLDER"] = "ECD"
-os.environ["SYS_RAGBOT"] = "ECD_SYS_RAGBOT"
-os.environ["APP_ID"] = "ECDBot"
-os.environ["CHOOSE_RAG"] = "ECD_CHOOSE_RAG"
-os.environ["OPENAI_MODEL"] = "gpt-4o"
-os.environ["PINECONE_HOST"] = "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
-"""
 from openai import OpenAI
 from os import getenv
 # from streamlit_mic_recorder import mic_recorder
+
+from krembot_auxiliary import load_config, CATEGORY_DEVICE_MAPPING
+# Delfi, Denty, ECD
+which_client_locally = "Delfi"
+
+load_config(which_client_locally)
+
+
+
 
 from krembot_tools import rag_tool_answer
 from krembot_db import ConversationDatabase, work_prompts
@@ -47,11 +26,13 @@ mprompts = work_prompts()
 with st.expander("Promptovi"):
     st.write(mprompts)
 import os
+
+
 client_folder = os.getenv("CLIENT_FOLDER")
-# avatar_bg = os.path.join("Clients", client_folder, "bg.png")
-avatar_ai = os.path.join("Clients", client_folder, "avatar.png")
-avatar_user = os.path.join("Clients", client_folder, "user.webp")
-avatar_sys = os.path.join("Clients", client_folder, "logo.png")
+# avatar_bg = os.path.join("clients", client_folder, "bg.png")
+avatar_ai = os.path.join("clients", client_folder, "avatar.png")
+avatar_user = os.path.join("clients", client_folder, "user.webp")
+avatar_sys = os.path.join("clients", client_folder, "logo.png")
 default_values = {
     "_last_speech_to_text_transcript_id": 0,
     "_last_speech_to_text_transcript": None,
@@ -80,196 +61,6 @@ if st.session_state.thread_id not in st.session_state.messages:
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 file_reader = FileReader()
 
-
-CATEGORY_DEVICE_MAPPING = {
-    "CAD/CAM Systems": [
-        "CEREC AC",
-        "CEREC AF",
-        "CEREC AI",
-        "CEREC MC",
-        "CEREC MC XL",
-        "CEREC NETWORK",
-        "CEREC OMNICAM",
-        "CEREC PRIMEMILL",
-        "CEREC PRIMESCAN",
-        "CEREC SPEEDFIRE",
-        "CEREC PRIMEPRINT",
-        "CEREC PRIMESCAN",
-        "CEREC OMNICAM",
-        "CEREC SPEEDFIRE",
-        "PRIMEPRINT",
-        "PRIMEPRINT PPU",
-        "INEOS BLUE",
-        "INLAB MC",
-        "INLAB PC",
-        "INLAB PROFIRE",
-        "INFIRE HTC",
-        "CEREC PRIMEPRINT",
-        "PRIMESCAN",
-        "PRIMESCAN AC"
-    ],
-    "Imaging Systems": [
-        "GALILEOS",
-        "GALILEOS COMFORT",
-        "GALILEOS GAX5",
-        "GALILEOS X-RAY UNIT",
-        "FACESCAN",
-        "PERIOSCAN",
-        "SIDEXIS 4",
-        "SIDEXIS XG",
-        "XIOS",
-        "SIM INTEGO",
-        "SIMULATION UNIT",
-        "ORTHOPHOS XG",
-        "ORTHOPHOS E",
-        "ORTHOPHOS S",
-        "ORTHOPHOS SL",
-        "ORTHOPHOS XG",
-        "XIOS"
-    ],
-    "Dental Units": [
-        "HELIODENT",
-        "HELIODENT DS",
-        "HELIODENT PLUS",
-        "HELIODENT VARIO",
-        "C2",
-        "C5",
-        "C8",
-        "CEREC MC",
-        "CEREC MC XL",
-        "INLAB MC",
-        "INLAB MC X5",
-        "INLAB MC XL",
-        "INLAB PC",
-        "INLAB PROFIRE",
-        "SIROTORQUE L",
-        "T1 CLASSIC",
-        "T1 ENERGO",
-        "T1 HIGHSPEED",
-        "T1 LINE",
-        "T1 TURBINE",
-        "T2 ENERGO",
-        "T2 HIGHSPEED",
-        "T2 LINE",
-        "T2 REVO",
-        "T3 HIGHSPEED",
-        "T3 LINE",
-        "T3 RACER",
-        "T3 TURBINE",
-        "T4 LINE",
-        "T4 RACER",
-        "TURBINE",
-        "TURBINES SIROBOOST",
-        "TURBINES T1 CONTROL",
-        "VARIO DG",
-        "AXANO",
-        "AXEOS",
-        "C2",
-        "C5",
-        "C8",
-        "M1",
-        "MM2-SINTER",
-        "HEAT-DUO",
-        "MOTORCAST COMPACT",
-        "MULTIMAT",
-        "ORTHOPHOS E",
-        "ORTHOPHOS S",
-        "ORTHOPHOS SL",
-        "ORTHOPHOS XG",
-        "VARIO DG"
-    ],
-    "Lasers": [
-        "FONALASER",
-        "SIROLASER",
-        "SIROLASER XTEND",
-        "SIROENDO",
-        "SIROCAM",
-        "SIROLUX",
-        "SIROPURE",
-        "FONALASER"
-    ],
-    "Intraoral Scanners": [
-        "INLAB MC",
-        "INLAB MC X5",
-        "INLAB MC XL",
-        "PRIMESCAN AC",
-        "SIM INTEGO",
-        "INTEGO",
-        "PRIMESCAN",
-        "PRIMESCAN AC",
-        "CEREC PRIMESCAN"
-    ],
-    "Dental Instruments and Tools": [
-        "AE SENSOR",
-        "APOLLO DI",
-        "AXANO",
-        "AXEOS",
-        "CARL",
-        "PAUL",
-        "CEILING MODEL",
-        "CERCON",
-        "ENDO",
-        "HEAT-DUO",
-        "LEDLIGHT",
-        "LEDVIEW",
-        "M1",
-        "MAILLEFER",
-        "MIDWEST",
-        "MM2-SINTER",
-        "MOTORCAST COMPACT",
-        "MULTIMAT",
-        "PROFEEL",
-        "PROFIRE",
-        "SIMULATION UNIT",
-        "SINIUS",
-        "SIROCAM",
-        "SIROENDO",
-        "SIROLUX",
-        "SIROPURE",
-        "SIROTORQUE L",
-        "SIUCOM",
-        "SIVISION",
-        "TEMPERATURE TABLE",
-        "TENEO",
-        "TULSA",
-        "VARIO DG",
-        "TURBINES SIROBOOST",
-        "TURBINES T1 CONTROL"
-    ],
-    "Other Equipment/Accessories": [
-        "INTRAORAL PRODUCTS",
-        "DAC UNIVERSAL",
-        "VARIO DG",
-        "TENEO"
-    ],
-    "Hybrid or Multi-Category Devices": [
-        "CEREC AC, CEREC OMNICAM",
-        "CEREC AC, INEOS BLUE",
-        "CEREC AC, INLAB MC",
-        "CEREC AF, CEREC AI",
-        "CEREC MC, CEREC AC, CEREC SPEEDFIRE, INLAB MC, CEREC PRIMEPRINT, CEREC PRIMESCAN, CEREC OMNICAM",
-        "CEREC MC, CEREC PRIMEMILL, CEREC AC, CEREC OMNICAM, PRIMESCAN, INLAB MC, CEREC SPEEDFIRE, PRIMEPRINT",
-        "CEREC MC, INLAB MC",
-        "CEREC PRIMESCAN, CEREC OMNICAM",
-        "ENDO, VDW, TULSA, MAILLEFER, MIDWEST",
-        "HELIODENT, LEDVIEW",
-        "SIROLASER, FONALASER",
-        "SIROLUX, HELIODENT",
-        "SIROLUX, LEDVIEW, HELIODENT",
-        "T1 CLASSIC, T1 LINE, T2 LINE, T3 LINE, T4 LINE",
-        "T1 ENERGO, T2 ENERGO",
-        "T1 HIGHSPEED, T2 HIGHSPEED, T3 HIGHSPEED",
-        "T1 LINE, T2 LINE, T3 LINE",
-        "T1 TURBINE, T2, TURBINE, T3 TURBINE",
-        "T3 RACER, T4 RACER",
-        "TENEO, SINIUS, INTEGO",
-        "ORTHOPHOS S, ORTHOPHOS SL",
-        "ORTHOPHOS SL, ORTHOPHOS S",
-        "ORTHOPHOS XG, GALILEOS",
-        "ORTHOPHOS XG, GALILEOS, XIOS",
-        "SIUCOM, SIVISION"
-    ]
-}
 
 if os.getenv("APP_ID") == "DentyBot":
     # Sidebar for selections
