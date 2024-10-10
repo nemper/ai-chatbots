@@ -21,30 +21,7 @@ mprompts = work_prompts()
 client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
-tools = ["Graphp", "Pineg", "Orders", "Natop", "Korice", "Hybrid", "Promotion"]
-
-# Build a regex pattern to match '- ToolName:' with exact tool names
-pattern = r'-\s*({0}):'.format("|".join(tools))
-
-# Find all matches of tool names in the text
-matches = list(re.finditer(pattern, mprompts['choose_rag']))
-
-# Initialize an empty dictionary to store tool descriptions
-tools_dict = {}
-
-# Loop over matches to extract descriptions
-for i, match in enumerate(matches):
-    tool = match.group(1)
-    start = match.end()
-    if i + 1 < len(matches):
-        end = matches[i + 1].start()
-    else:
-        end = len(mprompts['choose_rag'])
-    description = mprompts['choose_rag'][start:end].strip()
-    tools_dict[tool] = description
-
-
-all_tools = load_matching_tools(tools_dict)
+all_tools = load_matching_tools(mprompts["choose_rag"])
 
 
 def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:

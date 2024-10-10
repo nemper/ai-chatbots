@@ -5,6 +5,7 @@ from neo4j.graph import Node
 import json
 from pinecone import Pinecone
 from typing import Any
+from re import finditer
 
 # Load the configurations from JSON file located in the 'clients' folder
 def load_config(client_key):
@@ -23,7 +24,8 @@ def load_config(client_key):
         print(f"Configuration file not found at {config_path}")
 
 # Load only the tools from the JSON file that exist in tools_dict
-def load_matching_tools(tools_dict):
+def load_matching_tools(choose_rag):
+    tools_dict = generate_tool_dict(choose_rag)
     config_path = os.path.join('clients', 'all_tools.json')  # Path to the JSON file in the 'clients' folder
 
     try:
@@ -44,6 +46,52 @@ def load_matching_tools(tools_dict):
     except FileNotFoundError:
         print(f"Configuration file not found at {config_path}")
         return []
+
+
+json_file_path = os.path.join('clients', 'all_tools.json')
+def generate_tool_dict(choose_rag):
+    # Function to extract all main keys from all_tools.json
+    def load_all_tool_keys():
+        json_file_path = os.path.join('clients', 'all_tools.json')
+        try:
+            with open(json_file_path, 'r') as json_file:
+                all_tools_data = json.load(json_file)
+                
+                # Extract the top-level keys
+                main_keys = list(all_tools_data.keys())
+                
+                return main_keys
+
+        except FileNotFoundError:
+            print(f"File {json_file_path} not found.")
+            return []
+
+        except json.JSONDecodeError:
+            print(f"Error decoding JSON in {json_file_path}.")
+            return []
+        
+    tools = load_all_tool_keys()
+    # Build a regex pattern to match '- ToolName:' with exact tool names
+    pattern = r'-\s*({0}):'.format("|".join(tools))
+
+    # Find all matches of tool names in the text
+    matches = list(finditer(pattern, choose_rag))
+
+    # Initialize an empty dictionary to store tool descriptions
+    tools_dict = {}
+
+    # Loop over matches to extract descriptions
+    for i, match in enumerate(matches):
+        tool = match.group(1)
+        start = match.end()
+        if i + 1 < len(matches):
+            end = matches[i + 1].start()
+        else:
+            end = len(choose_rag)
+        description = choose_rag[start:end].strip()
+        tools_dict[tool] = description
+
+    return tools_dict
 
 
 def connect_to_neo4j() -> Driver:
