@@ -84,6 +84,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     else:
         rag_tool = "None chosen"
 
+
     toplist_processor = TopListFetcher('https://delfi.rs/api/pc-frontend-api/toplists')
     common_processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
     tool_processors = {
