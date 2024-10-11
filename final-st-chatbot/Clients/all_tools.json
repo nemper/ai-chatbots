@@ -18,10 +18,10 @@
             "strict": true
         }
     },
-    "Pineg": {
+    "recomendation_based_on_description": {
         "type": "function",
         "function": {
-            "name": "Pineg",
+            "name": "recomendation_based_on_description",
             "description": "",
             "parameters": {
                 "type": "object",
@@ -37,10 +37,10 @@
             "strict": true
         }
     },
-    "Graphp": {
+    "recomendation_based_on_attributes": {
         "type": "function",
         "function": {
-            "name": "Graphp",
+            "name": "recomendation_based_on_attributes",
             "description": "",
             "parameters": {
                 "type": "object",
@@ -75,10 +75,10 @@
             "strict": true
         }
     },
-    "Natop": {
+    "top_list": {
         "type": "function",
         "function": {
-            "name": "Natop",
+            "name": "top_list",
             "description": "",
             "parameters": {
                 "type": "object",

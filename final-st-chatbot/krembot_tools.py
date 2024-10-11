@@ -10,7 +10,6 @@ from langchain_community.vectorstores import Pinecone as LangPine
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
-from functools import lru_cache
 from openai import OpenAI
 import os
 from os import getenv
@@ -89,9 +88,9 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     tool_processors = {
         "Hybrid": lambda: common_processor.process_query_results(prompt),
         "Korice": lambda: SelfQueryDelfi(upit=mprompts["rag_self_query"] + prompt, namespace="korice"),
-        "Graphp": lambda: graphp(prompt),
-        "Pineg": lambda: pineg(prompt),
-        "Natop": lambda: toplist_processor.decide_and_respond(prompt),
+        "recomendation_based_on_attributes": lambda: graphp(prompt),
+        "recomendation_based_on_description": lambda: pineg(prompt),
+        "top_list": lambda: toplist_processor.decide_and_respond(prompt),
         "Orders": lambda: order_delfi(prompt),
         "Promotion": lambda: ActionFetcher('https://delfi.rs/api/pc-frontend-api/actions-page').decide_and_respond(prompt),
     }
