@@ -83,13 +83,15 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     else:
         rag_tool = "None chosen"
 
+
+    toplist_processor = TopListFetcher('https://delfi.rs/api/pc-frontend-api/toplists')
     common_processor = HybridQueryProcessor(namespace="delfi-podrska", delfi_special=1)
     tool_processors = {
         "Hybrid": lambda: common_processor.process_query_results(prompt),
         "Korice": lambda: SelfQueryDelfi(upit=mprompts["rag_self_query"] + prompt, namespace="korice"),
         "Graphp": lambda: graphp(prompt),
         "Pineg": lambda: pineg(prompt),
-        "Natop": lambda: get_items_by_category(prompt),
+        "Natop": lambda: toplist_processor.decide_and_respond(prompt),
         "Orders": lambda: order_delfi(prompt),
         "Promotion": lambda: ActionFetcher('https://delfi.rs/api/pc-frontend-api/actions-page').decide_and_respond(prompt),
     }
@@ -667,73 +669,571 @@ def pineg(pitanje):
     return combined_results
 
 
-# Using lru_cache to cache the API response to avoid repeated requests
-@lru_cache(maxsize=128)
-def fetch_toplists_data():
-    try:
-        response = requests.get("https://delfi.rs/api/pc-frontend-api/toplists")
-        response.raise_for_status()  # Ensure the request was successful
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        return None
+class TopListFetcher:
+    def __init__(self, api_url):
+        """
+        Inicijalizuje instancu klase sa zadatim URL-om API-ja.
 
-def get_items_by_category(prompt: str) -> str:
-    """
-    Retrieves items from a specific category based on the user's prompt.
+        Args:
+            api_url (str): URL API-ja odakle će se preuzimati podaci.
+        """
+        self.api_url = api_url
+        self.today = datetime.now()
+        self.unique_actions = set()
 
-    Args:
-        prompt (str): The user's input prompt used to determine the category of items to retrieve.
+    def fetch_data(self):
+        """
+        Preuzima podatke sa API-ja.
 
-    Returns:
-        str: A formatted string containing the details of items in the identified category. If an error occurs
-             during the API request, it returns an error message.
-    """
-    # Original category search logic with OpenAI API interaction
-    response = client.chat.completions.create(
-        model=getenv("OPENAI_MODEL"),
-        temperature=0.0,
-        response_format={"type": "json_object"},
-        messages=[
-        {"role": "system", "content": """You are a helpful assistant that determines the category of the user's query. It must be one of the following 3: 
-         Knjiga, Strana knjiga, Gift
-         
-         You may only return the name of the category (with the capitalization as provided above). Do not include any additional information."""},
-        {"role": "user", "content": f"Please provide the response in JSON format: {prompt}"}],
-    )
-    
-    data_dict = json.loads(response.choices[0].message.content)
-    category = data_dict['tool'] if 'tool' in data_dict else list(data_dict.values())[0]
+        Returns:
+            dict: Sirovi podaci preuzeti sa API-ja u JSON formatu.
+            None: Vraća None ako dođe do greške prilikom preuzimanja podataka.
+        """
+        try:
+            response = requests.get(self.api_url)
+            response.raise_for_status()
+            data = response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Greška pri povezivanju sa API-jem: {e}")
+            data = None
+        return data
 
-    if not category:
-        return "Category not recognized."
+    def get_first_items(self):
+        """
+        Pribavlja i prikazuje prve proizvode iz API-ja "toplists".
 
-    # Fetch cached API data
-    data = fetch_toplists_data()
-    
-    if not data:
-        return "Došlo je do greške prilikom povezivanja sa API-jem."
+        Ova funkcija šalje GET zahtev ka API-ju i vraća najviše šest artikala iz sekcija
+        sadržanih u odgovoru. Za svaki artikal prikazuje sledeće informacije:
+        - Naslov
+        - Autor(i)
+        - Žanr(ovi)
+        - eBook
+        - Link ka stranici artikla
 
-    # Filter and collect the relevant products
-    relevant_products = [
-        product for item in data.get('data', {}).get('sections', [])
-        for product in item.get('content', {}).get('products', [])
-        if product.get('category') == category
-    ]
+        Parameters:
+        -----------
+        self : object
+            Referenca na instancu klase (ako je metoda deo klase).
 
-    if not relevant_products:
-        return f"No products found for category {category}."
+        Returns: 
+        --------
+        list of dict
+            Lista rečnika, gde svaki rečnik sadrži sledeće ključeve:
+            - 'title': Naslov artikla (str)
+            - 'authors': Lista autora (list of str)
+            - 'genres': Lista žanrova (list of str)
+            - 'eBook': Informacija o dostupnosti u eBook formatu (bool)
+            - 'url': Link ka stranici artikla (str)
+        """
+        # URL API-ja koji koristite
+        api_url = "https://delfi.rs/api/pc-frontend-api/toplists"
 
-    # Build result strings using list comprehension
-    result_list = [
-        f"Title: {product.get('title', 'N/A')}\n"
-        f"Authors: {', '.join([author.get('authorName', 'Unknown') for author in product.get('authors', [])])}\n"
-        f"Genres: {', '.join([genre.get('genreName', 'Unknown') for genre in product.get('genres', [])])}\n"
-        + "-" * 40
-        for product in relevant_products
-    ]
+        try:
+            # Slanje GET zahteva prema API-ju
+            response = requests.get(api_url)
+            response.raise_for_status()  # Provera uspešnosti zahteva
 
-    # Join all the results into one string
-    return "\n".join(result_list)
+            print("Konekcija sa API-jem uspešno ostvarena!")
+            
+            # Parsiranje odgovora iz JSON formata
+            data = response.json()
+
+            items = []  # Lista za skladištenje rečnika artikala
+            item_count = 0  # Brojač za artikle
+            
+            for item in data.get('data', {}).get('sections', []):
+                # print("Iteriramo kroz sekciju:", item)  # Dodato za proveru
+                for product in item.get('content', {}).get('products', []):
+                    # print("Pronađen proizvod u kategoriji:", category)
+                    title = product.get('title', 'Nema naslova')
+                    authors = [author.get('authorName', 'Nepoznat autor') for author in product.get('authors', [])]
+                    genres = [genre.get('genreName', 'Nepoznat žanr') for genre in product.get('genres', [])]
+                    eBook = product.get('eBook')
+                    category = product['category'].lower().replace(' ', '_')
+                    oldProductId = product.get('oldProductId', 'Nepoznat ID')
+                    url = f"https://delfi.rs/{category}/{oldProductId}"
+                    # opis = product.get('description')
+                    
+                    # Kreiranje rečnika za artikal
+                    item_dict = {
+                        'title': title,
+                        'authors': authors,
+                        'genres': genres,
+                        'eBook': eBook,
+                        'url': url
+                    }
+
+                    # Dodavanje rečnika u listu
+                    items.append(item_dict)
+
+                    # Prikaz naslova i autora
+                    # print(f"Naslov: {title}")
+                    # for author in authors:
+                    #     print(f"Autor: {author}")
+                    # for genre in genres:
+                    #     print(f"Žanr: {genre}")
+                    # print(f"eBook: {eBook}")
+                    # print(f"Link: {url}")
+                    # # print(f"Opis: {opis}")
+                    # print()
+
+                    item_count += 1
+                    if item_count >= 6:
+                        break
+
+                if item_count >= 6:
+                    break
+
+            return items
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Došlo je do greške prilikom povezivanja sa API-jem: {e}")
+            return []
+
+    def get_items_by_category(self, category):
+        """
+        Pribavlja i vraća listu proizvoda iz određene kategorije sa API-ja "toplists".
+
+        Ova funkcija šalje GET zahtev ka API-ju i vraća sve artikle koji pripadaju zadatoj kategoriji. 
+        Za svaki artikal vraća sledeće informacije:
+        - Naslov
+        - Autor(i)
+        - Žanr(ovi)
+        - eBook
+        - Link ka stranici artikla
+
+        Parameters:
+        -----------
+        self : object
+            Referenca na instancu klase (ako je metoda deo klase).
+        
+        category : str
+            Ime kategorije za koju se pretražuju artikli (npr. "knjige").
+            Naziv kategorije nije osetljiv na velika i mala slova.
+
+        Returns:
+        --------
+        list of dict
+            Lista rečnika, gde svaki rečnik sadrži sledeće ključeve:
+            - 'title': Naslov artikla (str)
+            - 'authors': Lista autora (list of str)
+            - 'genres': Lista žanrova (list of str)
+            - 'eBook': Informacija o dostupnosti u eBook formatu (bool)
+            - 'url': Link ka stranici artikla (str)
+        
+        Raises:
+        -------
+        requests.exceptions.RequestException
+            Ako dođe do greške prilikom slanja zahteva ka API-ju.
+        """
+        api_url = "https://delfi.rs/api/pc-frontend-api/toplists"
+        category_name_lower = category.lower()
+        try:
+            # Slanje GET zahteva prema API-ju
+            response = requests.get(api_url)
+            response.raise_for_status()  # Provera uspešnosti zahteva
+
+            print("Konekcija sa API-jem uspešno ostvarena!")
+            
+            # Parsiranje odgovora iz JSON formata
+            data = response.json()
+
+            items = []  # Lista za skladištenje rečnika artikala
+            
+            for item in data.get('data', {}).get('sections', []):
+                # print("Iteriramo kroz sekciju:", item)  # Dodato za proveru
+                for product in item.get('content', {}).get('products', []):
+                    # print("Proizvod:", product)  # Dodato za proveru
+                    if product.get('category').lower() == category_name_lower:
+                        # print("Pronađen proizvod u kategoriji:", category)
+                        title = product.get('title', 'Nema naslova')
+                        authors = [author.get('authorName', 'Nepoznat autor') for author in product.get('authors', [])]
+                        genres = [genre.get('genreName', 'Nepoznat žanr') for genre in product.get('genres', [])]
+                        eBook = product.get('eBook')
+                        category = product['category'].lower().replace(' ', '_')
+                        oldProductId = product.get('oldProductId', 'Nepoznat ID')
+                        url = f"https://delfi.rs/{category}/{oldProductId}"
+                        # opis = product.get('description')
+                        
+                        # Kreiranje rečnika za artikal
+                        item_dict = {
+                            'title': title,
+                            'authors': authors,
+                            'genres': genres,
+                            'eBook': eBook,
+                            'url': url
+                        }
+
+                        # Dodavanje rečnika u listu
+                        items.append(item_dict)
+
+                        # # Prikaz naslova i autora
+                        # print(f"Naslov: {title}")
+                        # for author in authors:
+                        #     print(f"Autor: {author}")
+                        # for genre in genres:
+                        #     print(f"Žanr: {genre}")
+                        # print(f"eBook: {eBook}")
+                        # print(f"Link: {url}")
+                        # # print(f"Opis: {opis}")
+                        # print()
+            return items
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Došlo je do greške prilikom povezivanja sa API-jem: {e}")
+            return []
+
+    def get_items_by_genre(self, genre):
+        """
+        Pribavlja i vraća listu proizvoda iz određene kategorije sa API-ja "toplists".
+
+        Ova funkcija šalje GET zahtev ka API-ju i vraća sve artikle koji pripadaju zadatoj kategoriji. 
+        Za svaki artikal vraća sledeće informacije:
+        - Naslov
+        - Autor(i)
+        - Žanr(ovi)
+        - eBook
+        - Link ka stranici artikla
+
+        Parameters:
+        -----------
+        self : object
+            Referenca na instancu klase (ako je metoda deo klase).
+        
+        genre : str
+            Ime žanra za koju se pretražuju artikli (npr. "drama").
+            Naziv žanra nije osetljiv na velika i mala slova.
+
+        Returns:
+        --------
+        list of dict
+            Lista rečnika, gde svaki rečnik sadrži sledeće ključeve:
+            - 'title': Naslov artikla (str)
+            - 'authors': Lista autora (list of str)
+            - 'genres': Lista žanrova (list of str)
+            - 'eBook': Informacija o dostupnosti u eBook formatu (bool)
+            - 'url': Link ka stranici artikla (str)
+        
+        Raises:
+        -------
+        requests.exceptions.RequestException
+            Ako dođe do greške prilikom slanja zahteva ka API-ju.
+        """
+
+        api_url = "https://delfi.rs/api/pc-frontend-api/toplists"
+        genre_name_lower = genre.lower()
+        try:
+            # Slanje GET zahteva prema API-ju
+            response = requests.get(api_url)
+            response.raise_for_status()  # Provera uspešnosti zahteva
+
+            print("Konekcija sa API-jem uspešno ostvarena!")
+            
+            # Parsiranje odgovora iz JSON formata
+            data = response.json()
+
+            items = []  # Lista za skladištenje rečnika artikala
+            
+            for item in data.get('data', {}).get('sections', []):
+                # print("Iteriramo kroz sekciju:", item)  # Dodato za proveru
+                for product in item.get('content', {}).get('products', []):
+                    # Lista žanrova
+                    genres = [genre.get('genreName', 'Nepoznat žanr').lower() for genre in product.get('genres', [])]
+                
+                    # Provera da li bilo koji žanr odgovara zadatom
+                    if any(genre_name_lower in g for g in genres):
+                        title = product.get('title', 'Nema naslova')
+                        authors = [author.get('authorName', 'Nepoznat autor') for author in product.get('authors', [])]
+                        genres = [genre.get('genreName', 'Nepoznat žanr') for genre in product.get('genres', [])]
+                        eBook = product.get('eBook')
+                        category = product['category'].lower().replace(' ', '_')
+                        oldProductId = product.get('oldProductId', 'Nepoznat ID')
+                        url = f"https://delfi.rs/{category}/{oldProductId}"
+                        # opis = product.get('description')
+
+                        # Kreiranje rečnika za artikal
+                        item_dict = {
+                            'title': title,
+                            'authors': authors,
+                            'genres': genres,
+                            'eBook': eBook,
+                            'url': url
+                        }
+
+                        # Dodavanje rečnika u listu
+                        items.append(item_dict)
+
+                        # # Prikaz naslova i autora
+                        # print(f"Naslov: {title}")
+                        # for author in authors:
+                        #     print(f"Autor: {author}")
+                        # for genre in genres:
+                        #     print(f"Žanr: {genre}")
+                        # print(f"eBook: {eBook}")
+                        # print(f"Link: {url}")
+                        # # print(f"Opis: {opis}")
+                        # print()
+            return items
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Došlo je do greške prilikom povezivanja sa API-jem: {e}")
+            return []
+        
+    def get_items_by_author(self, author):
+        """
+        Pribavlja i vraća listu proizvoda iz određene kategorije sa API-ja "toplists".
+
+        Ova funkcija šalje GET zahtev ka API-ju i vraća sve artikle koji pripadaju zadatoj kategoriji. 
+        Za svaki artikal vraća sledeće informacije:
+        - Naslov
+        - Autor(i)
+        - Žanr(ovi)
+        - eBook
+        - Link ka stranici artikla
+
+        Parameters:
+        -----------
+        self : object
+            Referenca na instancu klase (ako je metoda deo klase).
+        
+        author : str
+            Ime autora za kog se pretražuju artikli (npr. "Ivo Andrić").
+            Ime autora nije osetljiv na velika i mala slova.
+
+        Returns:
+        --------
+        list of dict
+            Lista rečnika, gde svaki rečnik sadrži sledeće ključeve:
+            - 'title': Naslov artikla (str)
+            - 'authors': Lista autora (list of str)
+            - 'genres': Lista žanrova (list of str)
+            - 'eBook': Informacija o dostupnosti u eBook formatu (bool)
+            - 'url': Link ka stranici artikla (str)
+        
+        Raises:
+        -------
+        requests.exceptions.RequestException
+            Ako dođe do greške prilikom slanja zahteva ka API-ju.
+        """
+        api_url = "https://delfi.rs/api/pc-frontend-api/toplists"
+        author_name_lower = author.lower()
+        try:
+            # Slanje GET zahteva prema API-ju
+            response = requests.get(api_url)
+            response.raise_for_status()  # Provera uspešnosti zahteva
+
+            print("Konekcija sa API-jem uspešno ostvarena!")
+            
+            # Parsiranje odgovora iz JSON formata
+            data = response.json()
+
+            items = []  # Lista za skladištenje rečnika artikala
+            
+            for item in data.get('data', {}).get('sections', []):
+                # print("Iteriramo kroz sekciju:", item)  # Dodato za proveru
+                for product in item.get('content', {}).get('products', []):
+                    # Lista žanrova
+                    authors = [author.get('authorName', 'Nepoznat autor').lower() for author in product.get('authors', [])]
+                
+                    # Provera da li bilo koji žanr odgovara zadatom
+                    if author_name_lower in authors:
+                        title = product.get('title', 'Nema naslova')
+                        authors = [author.get('authorName', 'Nepoznat autor') for author in product.get('authors', [])]
+                        genres = [genre.get('genreName', 'Nepoznat žanr') for genre in product.get('genres', [])]
+                        eBook = product.get('eBook')
+                        category = product['category'].lower().replace(' ', '_')
+                        oldProductId = product.get('oldProductId', 'Nepoznat ID')
+                        url = f"https://delfi.rs/{category}/{oldProductId}"
+                        # opis = product.get('description')
+                        
+                        # Kreiranje rečnika za artikal
+                        item_dict = {
+                            'title': title,
+                            'authors': authors,
+                            'genres': genres,
+                            'eBook': eBook,
+                            'url': url
+                        }
+
+                        # Dodavanje rečnika u listu
+                        items.append(item_dict)
+            return items
+        
+        except requests.exceptions.RequestException as e:
+            print(f"Došlo je do greške prilikom povezivanja sa API-jem: {e}")
+            return []
+
+    def decide_and_respond(self, question):
+        """
+        Funkcija koja koristi LLM da odluči koja metoda će se koristiti na osnovu pitanja korisnika.
+        """
+
+        tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "getFistItems",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "If the user asks for most popular products."
+                    }
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "fetchTopListByCategory",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "If the user asks about products by category."
+                    }
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "fetchTopListByGenre",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "If the user asks about products by genre."
+                    }
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "fetchTopListByAuthor",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "If the user asks about products by the author."
+                    }
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False
+                },
+                "strict": True
+            }
+        }
+        ]
+
+        response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Your one and only job is to determine the name of the tool that should be used to solve the user query."
+                            "The user is asking about the top list of products. You have 4 tools on your disposal."
+                            "There are 8 categories of products: knjiga, film, muzika, strana knjiga, gift, udžbenik, video igra. If you think the user is asking about category which can't be found in this list, it's probably a genre."
+                            "Do not return any other information."
+                            )
+                    },                  
+                    {"role": "user", "content": question}
+                ],
+                tools=tools,
+                temperature=0.0,
+                tool_choice="required",
+            )
+        assistant_message = response.choices[0].message
+        finish_reason = response.choices[0].finish_reason
+
+        if finish_reason == "tool_calls" or "stop":
+            decision = assistant_message.tool_calls[0].function.name
+        else:
+            decision = "Warning: No function was called"
+
+        print(f"Odluka: {decision}")
+
+        if decision == 'getFistItems':
+            # Korisnik pita za popularne knjige
+            return self.get_first_items()
+        
+        elif decision == 'fetchTopListByCategory':
+            # Korisnik pita za knjige po kategoriji
+            prompt_for_category = f"The user question: {question}"
+            category_name_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0.0,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a helpful assistant. The user is asking about products for a specific category."
+                            "You need to extract the specific category name from the question based on this list: knjiga, film, muzika, strana knjiga, gift, udžbenik, video igra."
+                            "Return only the name of the category in order to the function can filter the data for that category. ensure to handle inflected forms properly by converting all names to their nominative form."
+                        
+                        )
+                    },
+                    {"role": "user", "content": prompt_for_category}
+                ]
+            )
+            category_name = category_name_response.choices[0].message.content.strip()
+            print(f"naziv kategorije: ", category_name)
+            return self.get_items_by_category(category_name)
+
+        elif decision == 'fetchTopListByGenre':
+            # Korisnik pita za knjige po žanru
+            prompt_for_genre = f"The user question: {question}"
+            genre_name_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0.0,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant. The user is asking about products for a specific genre. You need to extract the specific genre name from the question. Return only the name of the genre in order to the function can filter the data for that genre."},
+                    {"role": "user", "content": prompt_for_genre}
+                ]
+            )
+            genre_name = genre_name_response.choices[0].message.content.strip()
+            print(f"naziv žanra: ", genre_name)
+            return self.get_items_by_genre(genre_name)
+
+        elif decision == 'fetchTopListByAuthor':
+            # Korisnik pita za knjige po autoru
+            prompt_for_author = f"The user question: {question}"
+            author_name_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0.0,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant. The user is asking about products for a specific author. You need to extract the author name from the question. Return only the author name in order to the function can filter the data for that author."},
+                    {"role": "user", "content": prompt_for_author}
+                ]
+            )    
+            author_name = author_name_response.choices[0].message.content.strip()
+            print(f"naziv autora: ", author_name)
+            return self.get_items_by_author(author_name)
+
+        else:
+            return {"error": "Nije moguće odlučiti šta korisnik želi."}
 
 
 def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
