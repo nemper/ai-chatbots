@@ -25,8 +25,7 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 all_tools = load_matching_tools(mprompts["choose_rag"])
 
 
-@lru_cache(maxsize=128)
-def get_cached_tool_response(prompt: str):
+def get_tool_response(prompt: str):
     """Function to cache external API tool responses if needed."""
     return client.chat.completions.create(
         model="gpt-4o",
@@ -75,7 +74,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
 
     context = " "
 
-    response = get_cached_tool_response(prompt)
+    response = get_tool_response(prompt)
     assistant_message = response.choices[0].message
     finish_reason = response.choices[0].finish_reason
 
