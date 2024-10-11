@@ -33,7 +33,6 @@ def load_config(client_key: str) -> None:
 
 
 # Load only the tools from the JSON file that exist in tools_dict
-@st.cache_data
 def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
     """
     Loads tools from a JSON file and returns only those tools whose keys match
@@ -69,7 +68,6 @@ def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
 
 
 # Generate a tool dictionary from the given text (choose_rag)
-@st.cache_data
 def generate_tool_dict(choose_rag: str) -> Dict[str, str]:
     """
     Generates a dictionary of tool descriptions from the provided text.
