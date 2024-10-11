@@ -23,7 +23,7 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
 all_tools = load_matching_tools(mprompts["choose_rag"])
-logging.error(f"TOOLS: {all_tools}")
+st.write(3333, all_tools)
 
 def get_tool_response(prompt: str):
     """Function to cache external API tool responses if needed."""
