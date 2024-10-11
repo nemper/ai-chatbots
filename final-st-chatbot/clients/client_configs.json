@@ -1,0 +1,34 @@
+{
+    "DentyR": {
+        "CLIENT_FOLDER": "Denty",
+        "SYS_RAGBOT": "DENTY_REPAIRER",
+        "APP_ID": "DentyBotR",
+        "CHOOSE_RAG": "GENERAL_CHOOSE_RAG",
+        "OPENAI_MODEL": "gpt-4o",
+        "PINECONE_HOST": "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+    },
+    "DentyS": {
+        "CLIENT_FOLDER": "Denty",
+        "SYS_RAGBOT": "DENTY_SALES",
+        "APP_ID": "DentyBotS",
+        "CHOOSE_RAG": "GENERAL_CHOOSE_RAG",
+        "OPENAI_MODEL": "gpt-4o",
+        "PINECONE_HOST": "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+    },
+    "Delfi": {
+        "CLIENT_FOLDER": "Delfi",
+        "SYS_RAGBOT": "DELFI_SYS_RAGBOT",
+        "APP_ID": "DelfiBot",
+        "CHOOSE_RAG": "DELFI_CHOOSE_RAG",
+        "OPENAI_MODEL": "gpt-4o",
+        "PINECONE_HOST": "https://delfi-a9w1e6k.svc.aped-4627-b74a.pinecone.io"
+    },
+    "ECD": {
+        "CLIENT_FOLDER": "ECD",
+        "SYS_RAGBOT": "ECD_SYS_RAGBOT",
+        "APP_ID": "ECDBot",
+        "CHOOSE_RAG": "ECD_CHOOSE_RAG",
+        "OPENAI_MODEL": "gpt-4o",
+        "PINECONE_HOST": "https://neo-positive-a9w1e6k.svc.apw5-4e34-81fa.pinecone.io"
+    }
+}
