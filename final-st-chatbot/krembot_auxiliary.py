@@ -33,7 +33,6 @@ def load_config(client_key: str) -> None:
 
 
 # Load only the tools from the JSON file that exist in tools_dict
-@st.cache_data
 def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
     """
     Loads tools from a JSON file and returns only those tools whose keys match
@@ -51,7 +50,7 @@ def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
     try:
         with open(config_path, 'r') as json_file:
             all_tools_json = json.load(json_file)  # Load the JSON content
-
+            st.write(1111, all_tools_json)
             # Filter and load only the dictionaries whose keys exist in tools_dict
             matching_tools = []
             for tool_name in tools_dict.keys():
@@ -62,14 +61,13 @@ def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
                     matching_tools.append(tool_dict)
 
             return matching_tools
-        print(1111, matching_tools)
+        st.write(2222, matching_tools)
     except FileNotFoundError:
-        print(f"Configuration file not found at {config_path}")
+        st.write(f"Configuration file not found at {config_path}")
         return []
 
 
 # Generate a tool dictionary from the given text (choose_rag)
-@st.cache_data
 def generate_tool_dict(choose_rag: str) -> Dict[str, str]:
     """
     Generates a dictionary of tool descriptions from the provided text.

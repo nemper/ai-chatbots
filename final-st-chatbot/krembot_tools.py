@@ -10,9 +10,10 @@ from langchain_community.vectorstores import Pinecone as LangPine
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
-from functools import lru_cache
+import logging
 from openai import OpenAI
 import os
+import streamlit as st
 from os import getenv
 from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict, Any, Tuple, Union, Optional
@@ -23,10 +24,9 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
 all_tools = load_matching_tools(mprompts["choose_rag"])
+st.write(3333, all_tools)
 
-
-@lru_cache(maxsize=128)
-def get_cached_tool_response(prompt: str):
+def get_tool_response(prompt: str):
     """Function to cache external API tool responses if needed."""
     return client.chat.completions.create(
         model="gpt-4o",
@@ -75,7 +75,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
 
     context = " "
 
-    response = get_cached_tool_response(prompt)
+    response = get_tool_response(prompt)
     assistant_message = response.choices[0].message
     finish_reason = response.choices[0].finish_reason
 
@@ -90,9 +90,9 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     tool_processors = {
         "Hybrid": lambda: common_processor.process_query_results(prompt),
         "Korice": lambda: SelfQueryDelfi(upit=mprompts["rag_self_query"] + prompt, namespace="korice"),
-        "Graphp": lambda: graphp(prompt),
-        "Pineg": lambda: pineg(prompt),
-        "Natop": lambda: toplist_processor.decide_and_respond(prompt),
+        "recomendation_based_on_attributes": lambda: graphp(prompt),
+        "recomendation_based_on_description": lambda: pineg(prompt),
+        "top_list": lambda: toplist_processor.decide_and_respond(prompt),
         "Orders": lambda: order_delfi(prompt),
         "Promotion": lambda: ActionFetcher('https://delfi.rs/api/pc-frontend-api/actions-page').decide_and_respond(prompt),
     }
@@ -1323,29 +1323,11 @@ def order_delfi(prompt: str) -> str:
 
 
 def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
-
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
     # Function to parse the XML response and extract required fields
-    def parse_product_info(xml_data: bytes) -> Dict[str, Any]:
-        """
-        Parses the XML data of a product and extracts relevant product information.
-
-        Args:
-            xml_data (bytes): The XML data retrieved from the Delfi API for a product.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing extracted product details such as prices, lager, URL, ID, and action information.
-                            The dictionary may include keys like:
-                                - 'puna cena' (float)
-                                - 'eBook cena' (float)
-                                - 'lager' (str)
-                                - 'url' (str)
-                                - 'id' (str)
-                                - 'akcija' (Dict[str, Any], optional)
-                                - 'cene' (Dict[str, Any], optional)
-        """
+    def parse_product_info(xml_data):
         product_info = {}
         quantity_discount2_flag = False
         try:
@@ -1356,6 +1338,7 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                 lager = product_node.findtext('lager')
                 url = product_node.findtext('url')
                 id = product_node.findtext('ID')
+                navid = product_node.findtext('ID_nav')
 
                 action_node = product_node.find('action')
                 if action_node is not None:
@@ -1363,7 +1346,6 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                     type = action_node.find('type').text
                     if type == "fixedPrice" or type == "fixedDiscount":
                         title = action_node.find('title').text
-                        start_at = action_node.find('startAt').text
                         end_at = action_node.find('endAt').text
                         price_regular_standard = float(action_node.find('priceRegularStandard').text)
                         price_regular_premium = float(action_node.find('priceRegularPremium').text)
@@ -1443,7 +1425,6 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                         }
                 else:
                     print("Action node not found, taking regular price")  # Debugging line
-
                     # Pristupanje priceList elementu
                 price_list = product_node.find('priceList')
                 if price_list is not None:
@@ -1504,15 +1485,17 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                         'cena sa redovnim popustom': regular_discount_price,
                         'cena sa premium popustom': premium_discount_price
                     }
-                
+
                 # if lager and int(lager) > 0:
                 if int(lager) > 0:
                     product_info = {
                         'puna cena': full_price,
                         'eBook cena': eBook_price,
+                        'cena kolekcije': collection_price,
                         'lager': lager,
                         'url': url,
-                        'id': id
+                        'id': id,
+                        # 'navid': navid
                     }
                     if action_node is None:
                         product_info.update(cene)
@@ -1531,19 +1514,7 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
         return product_info
 
     # Main function to get info for a list of product IDs
-    def get_multiple_products_info(token: str, product_ids: List[int]) -> Union[List[Dict[str, Any]], str]:
-        """
-        Retrieves and processes information for multiple product IDs.
-
-        Args:
-            token (str): The API authentication token.
-            product_ids (List[int]): A list of product IDs for which information is to be retrieved.
-
-        Returns:
-            Union[List[Dict[str, Any]], str]: 
-                - If successful, returns a list of dictionaries, each containing details of a product.
-                - If an error occurs during retrieval, returns an error message string indicating that no products were found for the given IDs.
-        """
+    def get_multiple_products_info(token, product_ids):
         products_info = []
         for product_id in product_ids:
             # print(f"Product ID: {product_id}")
@@ -1567,7 +1538,6 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
     # for info in products_info:
     #     output += str(info) + "\n"
     return products_info
-
 
 def API_search_aks(order_ids: List[str]) -> List[Dict[str, Any]]:
     
