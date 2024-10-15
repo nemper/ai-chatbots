@@ -173,7 +173,6 @@ def graphp(pitanje):
         print(f"Total number of characters: {total_characters}")
 
         return cleaned_results
-        
 
     def generate_cypher_query(question):
         prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
@@ -225,6 +224,13 @@ def graphp(pitanje):
             
                 "Example user question: 'preporuči mi knjige slične Oladi malo od Sare Najt' "
                 "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Oladi malo') AND toLower(a.name) CONTAINS toLower('Sara Najt') WITH b MATCH (b)-[:BELONGS_TO]->(g:Genre) WITH g, b MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b) WHERE rec.quantity > 0 AND NOT toLower(rec.title) CONTAINS toLower('Oladi malo') WITH rec, COLLECT(DISTINCT g.name) AS genres MATCH (rec)-[:WROTE]-(recAuthor:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, rec.category AS category, recAuthor.name AS author, genres AS genre LIMIT 6"
+                
+                "Example user question: 'daj mi preporuku za neku biografiju' "
+                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(g.name) CONTAINS 'biografij' AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author, g.name AS genre LIMIT 6"
+                
+                "Example user question: 'daj mi preporuku za nagradjene knjige' "
+                "Cypher query: MATCH (a:Author)-[:WROTE]->(b:Book)-[:BELONGS_TO]->(g:Genre) WHERE toLower(g.name) CONTAINS 'nagrađen' AND toLower(g.name) CONTAINS 'knjig' AND b.quantity > 0 RETURN b.title AS title, b.oldProductId AS oldProductId, b.category AS category, a.name AS author, g.name AS genre LIMIT 6"
+                
             )
         },
                 {"role": "user", "content": prompt}
@@ -285,54 +291,6 @@ def graphp(pitanje):
         # print(f"Combined Data: {combined_data}")
         return combined_data
 
-
-    def display_results(combined_data):
-        x = ""
-        for data in combined_data:
-            # print(f"Data iz display_results: {data}")
-            if 'title' in data:
-                x += f"Naslov: {data['title']}\n"
-            if 'category' in data:
-                x += f"Kategorija: {data['category']}\n"
-            if 'puna cena' in data:
-                x += f"Puna cena: {data['puna cena']}\n"
-            if 'author' in data:
-                x += f"Autor: {data['author']}\n"
-            if 'lager' in data:
-                x += f"Količina: {data['lager']}\n"
-            if 'pages' in data:
-                x += f"Broj strana: {data['pages']}\n"
-            if 'eBook' in data:
-                x += f"eBook: {data['eBook']}\n"
-            if 'description' in data:
-                x += f"Opis: {data['description']}\n"
-            if 'url' in data:
-                x += f"Link: {data['url']}\n"
-            if 'cena sa redovnim popustom' in data:
-                x += f"Cena sa redovnim popustom: {data['cena sa redovnim popustom']}\n"
-            if 'cena sa redovnim popustom na količinu' in data:
-                x += f"Cena sa redovnim popustom na količinu: {data['cena sa redovnim popustom na količinu']}\n"
-            if 'limit za količinski popust' in data:
-                x += f"Limit za količinski popust: {data['limit za količinski popust']}\n"
-            if 'cena sa premium popustom' in data:
-                x += f"Cena sa premium popustom: {data['cena sa premium popustom']}\n"
-            if 'cena sa premium popustom na količinu' in data:
-                x += f"Cena sa premium popustom na količinu: {data['cena sa premium popustom na količinu']}\n"
-            if 'limit za količinski premium popust' in data:
-                x += f"Limit za količinski premium popust: {data['limit za količinski premium popust']}\n"
-            if 'naziv akcije' in data:
-                x += f"Naziv akcije: {data['naziv akcije']}\n"
-            if 'početak akcije' in data:
-                x += f"Početak akcije: {data['početak akcije']}\n"
-            if 'kraj akcije' in data:
-                x += f"Kraj akcije: {data['kraj akcije']}\n"
-            if 'eksponencijalni procenti' in data:
-                x += f"Eksponencijalni procenti: {data['eksponencijalni procenti']}\n"
-            if 'eksponencijalni procenti na kolicinu' in data:
-                x += f"Eksponencijalni procenti na kolicinu: {data['eksponencijalni procenti na kolicinu']}\n"
-            x += "\n\n"
-        return x
-
     def is_valid_cypher(cypher_query):
         # Provera validnosti Cypher upita (osnovna provera)
         if not cypher_query or "MATCH" not in cypher_query.upper():
@@ -354,9 +312,6 @@ def graphp(pitanje):
             except KeyError:
                 print("Nema 'oldProductId'.")
                 oldProductIds = []
-
-            # Define the regex pattern to match both 'id' and 'b.id'
-            pattern = r"'(?:b\.)?id': '([^']+)'"
 
             # Filtrirana lista koja će sadržati samo relevantne knjige
             filtered_book_data = []
@@ -382,7 +337,7 @@ def graphp(pitanje):
                         # Dodavanje knjige u filtriranu listu
                         filtered_book_data.append(book)
 
-                    print(f"Filtered Book Data: {filtered_book_data}")
+                    # print(f"Filtered Book Data: {filtered_book_data}")
 
                 print("******Gotov api deo!!!")
 
@@ -392,9 +347,8 @@ def graphp(pitanje):
                 # print("******Gotov Pinecone deo!!!")
                 combined_data = combine_data(filtered_book_data, descriptionsDict)
                 
-                display_results(combined_data)
                 # return
-                # print(f"Combined Data: {combined_data}")
+                print(f"Combined Data: {combined_data}")
                 return combined_data
         except Exception as e:
             print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
@@ -767,17 +721,6 @@ class TopListFetcher:
                     # Dodavanje rečnika u listu
                     items.append(item_dict)
 
-                    # Prikaz naslova i autora
-                    # print(f"Naslov: {title}")
-                    # for author in authors:
-                    #     print(f"Autor: {author}")
-                    # for genre in genres:
-                    #     print(f"Žanr: {genre}")
-                    # print(f"eBook: {eBook}")
-                    # print(f"Link: {url}")
-                    # # print(f"Opis: {opis}")
-                    # print()
-
                     item_count += 1
                     if item_count >= 6:
                         break
@@ -868,16 +811,6 @@ class TopListFetcher:
                         # Dodavanje rečnika u listu
                         items.append(item_dict)
 
-                        # # Prikaz naslova i autora
-                        # print(f"Naslov: {title}")
-                        # for author in authors:
-                        #     print(f"Autor: {author}")
-                        # for genre in genres:
-                        #     print(f"Žanr: {genre}")
-                        # print(f"eBook: {eBook}")
-                        # print(f"Link: {url}")
-                        # # print(f"Opis: {opis}")
-                        # print()
             return items
         
         except requests.exceptions.RequestException as e:
@@ -964,16 +897,6 @@ class TopListFetcher:
                         # Dodavanje rečnika u listu
                         items.append(item_dict)
 
-                        # # Prikaz naslova i autora
-                        # print(f"Naslov: {title}")
-                        # for author in authors:
-                        #     print(f"Autor: {author}")
-                        # for genre in genres:
-                        #     print(f"Žanr: {genre}")
-                        # print(f"eBook: {eBook}")
-                        # print(f"Link: {url}")
-                        # # print(f"Opis: {opis}")
-                        # print()
             return items
         
         except requests.exceptions.RequestException as e:
@@ -1158,6 +1081,13 @@ class TopListFetcher:
                             "The user is asking about the top list of products. You have 4 tools on your disposal."
                             "There are 8 categories of products: knjiga, film, muzika, strana knjiga, gift, udžbenik, video igra. If you think the user is asking about category which can't be found in this list, it's probably a genre."
                             "Do not return any other information."
+
+                            "Here is an example: "
+                            "Example user question: 'koje su najpopularnije knjige.' "
+                            "Tool to use: getFistItems"
+
+                            "Example user question: 'daj mi preporuku za domace pisce' "
+                            "Tool to use: fetchTopListByGenre"
                             )
                     },                  
                     {"role": "user", "content": question}
@@ -1201,7 +1131,10 @@ class TopListFetcher:
             )
             category_name = category_name_response.choices[0].message.content.strip()
             print(f"naziv kategorije: ", category_name)
-            return self.get_items_by_category(category_name)
+            answer = self.get_items_by_category(category_name)
+            if not answer:
+                answer = graphp(question)
+            return answer
 
         elif decision == 'fetchTopListByGenre':
             # Korisnik pita za knjige po žanru
@@ -1210,13 +1143,25 @@ class TopListFetcher:
                 model="gpt-4o-mini",
                 temperature=0.0,
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant. The user is asking about products for a specific genre. You need to extract the specific genre name from the question. Return only the name of the genre in order to the function can filter the data for that genre."},
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a helpful assistant. The user is asking about products for a specific genre."
+                            "Return only the name of the genre in order to the function can filter the data for that genre."
+                            "You need to extract the specific genre name from the question, ensuring to handle inflected forms by converting them to their nominative form."
+                            "Normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when diacritics are omitted."
+                            "Additionally, ensure that the genre contains the base form of the word. For example, if the user asks for 'autobiografije,' the search should be conducted using 'autobiografij' to account for both singular and plural forms."
+                        )
+                    },
                     {"role": "user", "content": prompt_for_genre}
                 ]
             )
             genre_name = genre_name_response.choices[0].message.content.strip()
             print(f"naziv žanra: ", genre_name)
-            return self.get_items_by_genre(genre_name)
+            answer = self.get_items_by_genre(genre_name)
+            if not answer:
+                answer = graphp(question)
+            return answer
 
         elif decision == 'fetchTopListByAuthor':
             # Korisnik pita za knjige po autoru
@@ -1231,7 +1176,10 @@ class TopListFetcher:
             )    
             author_name = author_name_response.choices[0].message.content.strip()
             print(f"naziv autora: ", author_name)
-            return self.get_items_by_author(author_name)
+            answer = self.get_items_by_author(author_name)
+            if not answer:
+                answer = graphp(question)
+            return answer
 
         else:
             return {"error": "Nije moguće odlučiti šta korisnik želi."}
@@ -1451,8 +1399,8 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                     elif type == "exponentialDiscount":
                         title = action_node.find('title').text
                         end_at = action_node.find('endAt').text
-                        eksponencijalni_procenti = action_node.find('levelPercentages')
-                        eksponencijalne_cene = action_node.find('levelPrices')
+                        eksponencijalni_procenti = action_node.find('levelPercentages').text
+                        eksponencijalne_cene = action_node.find('levelPrices').text
 
                         akcija = {
                             'naziv akcije': title,
@@ -1477,8 +1425,7 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                         }
                 else:
                     print("Action node not found, taking regular price")  # Debugging line
-                
-                # Pristupanje priceList elementu
+                    # Pristupanje priceList elementu
                 price_list = product_node.find('priceList')
                 if price_list is not None:
                     collection_price = float(price_list.find('collectionFullPrice').text)
