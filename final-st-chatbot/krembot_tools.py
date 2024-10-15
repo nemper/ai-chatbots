@@ -1399,6 +1399,7 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                                 - 'cene' (Dict[str, Any], optional)
         """
         product_info = {}
+        quantity_discount2_flag = False
         try:
             root = ET.fromstring(xml_data)
             product_node = root.find(".//product")
@@ -1421,32 +1422,65 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                         price_quantity_standard = float(action_node.find('priceQuantityStandard').text)
                         price_quantity_premium = float(action_node.find('priceQuantityPremium').text)
 
-                        akcija = {
+                        if price_regular_standard == price_regular_premium == price_quantity_standard == price_quantity_premium:
+                            akcija = {
                             'naziv akcije': title,
-                            'početak akcije': start_at,
                             'kraj akcije': end_at,
-                            'cena sa redovnim popustom': price_regular_standard,
-                            'cena sa premium popustom': price_regular_premium,
-                            'cena sa redovnim količinskim popustom': price_quantity_standard,
-                            'cena sa premium količinskim popustom': price_quantity_premium
+                            'akcijska cena': price_regular_standard
                         }
+                        elif price_regular_standard == price_regular_premium and price_quantity_standard == price_quantity_premium:
+                            akcija = {
+                            'naziv akcije': title,
+                            'kraj akcije': end_at,
+                            'akcijska cena': price_regular_standard,
+                            'akcijska cena sa količinskim popustom': price_quantity_standard
+                        }
+                        elif price_regular_standard == price_quantity_standard and price_regular_premium == price_quantity_premium:
+                            akcija = {
+                            'naziv akcije': title,
+                            'kraj akcije': end_at,
+                            'akcijska cena': price_regular_standard,
+                            'akcijska premium cena': price_regular_premium
+                        }
+                        elif price_regular_standard == price_regular_premium == price_quantity_standard != price_quantity_premium:
+                            akcija = {
+                            'naziv akcije': title,
+                            'kraj akcije': end_at,
+                            'akcijska cena': price_regular_standard,
+                            'akcijska premium cena sa količinskim popustom': price_quantity_premium
+                        }
+                        elif price_regular_standard == price_quantity_standard and price_regular_premium != price_regular_standard and price_quantity_premium != price_quantity_standard and price_regular_premium != price_quantity_premium:
+                            akcija = {
+                            'naziv akcije': title,
+                            'kraj akcije': end_at,
+                            'akcijska cena': price_regular_standard,
+                            'akcijska premium cena': price_regular_premium,
+                            'akcijska premium cena sa količinskim popustom': price_quantity_premium
+                        }
+                        else:
+                            akcija = {
+                                'naziv akcije': title,
+                                'kraj akcije': end_at,
+                                'cena sa redovnim popustom': price_regular_standard,
+                                'cena sa premium popustom': price_regular_premium,
+                                'cena sa redovnim količinskim popustom': price_quantity_standard,
+                                'cena sa premium količinskim popustom': price_quantity_premium
+                            }
                     elif type == "exponentialDiscount":
                         title = action_node.find('title').text
-                        start_at = action_node.find('startAt').text
                         end_at = action_node.find('endAt').text
                         eksponencijalni_procenti = action_node.find('levelPercentages')
                         eksponencijalne_cene = action_node.find('levelPrices')
 
                         akcija = {
                             'naziv akcije': title,
-                            'početak akcije': start_at,
                             'kraj akcije': end_at,
                             'eksponencijalni procenti': eksponencijalni_procenti,
                             'eksponencijalne cene': eksponencijalne_cene
                         }
                     elif type == "quantityDiscount2":
+                        quantity_discount2_flag = True
                         title = action_node.find('title').text
-                        start_at = action_node.find('startAt').text
                         end_at = action_node.find('endAt').text
                         price_quantity_standard_d2 = float(action_node.find('priceQuantityStandard').text)
                         price_quantity_premium_d2 = float(action_node.find('priceQuantityPremium').text)
@@ -1454,7 +1488,6 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
 
                         akcija = {
                             'naziv akcije': title,
-                            'početak akcije': start_at,
                             'kraj akcije': end_at,
                             'cena sa redovnim količinskim popustom': price_quantity_standard_d2,
                             'cena sa premium količinskim popustom': price_quantity_premium_d2,
@@ -1462,6 +1495,7 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                         }
                 else:
                     print("Action node not found, taking regular price")  # Debugging line
+
                     # Pristupanje priceList elementu
                 price_list = product_node.find('priceList')
                 if price_list is not None:
@@ -1469,24 +1503,58 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                     full_price = float(price_list.find('fullPrice').text)
                     eBook_price = float(price_list.find('eBookPrice').text)
                     regular_discount_price = float(price_list.find('regularDiscountPrice').text)
-                    #regular_discount_percentage = float(price_list.find('regularDiscountPercentage').text)
                     quantity_discount_price = float(price_list.find('quantityDiscountPrice').text)
-                    #quantity_discount_percentage = float(price_list.find('quantityDiscountPercentage').text)
                     quantity_discount_limit = int(price_list.find('quantityDiscountLimit').text)
                     premium_discount_price = float(price_list.find('regularDiscountPremiumPrice').text)
-                    #premium_discount_percentage = float(price_list.find('regularDiscountPremiumPercentage').text)
                     premium_quantity_discount_price = float(price_list.find('quantityDiscountPremiumPrice').text)
-                    #premium_quantity_discount_percentage = float(price_list.find('quantityDiscountPremiumPercentage').text)
                     premium_quantity_discount_limit = int(price_list.find('quantityDiscountPremiumLimit').text)
 
-                    cene = {
-                        'cena kolekcije': collection_price,
+                    if regular_discount_price == premium_discount_price == quantity_discount_price == premium_quantity_discount_price:
+                        cene = {
+                            'akcijska cena': regular_discount_price
+                        }
+                    elif regular_discount_price == premium_discount_price and quantity_discount_price == premium_quantity_discount_price:
+                        cene = {
+                            'cena sa popustom': regular_discount_price,
+                            'cena sa količinskim popustom': quantity_discount_price
+                        }
+                    elif regular_discount_price == quantity_discount_price and premium_discount_price == premium_quantity_discount_price:
+                        cene = {
+                            'cena sa redovnim popustom': regular_discount_price,
+                            'cena sa premium popustom': premium_discount_price
+                        }
+                    elif regular_discount_price == premium_discount_price == quantity_discount_price != premium_quantity_discount_price:
+                        cene = {
+                            'cena sa popustom': regular_discount_price,
+                            'cena sa premium količinskim popustom': premium_quantity_discount_price
+                        }
+                    elif regular_discount_price == quantity_discount_price and premium_discount_price != regular_discount_price and premium_quantity_discount_price != quantity_discount_price and premium_discount_price != premium_quantity_discount_price:
+                        cene = {
+                            'cena sa redovnim popustom': regular_discount_price,
+                            'cena sa premium popustom': premium_discount_price,
+                            'cena sa premium količinskim popustom': premium_quantity_discount_price
+                        }
+                    else:
+                        cene = {
                         'cena sa redovnim popustom': regular_discount_price,
                         'cena sa redovnim popustom na količinu': quantity_discount_price,
-                        'limit za količinski popust': quantity_discount_limit,
                         'cena sa premium popustom': premium_discount_price,
                         'cena sa premium popustom na količinu': premium_quantity_discount_price,
-                        'limit za količinski premium popust': premium_quantity_discount_limit
+                        }
+                    
+                    if quantity_discount_limit == quantity_discount_limit:
+                        limit = {
+                            'limit za količinski popust': quantity_discount_limit
+                        }
+                    else:
+                        limit = {
+                            'limit za redovan količinski popust': quantity_discount_limit,
+                            'limit za premium količinski popust': premium_quantity_discount_limit
+                        }
+                
+                    pojedinacne_cene_za_quantity_discount2 = {
+                        'cena sa redovnim popustom': regular_discount_price,
+                        'cena sa premium popustom': premium_discount_price
                     }
                 
                 # if lager and int(lager) > 0:
@@ -1500,6 +1568,10 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                     }
                     if action_node is None:
                         product_info.update(cene)
+                        product_info.update(limit)
+                    elif quantity_discount2_flag:
+                        product_info.update(pojedinacne_cene_za_quantity_discount2)
+                        product_info.update(akcija)
                     else:
                         product_info.update(akcija)
                 else:
