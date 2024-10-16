@@ -1,5 +1,3 @@
-import json
-import pyodbc
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -10,7 +8,6 @@ from langchain_community.vectorstores import Pinecone as LangPine
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
-import logging
 from openai import OpenAI
 import os
 import streamlit as st
@@ -24,7 +21,6 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
 all_tools = load_matching_tools(mprompts["choose_rag"])
-st.write(3333, all_tools)
 
 def get_tool_response(prompt: str):
     """Function to cache external API tool responses if needed."""
@@ -56,10 +52,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     rag_tool = "ClientDirect"
     app_id = os.getenv("APP_ID")
 
-    if app_id == "InteliBot":
-        return intelisale(prompt), rag_tool
-
-    elif app_id == "DentyBotR":
+    if app_id == "DentyBotR":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
         search_results = processor.process_query_results(upit=prompt, device=x)
         return search_results, rag_tool
@@ -95,6 +88,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         "top_list": lambda: toplist_processor.decide_and_respond(prompt),
         "Orders": lambda: order_delfi(prompt),
         "Promotion": lambda: ActionFetcher('https://delfi.rs/api/pc-frontend-api/actions-page').decide_and_respond(prompt),
+        "Calendly": lambda: positive_calendly(),
     }
 
     # Return the corresponding function for the chosen RAG tool
