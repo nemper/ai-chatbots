@@ -196,6 +196,7 @@ def graphp(pitanje):
                 "When returning some properties of books, ensure to always return the oldProductId and the title too."
                 "Ensure to limit the number of records returned to 6."
                 "Hari Poter is stored as 'Harry Potter' in the database."
+                "If the question contains 'top list' or 'na akciji', ignore these words and focus on the main part of the question."
 
                 "Here is an example user question and the corresponding Cypher query: "
                 "Example user question: 'Pronađi knjigu Da Vinčijev kod.' "
@@ -1088,6 +1089,12 @@ class TopListFetcher:
 
                             "Example user question: 'daj mi preporuku za domace pisce' "
                             "Tool to use: fetchTopListByGenre"
+
+                            "Example user question: 'koje E-knjige su na top listi' "
+                            "Tool to use: fetchTopListByGenre"
+
+                            "Example user question: 'preporuci mi neke knjige za decu' "
+                            "Tool to use: fetchTopListByGenre"
                             )
                     },                  
                     {"role": "user", "content": question}
@@ -1147,10 +1154,24 @@ class TopListFetcher:
                         "role": "system",
                         "content": (
                             "You are a helpful assistant. The user is asking about products for a specific genre."
-                            "Return only the name of the genre in order to the function can filter the data for that genre."
                             "You need to extract the specific genre name from the question, ensuring to handle inflected forms by converting them to their nominative form."
                             "Normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when diacritics are omitted."
                             "Additionally, ensure that the genre contains the base form of the word. For example, if the user asks for 'autobiografije,' the search should be conducted using 'autobiografij' to account for both singular and plural forms."
+                            
+                            "Here is an example: "
+                            "Example user question: 'koje E-knjige su na top listi' "
+                            "Search with: 'e-knjig'"
+
+                            "Example user question: 'daj knjige iz oblasti popularne psihologije' "
+                            "Search with: 'popularna psihologij'"
+
+                            "Example user question: 'daj mi preporuku za neke nagradjene knjige' "
+                            "Search with: 'nagrađen'"
+
+                            "Example user question: 'preporuci mi neke knjige za decu' "
+                            "Search with: 'knjige za decu'"
+
+                            "Return only the name of the genre in order to the function can filter the data for that genre."
                         )
                     },
                     {"role": "user", "content": prompt_for_genre}
@@ -2465,7 +2486,16 @@ class ActionFetcher:
                 model="gpt-4o-mini",
                 temperature=0.0,
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant. The user is asking about books for one of the current promotion. You need to extract the specific promotion name from the question. Return only the name of the promotion in order to the function filter the data for books on that specific promotion."},
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a helpful assistant. The user is asking about books for one of the current promotion."
+                            "You need to extract the specific promotion name from the question, ensuring to handle inflected forms by converting them to their nominative form."
+                            "Return only the name of the promotion in order to the function filter the data for books on that specific promotion."
+                            "Normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when diacritics are omitted."
+                            "Additionally, ensure that the name contains the base form of the word. For example, if the user asks for 'autobiografije,' the search should be conducted using 'autobiografij' to account for both singular and plural forms."
+                        )
+                    },
                     {"role": "user", "content": prompt_for_action}
                 ]
             )
