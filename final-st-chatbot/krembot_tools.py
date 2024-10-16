@@ -1,5 +1,3 @@
-import json
-import pyodbc
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -10,7 +8,6 @@ from langchain_community.vectorstores import Pinecone as LangPine
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
-import logging
 from openai import OpenAI
 import os
 import streamlit as st
@@ -24,7 +21,6 @@ client = OpenAI(api_key=getenv("OPENAI_API_KEY"))
 
 
 all_tools = load_matching_tools(mprompts["choose_rag"])
-st.write(3333, all_tools)
 
 def get_tool_response(prompt: str):
     """Function to cache external API tool responses if needed."""
@@ -56,10 +52,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     rag_tool = "ClientDirect"
     app_id = os.getenv("APP_ID")
 
-    if app_id == "InteliBot":
-        return intelisale(prompt), rag_tool
-
-    elif app_id == "DentyBotR":
+    if app_id == "DentyBotR":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
         search_results = processor.process_query_results(upit=prompt, device=x)
         return search_results, rag_tool
@@ -95,6 +88,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         "top_list": lambda: toplist_processor.decide_and_respond(prompt),
         "Orders": lambda: order_delfi(prompt),
         "Promotion": lambda: ActionFetcher('https://delfi.rs/api/pc-frontend-api/actions-page').decide_and_respond(prompt),
+        "Calendly": lambda: positive_calendly(),
     }
 
     # Return the corresponding function for the chosen RAG tool
@@ -1956,172 +1950,6 @@ class HybridQueryProcessor:
             return uk_teme
         else:
             return tematika
-
-
-def intelisale(query: str) -> str:
-    """
-    Processes a user query to retrieve and generate a comprehensive customer report.
-    """
-    # Povezivanje na bazu podataka
-    server = os.getenv('MSSQL_HOST')
-    database = 'IntelisaleTest'
-    username = os.getenv('MSSQL_USER')
-    password = os.getenv('MSSQL_PASS')
-
-    connection_string = (
-        f'DRIVER={{ODBC Driver 18 for SQL Server}};'
-        f'SERVER={server};'
-        f'DATABASE={database};'
-        f'UID={username};'
-        f'PWD={password};'
-        'Encrypt=yes;'
-        'TrustServerCertificate=yes;'
-    )
-    
-    # Use 'with' for automatic connection management
-    with pyodbc.connect(connection_string) as conn:
-        cursor = conn.cursor()
-
-        # Unos korisnika
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.0,
-            messages=[
-                {
-                    "role": "system",
-                    "content": """Your only task is to return the client name from the user query.
-                    Client name that you return should only be in the form: 'Customer x', where x is the integer that will appear in the user query.
-                    So the user might call it 'Customer 15' right away, or maybe 'Company 133', or 'klijent 44', or maybe even just a number like '123', but you always return in the same format: 'Customer x'."""
-                },
-                {
-                    "role": "user",
-                    "content": query
-                }
-            ]
-        )
-        
-        client_name = response.choices[0].message.content.strip()
-
-        query = """
-        SELECT 
-            c.Code, 
-            c.Name as cn,
-            c.CustomerId, 
-            c.Branch, 
-            c.BlueCoatsNo, 
-            c.PlanCurrentYear, 
-            c.TurnoverCurrentYear, 
-            c.FullfilmentCurrentYear, 
-            CASE 
-                WHEN c.CalculatedNumberOfVisits = 0 OR c.CalculatedNumberOfVisits IS NULL THEN 0
-                ELSE c.Plan12Months / 12 / NULLIF(c.CalculatedNumberOfVisits, 0)
-            END AS [PlaniraniIznosPoPoseti],
-            c.CalculatedNumberOfVisits,
-            c.PaymentAvgDays, 
-            c.BalanceOutOfLimit, 
-            c.BalanceCritical,
-            ac.ActivityLogNoteContent AS [PoslednjaBeleska]
-        FROM 
-            customers c
-        LEFT JOIN 
-            (
-                SELECT 
-                    ac.CustomerID, 
-                    ac.ActivityLogNoteContent
-                FROM 
-                    activities ac
-                WHERE 
-                    ac.VisitStartDayTypeDescription = 'Poseta'
-                AND 
-                    ac.VisitArrivalTime = (
-                        SELECT MAX(VisitArrivalTime)
-                        FROM activities
-                        WHERE CustomerID = ac.CustomerID
-                        AND VisitStartDayTypeDescription = 'Poseta'
-                    )
-            ) ac ON c.CustomerId = ac.CustomerID
-        WHERE 
-            c.Name = ?
-        """
-
-        cursor.execute(query, client_name)
-        rows = cursor.fetchall()
-
-        # Use list for string accumulation
-        output_lines = ["Rezultati pretrage:"]
-        for row in rows:
-            output_lines.append(
-                f"CustomerId: {row.CustomerId}, "
-                f"Name: {row.cn}, "
-                f"Code: {row.Code}, "
-                f"Branch: {row.Branch}, "
-                f"BlueCoatsNo: {row.BlueCoatsNo}, "
-                f"PlanCurrentYear: {row.PlanCurrentYear}, "
-                f"TurnoverCurrentYear: {row.TurnoverCurrentYear}, "
-                f"FullfilmentCurrentYear: {row.FullfilmentCurrentYear}, "
-                f"CalculatedNumberOfVisits: {row.CalculatedNumberOfVisits}, "
-                f"PaymentAvgDays: {row.PaymentAvgDays}, "
-                f"BalanceOutOfLimit: {row.BalanceOutOfLimit}, "
-                f"BalanceCritical: {row.BalanceCritical}, "
-                f"Planirani iznos po poseti: {row.PlaniraniIznosPoPoseti}, "
-                f"Poslednja beleška: {row.PoslednjaBeleska}"
-            )
-        
-        # Join lines to form the final output
-        output = "\n".join(output_lines)
-    
-    return output
-
-    def generate_defined_report(data: str) -> str:
-        """
-        Generates a structured report based on the provided customer data.
-
-        This inner function takes a formatted string containing customer data and sends a prompt to the OpenAI API
-        to generate a detailed report in Serbian. The report includes specific fields such as:
-            - Naziv kupca (Customer Name)
-            - Šifra kupca, naziv branše i broj plavih mantila (Customer Code, Branch Name, and Blue Coats Number)
-            - Plan kupca i trenutno ostvarenje (Plan for the Customer and Current Achievement)
-            - Planirani iznos po poseti i ukupan broj poseta (Planned Amount per Visit and Total Number of Visits)
-            - Prosečni dani plaćanja, dugovanje izvan valute i kritični saldo (Average Payment Days, Debt Outside Currency, and Critical Balance)
-            - Beleška sa prethodne posete (Note from the Previous Visit)
-
-        The report is generated without a summary, containing only the requested data to ensure clarity and focus.
-
-        Args:
-            data (str): The formatted string containing customer data to be included in the report.
-
-        Returns:
-            str: A generated report in Serbian containing the specified customer information.
-        """
-        prompt = f"Generate report from the given data: {data}"
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            temperature=0.0,
-            messages=[
-                {
-            "role": "system",
-            "content": (
-                """Traženi podaci za izveštaj su sledeći:
-                    •   Naziv kupca (Name)
-                    •	Šifra kupca, naziv branše i broj plavih mantila 
-                    •	Plan kupca i trenutno ostvarenje (promet i %)
-                    •	Planirani iznos po poseti, ukupan broj poseta
-                    •	Prosečni dani plaćanja, dugovanje izvan valute i kritični saldo
-                    •	Beleška sa prethodne posete
-
-                    Izveštaj mora biti na srpskom jeziku.
-                    Ne treba da sadrži rezime, već samo tražene podatke.
-                """
-            )
-        },
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        return response.choices[0].message.content
-    
-    fin_output = generate_defined_report(output)
-    return fin_output
 
 
 from datetime import datetime
