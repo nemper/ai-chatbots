@@ -1,0 +1,303 @@
+﻿from functools import lru_cache
+import requests
+
+class BookstoreSearcher:
+    """
+    A class to handle searching for bookstores and their working hours by either bookstore name or city.
+
+    The class fetches data from an external API and caches the result to optimize repeated calls. It builds
+    structured lists and dictionaries to support efficient searches and provides methods for searching
+    based on input strings.
+
+    Methods:
+    --------
+    get_bookstore_data():
+        Static method that fetches the data from the API and caches it for subsequent calls.
+
+    build_data_structures():
+        Constructs the necessary data structures, including a list of unique cities, a dictionary of 
+        bookstores and their working hours, and a dictionary mapping cities to bookstores and their work hours.
+
+    search_bookstores(pitanje: str) -> str:
+        Searches for bookstores or cities based on the input string. Returns relevant working hours 
+        information or an appropriate message if no match is found.
+    """
+
+    def __init__(self):
+        self.cities_list = None
+        self.bookstore_workhours = None
+        self.city_store_workhours = None
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def get_bookstore_data():
+        """
+        Fetches bookstore data from the API and caches the result.
+
+        Uses the Least Recently Used (LRU) caching to store the most recent API result for optimization.
+        Returns the API data if the request is successful, otherwise returns None.
+
+        Returns:
+        --------
+        data: dict or None
+            The fetched bookstore data or None if the API call fails.
+        """
+        url = "https://delfi.rs/api/bookstores"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            return response.json()['data']
+        else:
+            return None
+
+    def build_data_structures(self):
+        """
+        Builds and initializes the required data structures for storing bookstores and city information.
+
+        The method creates:
+        - A list of unique cities.
+        - A dictionary mapping each bookstore to its working hours.
+        - A dictionary mapping each city to its bookstores and their respective working hours.
+        """
+        data = self.get_bookstore_data()
+        if data is None:
+            return None
+
+        self.cities_list = set()
+        self.bookstore_workhours = {}
+        self.city_store_workhours = {}
+        lokativ = ['Novom Beogradu', 'Kragujevcu', 'Šapcu', 'Kraljevu', 'Lazarevcu', 'Leskovcu', 'Požarevcu', 'Novom Pazaru', 'Nišu', 'Subotici', 
+                   'Kruševcu', 'Zemunu', 'Zemun', 'Sremskoj Mitrovici', 'Čačku', 'Užicama', 'Novom Sadu', 'Pančevu', 'Zrenjaninu', 'Smederevu', 'Vršcu', 'Pirotu', 'Valjevu', 'Jagodini', 
+                   'Gornjem Milanovcu', 'Somboru', 'Beogradu']
+                   
+        sisana = ['Sabac', 'Sapcu', 'Uzice', 'Uzicama', 'Pancevo', 'Pancevu', 'Vrsac', 'Vrscu', 'Nis', 'Nisu', 'Krusevac', 'Krusevcu', 'Cacak', 'Cacku', 'Pozarevac', 'Pozarevcu']
+
+        for store in data:
+            city = store['address']['city']
+            bookstore_name = store['bookstoreName']
+            work_hours = store['workingHours']
+
+            self.cities_list.add(city)
+
+            self.bookstore_workhours[bookstore_name] = work_hours
+
+            if city not in self.city_store_workhours:
+                self.city_store_workhours[city] = {}
+            self.city_store_workhours[city][bookstore_name] = work_hours
+
+        self.cities_list = list(self.cities_list) + lokativ + sisana
+
+        original_bookstore_names = [store['bookstoreName'] for store in data]
+
+        # The modified lists you provided
+        lista_bez_knjizara = [
+            'Momo Kapor',
+            'Miljakovac',
+            'Jovan Jovanović Zmaj',
+            'Banovo brdo',
+            'SKC',
+            'Rodić',
+            'Vuk Karadžić',
+            'Desanka Maksimović',
+            'Vladislav Petković Dis',
+            'Radoje Domanović',
+            'Novi Beograd',
+            'Dositej Obradović',
+            'Branko Ćopić',
+            'Isidora Sekulić',
+            'Immo Outlet centar',
+            'Subotica - Korzo',
+            'Kruševac',
+            'Dobrica Ćosić',
+            'Big Shopping centar',
+            'Požarevac',
+            'Milutin Uskoković',
+            'Laguna Jagodina',
+            'Šabac',
+            'Gornji Milanovac',
+            'Zrenjanin',
+            'Vasko Popa',
+            'Miloš Crnjanski',
+            'Delfi Borča',
+            'Karaburma',
+            'Stop Shop',
+            'Smederevo',
+            'Branko Miljković',
+            'Borislav Pekić',
+            'Leskovac',
+            'Sombor',
+            'Laguna Ada mall',
+            'BEO Shopping Center',
+            'Laguna Galerija',
+            'Novi Pazar',
+            'Laguna, Delta Planet Niš',
+            'Pirot',
+            'Slobodan Selenić',
+            'Laguna Delta City',
+            'Laguna Ušće',
+            'Dice Arena'
+        ]
+
+        lista_bez_knjizara_osisana = [
+            'Momo Kapor',
+            'Miljakovac',
+            'Jovan Jovanovic Zmaj',
+            'Banovo brdo',
+            'SKC',
+            'Rodic',
+            'Vuk Karadzic',
+            'Desanka Maksimovic',
+            'Vladislav Petkovic Dis',
+            'Radoje Domanovic',
+            'Novi Beograd',
+            'Dositej Obradovic',
+            'Branko Copic',
+            'Isidora Sekulic',
+            'Immo Outlet centar',
+            'Subotica - Korzo',
+            'Krusevac',
+            'Dobrica Cosic',
+            'Big Shopping centar',
+            'Pozarevac',
+            'Milutin Uskokovic',
+            'Laguna Jagodina',
+            'Sabac',
+            'Gornji Milanovac',
+            'Zrenjanin',
+            'Vasko Popa',
+            'Milos Crnjanski',
+            'Delfi Borca',
+            'Karaburma',
+            'Stop Shop',
+            'Smederevo',
+            'Branko Miljkovic',
+            'Borislav Pekic',
+            'Leskovac',
+            'Sombor',
+            'Laguna Ada mall',
+            'BEO Shopping Center',
+            'Laguna Galerija',
+            'Novi Pazar',
+            'Laguna, Delta Planet Nis',
+            'Pirot',
+            'Slobodan Selenic',
+            'Laguna Delta City',
+            'Laguna Usce',
+            'Dice Arena'
+        ]
+
+        lista_original_osisana = [
+            'Knjizara „Momo Kapor“',
+            'Knjizara Miljakovac',
+            'Knjizara „Jovan Jovanovic Zmaj“',
+            'Knjizara Banovo brdo',
+            'Knjizara SKC',
+            'Knjizara Rodic',
+            'Knjizara „Vuk Karadzic“',
+            'Knjizara „Desanka Maksimovic“',
+            'Knjizara „Vladislav Petkovic Dis“',
+            'Knjizara „Radoje Domanovic“',
+            'Knjizara Novi Beograd',
+            'Knjizara „Dositej Obradovic“',
+            'Knjizara „Branko Copic“',
+            'Knjizara „Isidora Sekulic“',
+            'Knjizara Immo Outlet centar',
+            'Knjizara Subotica - Korzo',
+            'Knjizara Krusevac',
+            'Knjizara „Dobrica Cosic“',
+            'Knjizara Big Shopping centar',
+            'Knjizara Pozarevac',
+            'Knjizara „Milutin Uskokovic“',
+            'Knjizara Laguna Jagodina',
+            'Knjizara Sabac',
+            'Knjizara Gornji Milanovac',
+            'Knjizara Zrenjanin',
+            'Knjizara „Vasko Popa“',
+            'Knjizara „Milos Crnjanski“',
+            'Knjizara Delfi Borca',
+            'Knjizara Karaburma',
+            'Knjizara Stop Shop',
+            'Knjizara Smederevo',
+            'Knjizara „Branko Miljkovic“',
+            'Knjizara „Borislav Pekic“',
+            'Knjizara Leskovac',
+            'Knjizara Sombor',
+            'Knjizara Laguna Ada mall',
+            'Knjizara BEO Shopping Center',
+            'Knjizara Laguna Galerija',
+            'Knjizara Novi Pazar',
+            'Knjizara Laguna, Delta Planet Nis',
+            'Knjizara Pirot',
+            'Knjizara „Slobodan Selenic“',
+            'Knjizara Laguna Delta City',
+            'Knjizara Laguna Usce',
+            'Dice Arena'
+        ]
+
+        # Map modified names to original names and update the dictionaries
+        # For lista_bez_knjizara
+        for original_name, modified_name in zip(original_bookstore_names, lista_bez_knjizara):
+            self.bookstore_workhours[modified_name] = self.bookstore_workhours[original_name]
+            # Update city_store_workhours as well
+            for city in self.city_store_workhours:
+                if original_name in self.city_store_workhours[city]:
+                    self.city_store_workhours[city][modified_name] = self.city_store_workhours[city][original_name]
+                    break  # Found the city, no need to continue
+
+        # Repeat for lista_bez_knjizara_osisana
+        for original_name, modified_name in zip(original_bookstore_names, lista_bez_knjizara_osisana):
+            self.bookstore_workhours[modified_name] = self.bookstore_workhours[original_name]
+            # Update city_store_workhours as well
+            for city in self.city_store_workhours:
+                if original_name in self.city_store_workhours[city]:
+                    self.city_store_workhours[city][modified_name] = self.city_store_workhours[city][original_name]
+                    break
+
+        # Repeat for lista_original_osisana
+        for original_name, modified_name in zip(original_bookstore_names, lista_original_osisana):
+            self.bookstore_workhours[modified_name] = self.bookstore_workhours[original_name]
+            # Update city_store_workhours as well
+            for city in self.city_store_workhours:
+                if original_name in self.city_store_workhours[city]:
+                    self.city_store_workhours[city][modified_name] = self.city_store_workhours[city][original_name]
+                    break
+
+    def search_bookstores(self, pitanje: str) -> str:
+        """
+        Searches for a bookstore or city based on the input string and returns relevant working hours information.
+
+        The method checks if a bookstore or city is mentioned in the input string and returns either:
+        - The bookstore and its working hours if a match is found.
+        - A list of bookstores in the city and their working hours if a city is mentioned.
+        - A message prompting the user to enter a valid bookstore or city name if no match is found.
+
+        Parameters:
+        -----------
+        pitanje : str
+            The input query to search for a bookstore or city.
+
+        Returns:
+        --------
+        str:
+            A string containing the bookstore or city details, or an appropriate message.
+        """
+        if self.cities_list is None or self.bookstore_workhours is None or self.city_store_workhours is None:
+            self.build_data_structures()
+
+        if self.cities_list is None:
+            return "Failed to fetch data from the API."
+
+        for bookstore in self.bookstore_workhours:
+            if bookstore.lower() in pitanje.lower():
+                work_hours = self.bookstore_workhours[bookstore]
+                return f"Bookstore: {bookstore}, Working hours: {work_hours}"
+
+        for city in self.cities_list:
+            if city.lower() in pitanje.lower():
+                bookstores_in_city = self.city_store_workhours[city]
+                result = f"City: {city}\n"
+                for bookstore, hours in bookstores_in_city.items():
+                    result += f"  Bookstore: {bookstore}, Working hours: {hours}\n"
+                return result.strip()
+
+        return "You need to enter a bookstore or city name."
