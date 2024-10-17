@@ -112,5 +112,24 @@
             },
             "strict": true
         }
+    },
+    "Knjizare": {
+        "type": "function",
+        "function": {
+            "name": "Knjizare",
+            "description": "",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": ""
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            },
+            "strict": true
+        }
     }
 }
