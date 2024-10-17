@@ -50,7 +50,6 @@ def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
     try:
         with open(config_path, 'r') as json_file:
             all_tools_json = json.load(json_file)  # Load the JSON content
-            st.write(1111, all_tools_json)
             # Filter and load only the dictionaries whose keys exist in tools_dict
             matching_tools = []
             for tool_name in tools_dict.keys():
@@ -61,7 +60,6 @@ def load_matching_tools(choose_rag: str) -> List[Dict[str, Any]]:
                     matching_tools.append(tool_dict)
 
             return matching_tools
-        st.write(2222, matching_tools)
     except FileNotFoundError:
         st.write(f"Configuration file not found at {config_path}")
         return []
