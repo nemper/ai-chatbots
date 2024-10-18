@@ -1399,9 +1399,7 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         else:
             orders_info.append(API_search_aks(tc))
     final_output = orders_message(orders_info)
-
-    print(7777, final_output)
-    return orders_info
+    return f"Proseldi samo naredni tekst: {final_output}" 
 
 
 def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
