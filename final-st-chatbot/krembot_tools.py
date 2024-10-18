@@ -1391,9 +1391,17 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         orders_info = "No orders found for the given IDs."
     tc = [x for x in tc if x is not None]
     if len(tc) > 0:
-        orders_info.append(API_search_aks(tc))
-    print(orders_info)
+        if "," in tc[0]:
+            tc = tc[0].split(",")
+            for i in range(len(tc)):
+                print(tc[i])
+                orders_info.append(API_search_aks([tc[i]]))
+        else:
+            orders_info.append(API_search_aks(tc))
+
+    print(555555555555555, orders_info, 666666666666666)
     final_output = orders_message(orders_info)
+    print(final_output)
     return orders_info
 
 
@@ -1420,10 +1428,11 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
             return datetime.fromtimestamp(timestamp)
 
         # Sort the status changes by timestamp
-        sorted_status_changes = sorted(data[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
+        sorted_status_changes = sorted(orders_dict[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
 
         # Get the last (most recent) status description
         most_recent_status = sorted_status_changes[-1]['StatusOpis']
+        
         reply2 = ""
         if most_recent_status == "Kreiranje VIP Naloga":
             reply2 = """
@@ -1431,28 +1440,32 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
             """
         elif most_recent_status == "Preuzimanje Posiljke":
             reply2 = """
-            Vaša porudžbina je spakovana i spremna za slanje. 
+            Vaša porudžbina je poslata i biće isporučena u skladu sa rokom za dostavu. 
             """
-        elif most_recent_status == "Kreiranje VIP Naloga":
+        elif most_recent_status == "Ulazak Na Sortirnu Traku":
             reply2 = """
-            Vaša porudžbina je spakovana i spremna za slanje. 
+            Vaša porudžbina je poslata i biće isporučena u skladu sa rokom za dostavu. 
             """
-        elif most_recent_status == "Kreiranje VIP Naloga":
+        elif most_recent_status in ["Utovar U Linijski Kamion", "Izlaz iz Magacina"]:
             reply2 = """
-            Vaša porudžbina je spakovana i spremna za slanje. 
+            Vaša porudžbina je poslata i biće isporučena u skladu sa rokom za dostavu.
             """
-        elif most_recent_status == "Kreiranje VIP Naloga":
+        elif most_recent_status == "Posiljka Na Isporuci":
             reply2 = """
-            Vaša porudžbina je spakovana i spremna za slanje. 
+            Vaša porudžbina je poslata i prema podacima koje smo dobili od kurirske službe, nalazi se na isporuci. 
             """
-        elif most_recent_status == "Kreiranje VIP Naloga":
+        elif most_recent_status in ["Otkaz isporuke", "Vraceno u magacin"]:
             reply2 = """
-            Vaša porudžbina je spakovana i spremna za slanje. 
+            Vaša porudžbina je poslata, ali prema podacima koje smo dobili od kurirske službe, isporuka je otkazana. 
+            Prosledićemo urgenciju za isporuku, molimo Vas da proverite da li su podaci sa potvrde o porudžbini ispravni kako bi kurir kontaktirao sa Vama - 
+            u ovim situacijama moramo imati povratnu informaciju o prepisci kako bismo poslali urgenciju kurirskoj službi.
             """
-        elif most_recent_status == "Kreiranje VIP Naloga":
+        elif most_recent_status == "Unet povrat":
             reply2 = """
-            Vaša porudžbina je spakovana i spremna za slanje. 
+            Vaša porudžbina je poslata, ali prema podacima koje smo dobili od kurirske službe, nije bila moguća isporuka, usled čega je paket vraćen pošiljaocu. 
+            Ukoliko želite, možemo ponovo poslati porudžbinu, samo je potrebno da nam pošaljete mejl na na imejl-adresu podrska@delfi.rs. 
             """
+        return reply2
 
     reply = ""
     orders_info2 = orders_info[0]
@@ -1487,7 +1500,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
         """
     elif orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["PackageStatus"] == "INVITATION_SENT":
         if len(orders_info) == 2:
-            reply = aks_odgovor(orders_info[1])
+            reply = aks_odgovori(orders_info[1])
         else:
             reply = "Greška u sistemu! Informacije iz AKS-a servisa nisu dodate."
 
