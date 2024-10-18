@@ -1398,10 +1398,9 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
                 orders_info.append(API_search_aks([tc[i]]))
         else:
             orders_info.append(API_search_aks(tc))
-
-    print(555555555555555, orders_info, 666666666666666)
     final_output = orders_message(orders_info)
-    print(final_output)
+
+    print(7777, final_output)
     return orders_info
 
 
@@ -1432,7 +1431,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
         # Get the last (most recent) status description
         most_recent_status = sorted_status_changes[-1]['StatusOpis']
-        
+        print(111111111111, most_recent_status)
         reply2 = ""
         if most_recent_status == "Kreiranje VIP Naloga":
             reply2 = """
@@ -1465,6 +1464,8 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
             Vaša porudžbina je poslata, ali prema podacima koje smo dobili od kurirske službe, nije bila moguća isporuka, usled čega je paket vraćen pošiljaocu. 
             Ukoliko želite, možemo ponovo poslati porudžbinu, samo je potrebno da nam pošaljete mejl na na imejl-adresu podrska@delfi.rs. 
             """
+        else:
+            "Posiljka je isporucena!"
         return reply2
 
     reply = ""
@@ -1492,19 +1493,16 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
         Vaša porudžbina nije uspešno realizovana.
         Molimo Vas da nam pošaljete potvrdu o uplati na imejl adresu podrska@delfi.rs ukoliko su sredstva povučena sa Vašeg računa, a da bismo rešili situaciju u najkraćem mogućem roku.
         """
-    elif orders_info2["status"] == "paymentCompleted" and orders_info2["DeliveryService"] == "DHL":
+    elif orders_info2["status"] == "paymentCompleted" and orders_info2["delivery_service"] == "DHL":
         reply = """
         Vaša porudžbina je poslata kurirskom službom DHL i isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
 
         Očekivani rok isporuke je 2-5 radnih dana. Ukoliko želite, možete pratiti svoju porudžbinu na linku dhl.com. Kod za praćenje je poslati kod koji je upisan u administraciji u okviru porudžbine.
         """
-    elif orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["PackageStatus"] == "INVITATION_SENT":
-        if len(orders_info) == 2:
-            reply = aks_odgovori(orders_info[1])
-        else:
-            reply = "Greška u sistemu! Informacije iz AKS-a servisa nisu dodate."
+    elif orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["package_status"] == "INVITATION_SENT":
+        reply = aks_odgovori(orders_info[1])
 
-    elif orders_info2["status"] == "finished" and orders_info2["PaymentType"] == "ADMINISTRATIVE _BAN":
+    elif orders_info2["status"] == "finished" and orders_info2["payment_type"] == "ADMINISTRATIVE _BAN":
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade.
         Kako bi porudžbina bila poslata, potrebno je da pošaljete popunjen formular, koji je poslat u okviru potvrde porudžbine, na adresu Kralja Petra 45, V sprat.
