@@ -124,10 +124,6 @@ def generate_tool_dict(choose_rag: str) -> Dict[str, str]:
         description = choose_rag[start:end].strip()
         tools_dict[tool] = description
 
-    for k, v in tools_dict.items():
-        print(f"{k}")
-
-    print("+++++++++")
     return tools_dict
 
 
