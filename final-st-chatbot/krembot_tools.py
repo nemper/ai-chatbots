@@ -1159,25 +1159,17 @@ class TopListFetcher:
                     {
                         "role": "system",
                         "content": (
-                            "Your one and only job is to determine the name of the tool that should be used to solve the user query."
-                            "The user is asking about the top list of products. You have 4 tools on your disposal."
-                            "There are 8 categories of products: knjiga, film, muzika, strana knjiga, gift, udžbenik, video igra. If you think the user is asking about category which can't be found in this list, it's probably a genre."
-                            "Do not return any other information."
-
+                            "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."
+ 
                             "Here is an example: "
-                            "Example user question: 'koje su najpopularnije knjige.' "
-                            "Tool to use: getFistItems"
-
-                            "Example user question: 'daj mi preporuku za domace pisce' "
-                            "Tool to use: fetchTopListByGenre"
-
-                            "Example user question: 'koje E-knjige su na top listi' "
-                            "Tool to use: fetchTopListByGenre"
-
-                            "Example user question: 'preporuci mi neke knjige za decu' "
-                            "Tool to use: fetchTopListByGenre"
-                            )
-                    },                  
+                            "Example user question: 'koje knjige su na akciji Nauci kroz igru' "
+                            "Tool to use: 'books'"
+ 
+                            "Here is an example: "
+                            "Example user question: 'koji naslovi domacih izdavaca su na akciji' "
+                            "Tool to use: 'books'"
+                        )
+                    },
                     {"role": "user", "content": question}
                 ],
                 tools=tools,
@@ -2528,7 +2520,6 @@ class ActionFetcher:
 
         elif decision == 'Books':
             # Korisnik pita za knjige iz specifične akcije
-            prompt_for_action = f"The user question: {question}"
             action_name_response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 temperature=0.0,
@@ -2538,14 +2529,19 @@ class ActionFetcher:
                         "content": (
                             "You are a helpful assistant. The user is asking about books for one of the current promotion."
                             "You need to extract the specific promotion name from the question, ensuring to handle inflected forms by converting them to their nominative form."
+                            "Ensure that the name contains the base form of the word. For example, if the user asks for 'autobiografije,' the search should be conducted using 'autobiografij' to account for both singular and plural forms."
+                            "Normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when diacritics are not omitted."
                             "Return only the name of the promotion in order to the function filter the data for books on that specific promotion."
-                            "Normalize the search term by replacing non-diacritic characters with their diacritic equivalents. For instance, convert 'z' to 'ž', 's' to 'š', 'c' to 'ć' or 'č', and so on, so that the search returns accurate results even when diacritics are omitted."
-                            "Additionally, ensure that the name contains the base form of the word. For example, if the user asks for 'autobiografije,' the search should be conducted using 'autobiografij' to account for both singular and plural forms."
+ 
+                            "Here is an example: "
+                            "Example user question: 'koje knjige su na akciji Nauci kroz igru' "
+                            "nauči kroz igr"
+ 
+                            "Here is an example: "
+                            "Example user question: 'koje knjige su na akciji Nauci kroz igru' "
+                            "domaći izdavači"
                         )
-                    },
-                    {"role": "user", "content": prompt_for_action}
-                ]
-            )
+                    },])
             action_name = action_name_response.choices[0].message.content.strip()
             print(f"naziv akcije: ", action_name)
             return self.fetch_books_for_action(action_name)
