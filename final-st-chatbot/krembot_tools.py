@@ -2,7 +2,6 @@ import pytz
 import re
 import requests
 import xml.etree.ElementTree as ET
-import streamlit as st
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_community.vectorstores import Pinecone as LangPine
@@ -1413,47 +1412,52 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
     def aks_odgovori(orders_dict):
         def extract_timestamp(date_string):
-            timestamp = int(date_string[6:-2]) / 1000  # Extract and convert milliseconds to seconds
+            timestamp = int(date_string[6:-2]) / 1000  # convert milliseconds to seconds
             return datetime.fromtimestamp(timestamp)
 
-        # Sort the status changes by timestamp
         sorted_status_changes = sorted(orders_dict[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
 
-        # Get the last (most recent) status description
         most_recent_status = sorted_status_changes[-1]['StatusOpis']
-        print(111111111111, most_recent_status)
+
         reply2 = ""
         if most_recent_status == "Kreiranje VIP Naloga":
             reply2 = """
             Vaša porudžbina je spakovana i spremna za slanje. 
             """
+
         elif most_recent_status == "Preuzimanje Posiljke":
             reply2 = """
             Vaša porudžbina je poslata i biće isporučena u skladu sa rokom za dostavu. 
             """
+
         elif most_recent_status == "Ulazak Na Sortirnu Traku":
             reply2 = """
             Vaša porudžbina je poslata i biće isporučena u skladu sa rokom za dostavu. 
             """
+
         elif most_recent_status in ["Utovar U Linijski Kamion", "Izlaz iz Magacina"]:
             reply2 = """
             Vaša porudžbina je poslata i biće isporučena u skladu sa rokom za dostavu.
             """
+
         elif most_recent_status == "Posiljka Na Isporuci":
             reply2 = """
             Vaša porudžbina je poslata i prema podacima koje smo dobili od kurirske službe, nalazi se na isporuci. 
             """
+
         elif most_recent_status in ["Otkaz isporuke", "Vraceno u magacin"]:
             reply2 = """
             Vaša porudžbina je poslata, ali prema podacima koje smo dobili od kurirske službe, isporuka je otkazana. 
             Prosledićemo urgenciju za isporuku, molimo Vas da proverite da li su podaci sa potvrde o porudžbini ispravni kako bi kurir kontaktirao sa Vama - 
             u ovim situacijama moramo imati povratnu informaciju o prepisci kako bismo poslali urgenciju kurirskoj službi.
             """
+
         elif most_recent_status == "Unet povrat":
             reply2 = """
             Vaša porudžbina je poslata, ali prema podacima koje smo dobili od kurirske službe, nije bila moguća isporuka, usled čega je paket vraćen pošiljaocu. 
             Ukoliko želite, možemo ponovo poslati porudžbinu, samo je potrebno da nam pošaljete mejl na na imejl-adresu podrska@delfi.rs. 
             """
+
         else:
             "Posiljka je isporucena!"
         return reply2
@@ -1476,23 +1480,27 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
         Očekivani rok isporuke je 2-5 radnih dana. 
         """
+
     elif orders_info2["status"] in ["readyForOnlinePayment", "waitingForFinalOnlinePaymentStatus"]:
         reply = """
         Vaša porudžbina se trenutno nalazi u procesu kreiranja.
         Ukoliko Vam u narednih 30 minuta ne stigne potvrda o kupovini na imejl adresu koju ste ostavili prilikom kreiranja porudžbine molimo Vas da nas kontaktirate slanjem upita na podrska@delfi.rs 
         ili pozivom na broj telefona našeg korisničkog servisa 011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati).
         """
+
     elif orders_info2["status"] == "ebookSuccessfullyAdded":
         reply = """
         Vaša porudžbina je uspešno kreirana i kupljene naslove možete pronaći u sekciji Moje knjige na Vašem nalogu u okviru EDEN Books aplikacije.
 
         Ukoliko Vam je potrebna dodatna asistencija molim Vas da nam pošaljete upit na mail podrska@delfi.rs.
         """
+
     elif orders_info2["status"] == "canceled":
         reply = """
         Vaša porudžbina nije uspešno realizovana.
         Molimo Vas da nam pošaljete potvrdu o uplati na imejl adresu podrska@delfi.rs ukoliko su sredstva povučena sa Vašeg računa, a da bismo rešili situaciju u najkraćem mogućem roku.
         """
+
     elif orders_info2["status"] == "paymentCompleted" and orders_info2["delivery_service"] == "DHL":
         reply = """
         Vaša porudžbina je poslata kurirskom službom DHL i isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
@@ -1510,11 +1518,13 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
             Hvala na poslatom upitu. Vaša porudžbina je označena kao otkazana.
             Molimo Vas da nam ostavite imejl adresu i/ili kontakt telefon ukoliko se razlikuju u odnosu na podatke iz porudžbine kako bi naš operater kontaktirao sa Vama u najkraćem mogućem roku.
             """
+
     elif orders_info2["status"] == "returned":
         reply = """
         Vaša porudžbina je vraćena u našu knjižaru usled neuspešne isporuke.
         Ona je otkazana pošto nismo dobili povratnu informaciju da li želite da se pošalje ponovo. Molimo Vas da ponovite porudžbinu kako bismo je obradili i poslali.
         """
+        
     else:
         reply = """
         Nepredviđena greška. Molimo Vas da nas kontaktirate slanjem upita na podrska@delfi.rs 
