@@ -1390,7 +1390,10 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         else:
             orders_info.append(API_search_aks(tc))
     final_output = orders_message(orders_info)
-    return f"Prosledi samo naredni tekst: {final_output}" 
+    if final_output.strip() == "":
+        return orders_info
+    else:
+        return f"Prosledi samo naredni tekst: {final_output}" 
 
 
 def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
@@ -1418,7 +1421,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
         sorted_status_changes = sorted(orders_dict[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
 
         most_recent_status = sorted_status_changes[-1]['StatusOpis']
-
+        print(111, most_recent_status)
         reply2 = ""
         if most_recent_status == "Kreiranje VIP Naloga":
             reply2 = """
@@ -1458,8 +1461,8 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
             Ukoliko želite, možemo ponovo poslati porudžbinu, samo je potrebno da nam pošaljete mejl na na imejl-adresu podrska@delfi.rs. 
             """
 
-        else:
-            "Posiljka je isporucena!"
+        elif most_recent_status == "Posiljka Isporucena":
+            reply2 = "Posiljka je uspešno isporucena!"
         return reply2
 
     reply = ""
@@ -1524,7 +1527,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
         Vaša porudžbina je vraćena u našu knjižaru usled neuspešne isporuke.
         Ona je otkazana pošto nismo dobili povratnu informaciju da li želite da se pošalje ponovo. Molimo Vas da ponovite porudžbinu kako bismo je obradili i poslali.
         """
-        
+
     else:
         reply = """
         Nepredviđena greška. Molimo Vas da nas kontaktirate slanjem upita na podrska@delfi.rs 
