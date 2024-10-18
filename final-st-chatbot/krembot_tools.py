@@ -1391,7 +1391,6 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         else:
             orders_info.append(API_search_aks(tc))
     final_output = orders_message(orders_info)
-    st.write(2222, final_output)
     return f"Prosledi samo naredni tekst: {final_output}" 
 
 
@@ -1461,7 +1460,17 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
     reply = ""
     orders_info2 = orders_info[0]
-    if orders_info2["status"] == "finished":
+    if orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["package_status"] == "INVITATION_SENT":
+        reply = aks_odgovori(orders_info[1])
+
+    elif orders_info2["status"] == "finished" and orders_info2["payment_type"] == "ADMINISTRATIVE _BAN":
+        reply = """
+        Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade.
+        Kako bi porudžbina bila poslata, potrebno je da pošaljete popunjen formular, koji je poslat u okviru potvrde porudžbine, na adresu Kralja Petra 45, V sprat.
+        Molimo Vas da kontaktirate sa nama u vezi sa svim dodatnim pitanjima na broj telefona:  011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati)
+        """
+
+    elif orders_info2["status"] == "finished":
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade. Isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
 
@@ -1490,15 +1499,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
         Očekivani rok isporuke je 2-5 radnih dana. Ukoliko želite, možete pratiti svoju porudžbinu na linku dhl.com. Kod za praćenje je poslati kod koji je upisan u administraciji u okviru porudžbine.
         """
-    elif orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["package_status"] == "INVITATION_SENT":
-        reply = aks_odgovori(orders_info[1])
 
-    elif orders_info2["status"] == "finished" and orders_info2["payment_type"] == "ADMINISTRATIVE _BAN":
-        reply = """
-        Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade.
-        Kako bi porudžbina bila poslata, potrebno je da pošaljete popunjen formular, koji je poslat u okviru potvrde porudžbine, na adresu Kralja Petra 45, V sprat.
-        Molimo Vas da kontaktirate sa nama u vezi sa svim dodatnim pitanjima na broj telefona:  011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati)
-        """
     elif orders_info2["status"] == "manuallyCanceled":
         if check_if_working_hours():
             reply = """
