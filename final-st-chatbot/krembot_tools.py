@@ -1376,7 +1376,6 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         orders_info = []
         for order_id in order_ids:
             json_data = get_order_info(order_id)
-            print(json_data)  # Debugging print to see raw JSON response
             order_info = parse_order_info(json_data)
             if order_info:
                 orders_info.append(order_info)
@@ -1391,8 +1390,88 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
     tc = [x for x in tc if x is not None]
     if len(tc) > 0:
         orders_info.append(API_search_aks(tc))
-
+    
+    final_output = orders_message(orders_info)
     return orders_info
+
+
+def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
+    """
+    Maps the values of the order details to a human-readable message.
+    """
+    reply = ""
+    orders_info2 = orders_info[0]
+    if orders_info2["status"] == "finished":
+        reply = """
+        Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade. Isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
+
+        Očekivani rok isporuke je 2-5 radnih dana. 
+        """
+    elif orders_info2["status"] in ["readyForOnlinePayment", "waitingForFinalOnlinePaymentStatus"]
+        reply = """
+        Vaša porudžbina se trenutno nalazi u procesu kreiranja.
+        Ukoliko Vam u narednih 30 minuta ne stigne potvrda o kupovini na imejl adresu koju ste ostavili prilikom kreiranja porudžbine molimo Vas da nas kontaktirate slanjem upita na podrska@delfi.rs 
+        ili pozivom na broj telefona našeg korisničkog servisa 011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati).
+        """
+    elif orders_info2["status"] == "ebookSuccessfullyAdded":
+        reply = """
+        Vaša porudžbina je uspešno kreirana i kupljene naslove možete pronaći u sekciji Moje knjige na Vašem nalogu u okviru EDEN Books aplikacije.
+
+        Ukoliko Vam je potrebna dodatna asistencija molim Vas da nam pošaljete upit na mail podrska@delfi.rs.
+        """
+    elif orders_info2["status"] == "canceled":
+        reply = """
+        Vaša porudžbina nije uspešno realizovana.
+        Molimo Vas da nam pošaljete potvrdu o uplati na imejl adresu podrska@delfi.rs ukoliko su sredstva povučena sa Vašeg računa, a da bismo rešili situaciju u najkraćem mogućem roku.
+        """
+    elif orders_info2["status"] == "paymentCompleted" and orders_info2["DeliveryService"] == "DHL":
+        reply = """
+        Vaša porudžbina je poslata kurirskom službom DHL i isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
+
+        Očekivani rok isporuke je 2-5 radnih dana. Ukoliko želite, možete pratiti svoju porudžbinu na linku dhl.com. Kod za praćenje je poslati kod koji je upisan u administraciji u okviru porudžbine.
+        """
+    elif orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["PackageStatus"] == "INVITATION_SENT":
+        if len(orders_info) == 2:
+            reply = aks_odgovor(orders_info[1])
+        else:
+            reply = "Greška u sistemu! Informacije iz AKS-a servisa nisu dodate."
+
+    elif orders_info2["status"] == "finished" and orders_info2["PaymentType"] == "ADMINISTRATIVE _BAN":
+        reply = """
+        Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade.
+        Kako bi porudžbina bila poslata, potrebno je da pošaljete popunjen formular, koji je poslat u okviru potvrde porudžbine, na adresu Kralja Petra 45, V sprat.
+        Molimo Vas da kontaktirate sa nama u vezi sa svim dodatnim pitanjima na broj telefona:  011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati)
+        """
+    elif orders_info2["status"] == "manuallyCanceled":
+        if check_if_working_hours():
+            reply = """
+            Hvala na poslatom upitu. Slobodan operater će odgovoriti u najkraćem mogućem roku.
+            """
+        else:
+            reply = """
+            Hvala na poslatom upitu. Vaša porudžbina je označena kao otkazana.
+            Molimo Vas da nam ostavite imejl adresu i/ili kontakt telefon ukoliko se razlikuju u odnosu na podatke iz porudžbine kako bi naš operater kontaktirao sa Vama u najkraćem mogućem roku.
+            """
+    elif orders_info2["status"] == "returned":
+        reply = """
+        Vaša porudžbina je vraćena u našu knjižaru usled neuspešne isporuke.
+        Ona je otkazana pošto nismo dobili povratnu informaciju da li želite da se pošalje ponovo. Molimo Vas da ponovite porudžbinu kako bismo je obradili i poslali.
+        """
+    else:
+        reply = """
+        Nepredviđena greška. Molimo Vas da nas kontaktirate slanjem upita na podrska@delfi.rs 
+        ili pozivom na broj telefona našeg korisničkog servisa 011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati).
+        """
+    return reply
+
+
+    elif len(orders_info) == 2:
+        return "Pronađene su sledeće porudžbine:"
+
+    else:
+    print(orders_info)
+    print(len(orders_info))
+
 
 def order_delfi(prompt: str) -> str:
     def extract_orders_from_string(text: str) -> List[int]:
@@ -1415,7 +1494,6 @@ def order_delfi(prompt: str) -> str:
         return [int(order) for order in orders]
 
     order_ids = extract_orders_from_string(prompt)
-    print(order_ids)
     if len(order_ids) > 0:
         return API_search_2(order_ids)
     else:
