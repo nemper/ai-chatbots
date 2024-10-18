@@ -1,3 +1,4 @@
+import pytz
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -8,6 +9,7 @@ from langchain_community.vectorstores import Pinecone as LangPine
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
 
+from datetime import datetime, time
 from openai import OpenAI
 import os
 from os import getenv
@@ -1390,7 +1392,7 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
     tc = [x for x in tc if x is not None]
     if len(tc) > 0:
         orders_info.append(API_search_aks(tc))
-    
+    print(orders_info)
     final_output = orders_message(orders_info)
     return orders_info
 
@@ -1399,6 +1401,59 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
     """
     Maps the values of the order details to a human-readable message.
     """
+    def check_if_working_hours():
+        belgrade_timezone = pytz.timezone('Europe/Belgrade')
+        current_time = datetime.now(belgrade_timezone)
+
+        start_time = time(9, 0)
+        end_time = time(16, 45)
+
+        if start_time <= current_time.time() <= end_time:
+            return True
+        else:
+            return False
+
+
+    def aks_odgovori(orders_dict):
+        def extract_timestamp(date_string):
+            timestamp = int(date_string[6:-2]) / 1000  # Extract and convert milliseconds to seconds
+            return datetime.fromtimestamp(timestamp)
+
+        # Sort the status changes by timestamp
+        sorted_status_changes = sorted(data[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
+
+        # Get the last (most recent) status description
+        most_recent_status = sorted_status_changes[-1]['StatusOpis']
+        reply2 = ""
+        if most_recent_status == "Kreiranje VIP Naloga":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+        elif most_recent_status == "Preuzimanje Posiljke":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+        elif most_recent_status == "Kreiranje VIP Naloga":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+        elif most_recent_status == "Kreiranje VIP Naloga":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+        elif most_recent_status == "Kreiranje VIP Naloga":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+        elif most_recent_status == "Kreiranje VIP Naloga":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+        elif most_recent_status == "Kreiranje VIP Naloga":
+            reply2 = """
+            Vaša porudžbina je spakovana i spremna za slanje. 
+            """
+
     reply = ""
     orders_info2 = orders_info[0]
     if orders_info2["status"] == "finished":
@@ -1407,7 +1462,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
         Očekivani rok isporuke je 2-5 radnih dana. 
         """
-    elif orders_info2["status"] in ["readyForOnlinePayment", "waitingForFinalOnlinePaymentStatus"]
+    elif orders_info2["status"] in ["readyForOnlinePayment", "waitingForFinalOnlinePaymentStatus"]:
         reply = """
         Vaša porudžbina se trenutno nalazi u procesu kreiranja.
         Ukoliko Vam u narednih 30 minuta ne stigne potvrda o kupovini na imejl adresu koju ste ostavili prilikom kreiranja porudžbine molimo Vas da nas kontaktirate slanjem upita na podrska@delfi.rs 
@@ -1463,14 +1518,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
         ili pozivom na broj telefona našeg korisničkog servisa 011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati).
         """
     return reply
-
-
-    elif len(orders_info) == 2:
-        return "Pronađene su sledeće porudžbine:"
-
-    else:
-    print(orders_info)
-    print(len(orders_info))
 
 
 def order_delfi(prompt: str) -> str:
