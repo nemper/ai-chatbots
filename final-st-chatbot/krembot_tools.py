@@ -1332,6 +1332,7 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         order_info = {}
         if 'orderData' in json_data:
             data = json_data['orderData']
+            print("DDDDDDDDDDDDDDDDDDDDDDDDD ", data)
             # Extract required fields from the order info
             order_info['id'] = data.get('id', 'N/A')
             order_info['type'] = data.get('type', 'N/A')
@@ -1429,7 +1430,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
         sorted_status_changes = sorted(orders_dict[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
 
         most_recent_status = sorted_status_changes[-1]['StatusOpis']
-        print(111, most_recent_status)
         reply2 = ""
         if most_recent_status == "Kreiranje VIP Naloga":
             reply2 = """
@@ -1475,7 +1475,11 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
     reply = ""
     orders_info2 = orders_info[0]
-    if orders_info2["status"] in ["finished", "paymentCompleted"] and orders_info2["package_status"] == "INVITATION_SENT":
+    print(111111111111111111, orders_info)
+    if "No orders found" in orders_info:
+        reply = "Nije pronađena porudžbina pod navedenim brojem"
+
+    elif len(orders_info) > 1 and orders_info2["status"] in ["finished", "paymentCompleted"]:
         reply = aks_odgovori(orders_info[1])
 
     elif orders_info2["status"] == "finished" and orders_info2["payment_type"] == "ADMINISTRATIVE _BAN":
