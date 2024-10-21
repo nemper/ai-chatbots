@@ -1429,7 +1429,10 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str]) -> str:
 
         sorted_status_changes = sorted(orders_dict[0]['status_changes'], key=lambda x: extract_timestamp(x['Vreme']))
 
-        most_recent_status = sorted_status_changes[-1]['StatusOpis']
+        try:
+            most_recent_status = sorted_status_changes[-1]['StatusOpis']
+        except:
+            most_recent_status = 'No recent status changes available'
         reply2 = ""
         if most_recent_status == "Kreiranje VIP Naloga":
             reply2 = """
