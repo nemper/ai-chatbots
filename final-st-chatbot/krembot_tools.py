@@ -1158,17 +1158,25 @@ class TopListFetcher:
                     {
                         "role": "system",
                         "content": (
-                            "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."
+                            "Your one and only job is to determine the name of the tool that should be used to solve the user query."
+                            "The user is asking about the top list of products. You have 4 tools on your disposal."
+                            "There are 8 categories of products: knjiga, film, muzika, strana knjiga, gift, udžbenik, video igra. If you think the user is asking about category which can't be found in this list, it's probably a genre."
+                            "Do not return any other information."
  
                             "Here is an example: "
-                            "Example user question: 'koje knjige su na akciji Nauci kroz igru' "
-                            "Tool to use: 'books'"
+                            "Example user question: 'koje su najpopularnije knjige.' "
+                            "Tool to use: getFistItems"
  
-                            "Here is an example: "
-                            "Example user question: 'koji naslovi domacih izdavaca su na akciji' "
-                            "Tool to use: 'books'"
-                        )
-                    },
+                            "Example user question: 'daj mi preporuku za domace pisce' "
+                            "Tool to use: fetchTopListByGenre"
+ 
+                            "Example user question: 'koje E-knjige su na top listi' "
+                            "Tool to use: fetchTopListByGenre"
+ 
+                            "Example user question: 'preporuci mi neke knjige za decu' "
+                            "Tool to use: fetchTopListByGenre"
+                            )
+                    },                  
                     {"role": "user", "content": question}
                 ],
                 tools=tools,
@@ -2513,8 +2521,23 @@ class ActionFetcher:
          
         response = client.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[{"role": "system", "content": "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."},
-                        {"role": "user", "content": question}],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Your one and only job is to determine the name of the tool that should be used to solve the user query. Do not return any other information."
+ 
+                            "Here is an example: "
+                            "Example user question: 'koje knjige su na akciji Nauci kroz igru' "
+                            "Tool to use: 'books'"
+ 
+                            "Here is an example: "
+                            "Example user question: 'koji naslovi domacih izdavaca su na akciji' "
+                            "Tool to use: 'books'"
+                        )
+                    },
+                    {"role": "user", "content": question}
+                ],
                 tools=tools,
                 temperature=0.0,
                 tool_choice="required",
