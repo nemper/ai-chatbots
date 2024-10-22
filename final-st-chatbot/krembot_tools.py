@@ -1388,10 +1388,8 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         return orders_info
     else:
         return f"Prosledi naredni tekst korisniku (nemoj dodavati nikakve druge info): {final_output}" 
-        return f"Prosledi naredni tekst korisniku (nemoj dodavati nikakve druge info): {final_output}" 
 
 
-def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> str:
 def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> str:
     """
     Maps the values of the order details to a human-readable message.
@@ -1471,20 +1469,12 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         reply = "NEDEFINISAN SLUCAJ PRONADJEN!"
 
     elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
-
-    slucaj = delfi_check_cases(orders_info[0])
-
-    if slucaj == 'x24':
-        reply = "NEDEFINISAN SLUCAJ PRONADJEN!"
-
-    elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade. Isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
 
         Očekivani rok isporuke je 2-5 radnih dana. 
         """
 
-    elif slucaj in ['x12', 'x13']:
     elif slucaj in ['x12', 'x13']:
         reply = """
         Vaša porudžbina se trenutno nalazi u procesu kreiranja.
@@ -1493,7 +1483,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         """
 
     elif slucaj == 'x14':
-    elif slucaj == 'x14':
         reply = """
         Vaša porudžbina je uspešno kreirana i kupljene naslove možete pronaći u sekciji Moje knjige na Vašem nalogu u okviru EDEN Books aplikacije.
 
@@ -1501,13 +1490,11 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         """
 
     elif slucaj == 'x15':
-    elif slucaj == 'x15':
         reply = """
         Vaša porudžbina nije uspešno realizovana.
         Molimo Vas da nam pošaljete potvrdu o uplati na imejl adresu podrska@delfi.rs ukoliko su sredstva povučena sa Vašeg računa, a da bismo rešili situaciju u najkraćem mogućem roku.
         """
 
-    elif slucaj == 'x16':
     elif slucaj == 'x16':
         reply = """
         Vaša porudžbina je poslata kurirskom službom DHL i isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
@@ -1515,7 +1502,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         Očekivani rok isporuke je 2-5 radnih dana. Ukoliko želite, možete pratiti svoju porudžbinu na linku dhl.com. Kod za praćenje je poslati kod koji je upisan u administraciji u okviru porudžbine.
         """
 
-    elif slucaj == 'x22':
     elif slucaj == 'x22':
         if check_if_working_hours():
             reply = """
@@ -1527,7 +1513,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
             Molimo Vas da nam ostavite imejl adresu i/ili kontakt telefon ukoliko se razlikuju u odnosu na podatke iz porudžbine kako bi naš operater kontaktirao sa Vama u najkraćem mogućem roku.
             """
 
-    elif slucaj == 'x23':
     elif slucaj == 'x23':
         reply = """
         Vaša porudžbina je vraćena u našu knjižaru usled neuspešne isporuke.
@@ -1548,20 +1533,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         reply = aks_odgovori(reply0[0])
         print(333333333333, reply)
 
-    elif slucaj == 'x21':
-    elif slucaj in ['x17', 'x18', 'x19', 'x20']:
-        reply0 = []
-        tc = [x for x in tc if x is not None]
-        if len(tc) > 0:
-            if "," in tc[0]:
-                tc = tc[0].split(",")
-                for i in range(len(tc)):
-                    reply0.append(API_search_aks([tc[i]]))
-            else:
-                reply0.append(API_search_aks(tc))
-        print(4444444444, reply0[0])
-        reply = aks_odgovori(reply0[0])
-        print(333333333333, reply)
 
     elif slucaj == 'x21':
         reply = """
