@@ -160,6 +160,10 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         order_info = {}
         if 'orderData' in json_data:
             data = json_data['orderData']
+            if "shipp" in str(data):
+                print(3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333)
+            if "SHIPP" in str(data):
+                print(3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333)
             # Extract required fields from the order info
             order_info['id'] = data.get('id', 'N/A')
             order_info['type'] = data.get('type', 'N/A')
@@ -292,7 +296,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
 
     if slucaj == 'x24':
         reply = f"NEDEFINISAN SLUCAJ: {orders_info[0]}"
-        print(111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111114444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444)
+        print(orders_info[0])
 
     elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
         reply = """
@@ -355,7 +359,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
                     reply0.append(API_search_aks([tc[i]]))
             else:
                 reply0.append(API_search_aks(tc))
-        print(222222222222, reply0[0])
         reply = aks_odgovori(reply0[0])
 
     elif slucaj == 'x21':
@@ -728,7 +731,7 @@ def order_delfi(prompt: str) -> str:
 
 
 if __name__ == "__main__":
-    for i in list(range(976000, 977000)):
+    for i in list(range(960000, 977000)):
         sleep(0.1)
-        print(order_delfi(f"Stanje porudzbine {i}"))
+        order_delfi(f"Stanje porudzbine {i}")
     
