@@ -2,6 +2,7 @@ import json
 from os import getenv
 import pyodbc
 import streamlit as st
+from datetime import datetime
 
 class ConversationDatabase:
     """
@@ -105,24 +106,37 @@ class ConversationDatabase:
         count = self.cursor.fetchone()[0]
         return count > 0
 
-    def add_sql_record(self, app_name, user_name, thread_id, conversation):
+    def add_sql_record(
+        self,
+        app_name: str,
+        user_name: str,
+        thread_id: str,
+        conversation
+    ) -> None:
         """
-        Adds a new record to the conversations table.
+        Inserts a new conversation record into the database.
 
-        Parameters:
-        - app_name: The name of the application.
-        - user_name: The name of the user.
-        - thread_id: The thread identifier (string).
-        - conversation: The conversation data as a list of dictionaries.
+        Args:
+            app_name (str): The name of the application.
+            user_name (str): The name of the user.
+            thread_id (str): The thread identifier.
+            conversation (List[Dict[str, Any]]): The conversation data as a list of dictionaries.
+
+        Returns:
+            None
+        
+        Raises:
+            pyodbc.Error: If there is an error executing the SQL statement.
         """
-
         conversation_json = json.dumps(conversation)
+        current_date = datetime.now().date()
+
         insert_sql = '''
-        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
-        VALUES (?, ?, ?, ?)
+        INSERT INTO conversations (app_name, date, user_name, thread_id, conversation) 
+        VALUES (?, ?, ?, ?, ?)
         '''
         try:
-            self.cursor.execute(insert_sql, (app_name, user_name, thread_id, conversation_json))
+            self.cursor.execute(insert_sql, (app_name, current_date, user_name, thread_id, conversation_json))
             self.conn.commit()
         except pyodbc.Error as e:
             print(f"Error adding record: {e}")
@@ -192,12 +206,13 @@ class ConversationDatabase:
         """
         Inserts feedback data into the Feedback table.
         """
+        current_date = datetime.now().date()
         try:
             insert_query = """
-            INSERT INTO Feedback (thread_id, app_name, previous_question, tool_answer, given_answer, Thumbs, Feedback_text)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Feedback (app_name, date, previous_question, tool_answer, given_answer, Thumbs, Feedback_text, thread_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
-            self.cursor.execute(insert_query, (thread_id, app_name, previous_question, tool_answer, given_answer, thumbs, feedback_text))
+            self.cursor.execute(insert_query, (app_name, current_date, previous_question, tool_answer, given_answer, thumbs, feedback_text, thread_id))
             self.conn.commit()
         except Exception as e:
             print(f"Error inserting feedback into the database: {e}")
