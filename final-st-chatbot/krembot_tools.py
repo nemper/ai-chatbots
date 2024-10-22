@@ -1382,12 +1382,16 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         orders_info = "No orders found for the given IDs."
 
     final_output = orders_message(orders_info, tc)
+
+    final_output = orders_message(orders_info, tc)
     if final_output.strip() == "":
         return orders_info
     else:
         return f"Prosledi naredni tekst korisniku (nemoj dodavati nikakve druge info): {final_output}" 
+        return f"Prosledi naredni tekst korisniku (nemoj dodavati nikakve druge info): {final_output}" 
 
 
+def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> str:
 def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> str:
     """
     Maps the values of the order details to a human-readable message.
@@ -1467,12 +1471,20 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         reply = "NEDEFINISAN SLUCAJ PRONADJEN!"
 
     elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
+
+    slucaj = delfi_check_cases(orders_info[0])
+
+    if slucaj == 'x24':
+        reply = "NEDEFINISAN SLUCAJ PRONADJEN!"
+
+    elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade. Isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
 
         Očekivani rok isporuke je 2-5 radnih dana. 
         """
 
+    elif slucaj in ['x12', 'x13']:
     elif slucaj in ['x12', 'x13']:
         reply = """
         Vaša porudžbina se trenutno nalazi u procesu kreiranja.
@@ -1481,6 +1493,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         """
 
     elif slucaj == 'x14':
+    elif slucaj == 'x14':
         reply = """
         Vaša porudžbina je uspešno kreirana i kupljene naslove možete pronaći u sekciji Moje knjige na Vašem nalogu u okviru EDEN Books aplikacije.
 
@@ -1488,11 +1501,13 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         """
 
     elif slucaj == 'x15':
+    elif slucaj == 'x15':
         reply = """
         Vaša porudžbina nije uspešno realizovana.
         Molimo Vas da nam pošaljete potvrdu o uplati na imejl adresu podrska@delfi.rs ukoliko su sredstva povučena sa Vašeg računa, a da bismo rešili situaciju u najkraćem mogućem roku.
         """
 
+    elif slucaj == 'x16':
     elif slucaj == 'x16':
         reply = """
         Vaša porudžbina je poslata kurirskom službom DHL i isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
@@ -1500,6 +1515,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         Očekivani rok isporuke je 2-5 radnih dana. Ukoliko želite, možete pratiti svoju porudžbinu na linku dhl.com. Kod za praćenje je poslati kod koji je upisan u administraciji u okviru porudžbine.
         """
 
+    elif slucaj == 'x22':
     elif slucaj == 'x22':
         if check_if_working_hours():
             reply = """
@@ -1511,6 +1527,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
             Molimo Vas da nam ostavite imejl adresu i/ili kontakt telefon ukoliko se razlikuju u odnosu na podatke iz porudžbine kako bi naš operater kontaktirao sa Vama u najkraćem mogućem roku.
             """
 
+    elif slucaj == 'x23':
     elif slucaj == 'x23':
         reply = """
         Vaša porudžbina je vraćena u našu knjižaru usled neuspešne isporuke.
@@ -1532,11 +1549,30 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
         print(333333333333, reply)
 
     elif slucaj == 'x21':
+    elif slucaj in ['x17', 'x18', 'x19', 'x20']:
+        reply0 = []
+        tc = [x for x in tc if x is not None]
+        if len(tc) > 0:
+            if "," in tc[0]:
+                tc = tc[0].split(",")
+                for i in range(len(tc)):
+                    reply0.append(API_search_aks([tc[i]]))
+            else:
+                reply0.append(API_search_aks(tc))
+        print(4444444444, reply0[0])
+        reply = aks_odgovori(reply0[0])
+        print(333333333333, reply)
+
+    elif slucaj == 'x21':
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade.
         Kako bi porudžbina bila poslata, potrebno je da pošaljete popunjen formular, koji je poslat u okviru potvrde porudžbine, na adresu Kralja Petra 45, V sprat.
         Molimo Vas da kontaktirate sa nama u vezi sa svim dodatnim pitanjima na broj telefona:  011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati)
+        Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade.
+        Kako bi porudžbina bila poslata, potrebno je da pošaljete popunjen formular, koji je poslat u okviru potvrde porudžbine, na adresu Kralja Petra 45, V sprat.
+        Molimo Vas da kontaktirate sa nama u vezi sa svim dodatnim pitanjima na broj telefona:  011/7155-042. Radno vreme našeg korisničkog servisa: ponedeljak-petak (8-17 sati)
         """
+
 
     return reply
 
@@ -1870,6 +1906,338 @@ def delfi_check_cases(order_info):
         return 'x23'
     else:
         return 'x24'
+
+
+def delfi_check_cases(order_info):
+    # x1
+    x1 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'WAITING_FOR_EXPORT'
+    }
+    # x2
+    x2 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'WAITING_FOR_MP99'
+    }
+    # x3
+    x3 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'EXPORTED_TO_MP99'
+    }
+    # x4
+    x4 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'EXPORTED'
+    }
+    # x5
+    x5 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'MAIL_SENT'
+    }
+    # x6
+    x6 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DEFAULT',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'EXPORTED'
+    }
+    # x7
+    x7 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DEFAULT',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'MAIL_SENT'
+    }
+    # x8
+    x8 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DEFAULT',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'WAITING_FOR_MP99'
+    }
+    # x9
+    x9 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DEFAULT',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'EXPORTED_TO_MP99'
+    }
+    # x10
+    x10 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DEFAULT',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'WAITING_FOR_EXPORT'
+    }
+    # x11
+    x11 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DHL',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'EXPORTED'
+    }
+
+    x11 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DHL',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': ['EXPORTED', 'WAITING_FOR_EXPORT']
+    }
+
+    # x12
+    x12 = {
+        'type': ['standard', 'ebook'],
+        'status': 'readyForOnlinePayment',
+        'delivery_service': ['DEFAULT', 'DHL'],
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
+    }
+    # x13
+    x13 = {
+        'type': ['standard', 'ebook'],
+        'status': 'waitingForFinalOnlinePaymentStatus',
+        'delivery_service': ['DEFAULT', 'DHL'],
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
+    }
+    # x14
+    x14 = {
+        'type': 'ebook',
+        'status': 'ebookSuccessfullyAdded',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
+    }
+    # x15
+    x15 = {
+        'type': ['standard', 'ebook'],
+        'status': 'canceled',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
+    }
+    # x16
+    x16 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DHL',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'INVITATION_SENT'
+    }
+    # x17
+    x17 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'INVITATION_SENT'
+    }
+    # x18
+    x18 = {
+        'type': 'standard',
+        'status': 'paymentCompleted',
+        'delivery_service': 'DEFAULT',
+        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
+        'package_status': 'INVITATION_SENT'
+    }
+    # x19
+    x19 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'INVITATION_SENT'
+    }
+    # x20
+    x20 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'ADMINISTRATIVE_BAN',
+        'package_status': 'INVITATION_SENT'
+    }
+    # x21
+    x21 = {
+        'type': 'standard',
+        'status': 'finished',
+        'payment_type': 'ADMINISTRATIVE_BAN',
+        'package_status': 'WAITING_FOR_EXPORT'
+    }
+    # x22
+    x22 = {
+        'type': 'standard',
+        'status': 'manuallyCanceled'
+    }
+    # x23
+    x23 = {
+        'type': 'standard',
+        'status': 'returned'
+    }
+
+    if (order_info['type'] == x1['type'] and
+            order_info['status'] == x1['status'] and
+            order_info['delivery_service'] == x1['delivery_service'] and
+            order_info['payment_type'] == x1['payment_type'] and
+            order_info['package_status'] == x1['package_status']):
+        return 'x1'
+
+    elif (order_info['type'] == x2['type'] and
+            order_info['status'] == x2['status'] and
+            order_info['delivery_service'] == x2['delivery_service'] and
+            order_info['payment_type'] == x2['payment_type'] and
+            order_info['package_status'] == x2['package_status']):
+        return 'x2'
+
+    elif (order_info['type'] == x3['type'] and
+            order_info['status'] == x3['status'] and
+            order_info['delivery_service'] == x3['delivery_service'] and
+            order_info['payment_type'] == x3['payment_type'] and
+            order_info['package_status'] == x3['package_status']):
+        return 'x3'
+
+    elif (order_info['type'] == x4['type'] and
+            order_info['status'] == x4['status'] and
+            order_info['delivery_service'] == x4['delivery_service'] and
+            order_info['payment_type'] == x4['payment_type'] and
+            order_info['package_status'] == x4['package_status']):
+        return 'x4'
+    elif (order_info['type'] == x5['type'] and
+            order_info['status'] == x5['status'] and
+            order_info['delivery_service'] == x5['delivery_service'] and
+            order_info['payment_type'] == x5['payment_type'] and
+            order_info['package_status'] == x5['package_status']):
+        return 'x5'
+
+    elif (order_info['type'] == x6['type'] and
+            order_info['status'] == x6['status'] and
+            order_info['delivery_service'] == x6['delivery_service'] and
+            order_info['payment_type'] in x6['payment_type'] and
+            order_info['package_status'] == x6['package_status']):
+        return 'x6'
+
+    elif (order_info['type'] == x7['type'] and
+            order_info['status'] == x7['status'] and
+            order_info['delivery_service'] == x7['delivery_service'] and
+            order_info['payment_type'] in x7['payment_type'] and
+            order_info['package_status'] == x7['package_status']):
+        return 'x7'
+
+    elif (order_info['type'] == x8['type'] and
+            order_info['status'] == x8['status'] and
+            order_info['delivery_service'] == x8['delivery_service'] and
+            order_info['payment_type'] in x8['payment_type'] and
+            order_info['package_status'] == x8['package_status']):
+        return 'x8'
+    elif (order_info['type'] == x9['type'] and
+            order_info['status'] == x9['status'] and
+            order_info['delivery_service'] == x9['delivery_service'] and
+            order_info['payment_type'] in x9['payment_type'] and
+            order_info['package_status'] == x9['package_status']):
+        return 'x9'
+
+    elif (order_info['type'] == x10['type'] and
+            order_info['status'] == x10['status'] and
+            order_info['delivery_service'] == x10['delivery_service'] and
+            order_info['payment_type'] in x10['payment_type'] and
+            order_info['package_status'] == x10['package_status']):
+        return 'x10'
+
+    elif (order_info['type'] == x11['type'] and
+            order_info['status'] == x11['status'] and
+            order_info['delivery_service'] == x11['delivery_service'] and
+            order_info['payment_type'] in x11['payment_type'] and
+            order_info['package_status'] in x11['package_status']):
+        return 'x11'
+
+    elif (order_info['type'] in x12['type'] and
+            order_info['status'] == x12['status'] and
+            order_info['delivery_service'] in x12['delivery_service'] and
+            order_info['payment_type'] in x12['payment_type']):
+        return 'x12'
+
+    elif (order_info['type'] in x13['type'] and
+            order_info['status'] == x13['status'] and
+            order_info['delivery_service'] in x13['delivery_service'] and
+            order_info['payment_type'] in x13['payment_type']):
+        return 'x13'
+
+    elif (order_info['type'] == x14['type'] and
+            order_info['status'] == x14['status'] and
+            order_info['payment_type'] in x14['payment_type']):
+        return 'x14'
+
+    elif (order_info['type'] in x15['type'] and
+            order_info['status'] == x15['status'] and
+            order_info['payment_type'] in x15['payment_type']):
+        return 'x15'
+
+    elif (order_info['type'] == x16['type'] and
+            order_info['status'] == x16['status'] and
+            order_info['delivery_service'] == x16['delivery_service'] and
+            order_info['payment_type'] in x16['payment_type'] and
+            order_info['package_status'] == x16['package_status']):
+        return 'x16'
+    
+    elif (order_info['type'] == x17['type'] and
+            order_info['status'] == x17['status'] and
+            order_info['delivery_service'] == x17['delivery_service'] and
+            order_info['payment_type'] == x17['payment_type'] and
+            order_info['package_status'] == x17['package_status']):
+        return 'x17'
+
+    elif (order_info['type'] == x18['type'] and
+            order_info['status'] == x18['status'] and
+            order_info['delivery_service'] == x18['delivery_service'] and
+            order_info['payment_type'] in x18['payment_type'] and
+            order_info['package_status'] == x18['package_status']):
+        return 'x18'
+
+    elif (order_info['type'] == x19['type'] and
+            order_info['status'] == x19['status'] and
+            order_info['delivery_service'] == x19['delivery_service'] and
+            order_info['payment_type'] == x19['payment_type'] and
+            order_info['package_status'] == x19['package_status']):
+        return 'x19'
+
+    elif (order_info['type'] == x20['type'] and
+            order_info['status'] == x20['status'] and
+            order_info['delivery_service'] == x20['delivery_service'] and
+            order_info['payment_type'] == x20['payment_type'] and
+            order_info['package_status'] == x20['package_status']):
+        return 'x20'
+
+    elif (order_info['type'] == x21['type'] and
+            order_info['status'] == x21['status'] and
+            order_info['payment_type'] == x21['payment_type'] and
+            order_info['package_status'] == x21['package_status']):
+        return 'x21'
+
+    elif (order_info['type'] == x22['type'] and
+            order_info['status'] == x22['status']):
+        return 'x22'
+
+    elif (order_info['type'] == x23['type'] and
+            order_info['status'] == x23['status']):
+        return 'x23'
+    else:
+        return 'x24'
+
 
 
 def order_delfi(prompt: str) -> str:
