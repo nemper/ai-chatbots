@@ -215,6 +215,10 @@ if selected_app_name:
                     st.divider()
                     st.write(f"**ASSISTANT:** {feedback[4]}")   # given_answer
                     st.divider()
+                    th = feedback[5]
+                    the = "👍" if th == "Good" else "👎"
+                    st.write(f"**THUMBS UP/DOWN:** {the}")      # thumbs emoji
+                    st.divider()
                     st.write(f"**FEEDBACK:** {feedback[6]}")    # feedback text
                 else:
                     st.write(f"No feedback found for Thread ID: {selected_id}")
