@@ -1468,7 +1468,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
     if slucaj == 'x24':
         reply = "NEDEFINISAN SLUCAJ PRONADJEN!"
 
-    elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
+    elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11', 'x25', 'x26', 'x27', 'x28', 'x29']:
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade. Isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
 
@@ -1730,336 +1730,46 @@ def delfi_check_cases(order_info):
         'status': 'returned'
     }
 
-    if (order_info['type'] == x1['type'] and
-            order_info['status'] == x1['status'] and
-            order_info['delivery_service'] == x1['delivery_service'] and
-            order_info['payment_type'] == x1['payment_type'] and
-            order_info['package_status'] == x1['package_status']):
-        return 'x1'
-
-    elif (order_info['type'] == x2['type'] and
-            order_info['status'] == x2['status'] and
-            order_info['delivery_service'] == x2['delivery_service'] and
-            order_info['payment_type'] == x2['payment_type'] and
-            order_info['package_status'] == x2['package_status']):
-        return 'x2'
-
-    elif (order_info['type'] == x3['type'] and
-            order_info['status'] == x3['status'] and
-            order_info['delivery_service'] == x3['delivery_service'] and
-            order_info['payment_type'] == x3['payment_type'] and
-            order_info['package_status'] == x3['package_status']):
-        return 'x3'
-
-    elif (order_info['type'] == x4['type'] and
-            order_info['status'] == x4['status'] and
-            order_info['delivery_service'] == x4['delivery_service'] and
-            order_info['payment_type'] == x4['payment_type'] and
-            order_info['package_status'] == x4['package_status']):
-        return 'x4'
-    elif (order_info['type'] == x5['type'] and
-            order_info['status'] == x5['status'] and
-            order_info['delivery_service'] == x5['delivery_service'] and
-            order_info['payment_type'] == x5['payment_type'] and
-            order_info['package_status'] == x5['package_status']):
-        return 'x5'
-
-    elif (order_info['type'] == x6['type'] and
-            order_info['status'] == x6['status'] and
-            order_info['delivery_service'] == x6['delivery_service'] and
-            order_info['payment_type'] in x6['payment_type'] and
-            order_info['package_status'] == x6['package_status']):
-        return 'x6'
-
-    elif (order_info['type'] == x7['type'] and
-            order_info['status'] == x7['status'] and
-            order_info['delivery_service'] == x7['delivery_service'] and
-            order_info['payment_type'] in x7['payment_type'] and
-            order_info['package_status'] == x7['package_status']):
-        return 'x7'
-
-    elif (order_info['type'] == x8['type'] and
-            order_info['status'] == x8['status'] and
-            order_info['delivery_service'] == x8['delivery_service'] and
-            order_info['payment_type'] in x8['payment_type'] and
-            order_info['package_status'] == x8['package_status']):
-        return 'x8'
-    elif (order_info['type'] == x9['type'] and
-            order_info['status'] == x9['status'] and
-            order_info['delivery_service'] == x9['delivery_service'] and
-            order_info['payment_type'] in x9['payment_type'] and
-            order_info['package_status'] == x9['package_status']):
-        return 'x9'
-
-    elif (order_info['type'] == x10['type'] and
-            order_info['status'] == x10['status'] and
-            order_info['delivery_service'] == x10['delivery_service'] and
-            order_info['payment_type'] in x10['payment_type'] and
-            order_info['package_status'] == x10['package_status']):
-        return 'x10'
-
-    elif (order_info['type'] == x11['type'] and
-            order_info['status'] == x11['status'] and
-            order_info['delivery_service'] == x11['delivery_service'] and
-            order_info['payment_type'] in x11['payment_type'] and
-            order_info['package_status'] in x11['package_status']):
-        return 'x11'
-
-    elif (order_info['type'] in x12['type'] and
-            order_info['status'] == x12['status'] and
-            order_info['delivery_service'] in x12['delivery_service'] and
-            order_info['payment_type'] in x12['payment_type']):
-        return 'x12'
-
-    elif (order_info['type'] in x13['type'] and
-            order_info['status'] == x13['status'] and
-            order_info['delivery_service'] in x13['delivery_service'] and
-            order_info['payment_type'] in x13['payment_type']):
-        return 'x13'
-
-    elif (order_info['type'] == x14['type'] and
-            order_info['status'] == x14['status'] and
-            order_info['payment_type'] in x14['payment_type']):
-        return 'x14'
-
-    elif (order_info['type'] in x15['type'] and
-            order_info['status'] == x15['status'] and
-            order_info['payment_type'] in x15['payment_type']):
-        return 'x15'
-
-    elif (order_info['type'] == x16['type'] and
-            order_info['status'] == x16['status'] and
-            order_info['delivery_service'] == x16['delivery_service'] and
-            order_info['payment_type'] in x16['payment_type'] and
-            order_info['package_status'] == x16['package_status']):
-        return 'x16'
-    
-    elif (order_info['type'] == x17['type'] and
-            order_info['status'] == x17['status'] and
-            order_info['delivery_service'] == x17['delivery_service'] and
-            order_info['payment_type'] == x17['payment_type'] and
-            order_info['package_status'] == x17['package_status']):
-        return 'x17'
-
-    elif (order_info['type'] == x18['type'] and
-            order_info['status'] == x18['status'] and
-            order_info['delivery_service'] == x18['delivery_service'] and
-            order_info['payment_type'] in x18['payment_type'] and
-            order_info['package_status'] == x18['package_status']):
-        return 'x18'
-
-    elif (order_info['type'] == x19['type'] and
-            order_info['status'] == x19['status'] and
-            order_info['delivery_service'] == x19['delivery_service'] and
-            order_info['payment_type'] == x19['payment_type'] and
-            order_info['package_status'] == x19['package_status']):
-        return 'x19'
-
-    elif (order_info['type'] == x20['type'] and
-            order_info['status'] == x20['status'] and
-            order_info['delivery_service'] == x20['delivery_service'] and
-            order_info['payment_type'] == x20['payment_type'] and
-            order_info['package_status'] == x20['package_status']):
-        return 'x20'
-
-    elif (order_info['type'] == x21['type'] and
-            order_info['status'] == x21['status'] and
-            order_info['payment_type'] == x21['payment_type'] and
-            order_info['package_status'] == x21['package_status']):
-        return 'x21'
-
-    elif (order_info['type'] == x22['type'] and
-            order_info['status'] == x22['status']):
-        return 'x22'
-
-    elif (order_info['type'] == x23['type'] and
-            order_info['status'] == x23['status']):
-        return 'x23'
-    else:
-        return 'x24'
-
-
-def delfi_check_cases(order_info):
-    # x1
-    x1 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'WAITING_FOR_EXPORT'
-    }
-    # x2
-    x2 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'WAITING_FOR_MP99'
-    }
-    # x3
-    x3 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'EXPORTED_TO_MP99'
-    }
-    # x4
-    x4 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'EXPORTED'
-    }
-    # x5
-    x5 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'MAIL_SENT'
-    }
-    # x6
-    x6 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'EXPORTED'
-    }
-    # x7
-    x7 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'MAIL_SENT'
-    }
-    # x8
-    x8 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'WAITING_FOR_MP99'
-    }
-    # x9
-    x9 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'EXPORTED_TO_MP99'
-    }
-    # x10
-    x10 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'WAITING_FOR_EXPORT'
-    }
-    # x11
-    x11 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DHL',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'EXPORTED'
-    }
-
-    x11 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DHL',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': ['EXPORTED', 'WAITING_FOR_EXPORT']
-    }
-
-    # x12
-    x12 = {
-        'type': ['standard', 'ebook'],
-        'status': 'readyForOnlinePayment',
-        'delivery_service': ['DEFAULT', 'DHL'],
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x13
-    x13 = {
-        'type': ['standard', 'ebook'],
-        'status': 'waitingForFinalOnlinePaymentStatus',
-        'delivery_service': ['DEFAULT', 'DHL'],
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x14
-    x14 = {
-        'type': 'ebook',
-        'status': 'ebookSuccessfullyAdded',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x15
-    x15 = {
-        'type': ['standard', 'ebook'],
-        'status': 'canceled',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x16
-    x16 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DHL',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'INVITATION_SENT'
-    }
-    # x17
-    x17 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'INVITATION_SENT'
-    }
-    # x18
-    x18 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'INVITATION_SENT'
-    }
-    # x19
-    x19 = {
+    x25 = {
         'type': 'standard',
         'status': 'finished',
         'delivery_service': 'DEFAULT',
         'payment_type': 'PAYMENT_SLIP',
-        'package_status': 'INVITATION_SENT'
+        'package_status': 'WAITING_FOR_EXPORT'
     }
-    # x20
-    x20 = {
+
+    x26 = {
         'type': 'standard',
         'status': 'finished',
         'delivery_service': 'DEFAULT',
-        'payment_type': 'ADMINISTRATIVE_BAN',
-        'package_status': 'INVITATION_SENT'
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'WAITING_FOR_MP99'
     }
-    # x21
-    x21 = {
+
+    x27 = {
         'type': 'standard',
         'status': 'finished',
-        'payment_type': 'ADMINISTRATIVE_BAN',
-        'package_status': 'WAITING_FOR_EXPORT'
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'EXPORTED_TO_MP99'
     }
-    # x22
-    x22 = {
+
+    x28 = {
         'type': 'standard',
-        'status': 'manuallyCanceled'
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'EXPORTED'
     }
-    # x23
-    x23 = {
+
+    x29 = {
         'type': 'standard',
-        'status': 'returned'
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'MAIL_SENT'
     }
+
 
     if (order_info['type'] == x1['type'] and
             order_info['status'] == x1['status'] and
@@ -2206,9 +1916,40 @@ def delfi_check_cases(order_info):
     elif (order_info['type'] == x23['type'] and
             order_info['status'] == x23['status']):
         return 'x23'
+    
+    elif (order_info['type'] == x25['type'] and
+            order_info['status'] == x25['status'] and
+            order_info['delivery_service'] == x25['delivery_service'] and
+            order_info['payment_type'] == x25['payment_type'] and
+            order_info['package_status'] == x25['package_status']):
+        return 'x25'
+    elif (order_info['type'] == x26['type'] and
+            order_info['status'] == x26['status'] and
+            order_info['delivery_service'] == x26['delivery_service'] and
+            order_info['payment_type'] == x26['payment_type'] and
+            order_info['package_status'] == x26['package_status']):
+        return 'x26'
+    elif (order_info['type'] == x27['type'] and
+            order_info['status'] == x27['status'] and
+            order_info['delivery_service'] == x27['delivery_service'] and
+            order_info['payment_type'] == x27['payment_type'] and
+            order_info['package_status'] == x27['package_status']):
+        return 'x27'
+    elif (order_info['type'] == x28['type'] and
+            order_info['status'] == x28['status'] and
+            order_info['delivery_service'] == x28['delivery_service'] and
+            order_info['payment_type'] == x28['payment_type'] and
+            order_info['package_status'] == x28['package_status']):
+        return 'x28'
+    elif (order_info['type'] == x29['type'] and
+            order_info['status'] == x29['status'] and
+            order_info['delivery_service'] == x29['delivery_service'] and
+            order_info['payment_type'] == x29['payment_type'] and
+            order_info['package_status'] == x29['package_status']):
+        return 'x29'
+    
     else:
         return 'x24'
-
 
 
 def order_delfi(prompt: str) -> str:

@@ -162,8 +162,10 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
             data = json_data['orderData']
             if "shipp" in str(data):
                 print(3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333)
+                print(data)
             if "SHIPP" in str(data):
                 print(3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333)
+                print(data)
             # Extract required fields from the order info
             order_info['id'] = data.get('id', 'N/A')
             order_info['type'] = data.get('type', 'N/A')
@@ -296,7 +298,6 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
 
     if slucaj == 'x24':
         reply = f"NEDEFINISAN SLUCAJ: {orders_info[0]}"
-        print(orders_info[0])
 
     elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
         reply = """
@@ -552,6 +553,45 @@ def delfi_check_cases(order_info):
         'type': 'standard',
         'status': 'returned'
     }
+    x25 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'WAITING_FOR_EXPORT'
+    }
+
+    x26 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'WAITING_FOR_MP99'
+    }
+
+    x27 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'EXPORTED_TO_MP99'
+    }
+
+    x28 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'EXPORTED'
+    }
+
+    x29 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'MAIL_SENT'
+    }
 
     if (order_info['type'] == x1['type'] and
             order_info['status'] == x1['status'] and
@@ -698,6 +738,37 @@ def delfi_check_cases(order_info):
     elif (order_info['type'] == x23['type'] and
             order_info['status'] == x23['status']):
         return 'x23'
+    elif (order_info['type'] == x25['type'] and
+            order_info['status'] == x25['status'] and
+            order_info['delivery_service'] == x25['delivery_service'] and
+            order_info['payment_type'] == x25['payment_type'] and
+            order_info['package_status'] == x25['package_status']):
+        return 'x25'
+    elif (order_info['type'] == x26['type'] and
+            order_info['status'] == x26['status'] and
+            order_info['delivery_service'] == x26['delivery_service'] and
+            order_info['payment_type'] == x26['payment_type'] and
+            order_info['package_status'] == x26['package_status']):
+        return 'x26'
+    elif (order_info['type'] == x27['type'] and
+            order_info['status'] == x27['status'] and
+            order_info['delivery_service'] == x27['delivery_service'] and
+            order_info['payment_type'] == x27['payment_type'] and
+            order_info['package_status'] == x27['package_status']):
+        return 'x27'
+    elif (order_info['type'] == x28['type'] and
+            order_info['status'] == x28['status'] and
+            order_info['delivery_service'] == x28['delivery_service'] and
+            order_info['payment_type'] == x28['payment_type'] and
+            order_info['package_status'] == x28['package_status']):
+        return 'x28'
+    elif (order_info['type'] == x29['type'] and
+            order_info['status'] == x29['status'] and
+            order_info['delivery_service'] == x29['delivery_service'] and
+            order_info['payment_type'] == x29['payment_type'] and
+            order_info['package_status'] == x29['package_status']):
+        return 'x29'
+    
     else:
         return 'x24'
 
@@ -731,7 +802,7 @@ def order_delfi(prompt: str) -> str:
 
 
 if __name__ == "__main__":
-    for i in list(range(960000, 977000)):
+    for i in list(range(970000, 976000)):
         sleep(0.1)
         order_delfi(f"Stanje porudzbine {i}")
     
