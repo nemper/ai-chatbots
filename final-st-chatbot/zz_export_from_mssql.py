@@ -125,19 +125,19 @@ def filter_conversations_by_text(records, search_text):
     return filtered_records
 
 
-def extract_feedback_by_thread_id(id, records):
+def extract_feedback_by_thread_id(ids, records):
     # Filter records by the given thread_id
-    return [record for record in records if record[0] == id]
+    return [record for record in records if record[0] == ids]
 
-def extract_conversation_by_thread_id(id):
-    id = int(id)
+def extract_conversation_by_thread_id(ids):
+    ids = int(ids)
     with ConversationDatabase() as db:
         query = """
         SELECT conversation
         FROM [PositiveAI].[dbo].[conversations]
         WHERE id = ?
         """
-        db.cursor.execute(query, (id,))
+        db.cursor.execute(query, (ids,))
         result = db.cursor.fetchone()
     return result[0] if result else None
 
@@ -209,13 +209,13 @@ if selected_app_name:
 
                 if filtered_feedback:
                     feedback = filtered_feedback[0]
-                    st.write(f"**USER:** {feedback[1]}")        # previous_question
+                    st.write(f"**USER:** {feedback[2]}")        # previous_question
                     st.divider()
-                    st.write(f"**TOOL:** {feedback[2]}")        # tool_answer
+                    st.write(f"**TOOL:** {feedback[3]}")        # tool_answer
                     st.divider()
-                    st.write(f"**ASSISTANT:** {feedback[3]}")   # given_answer
+                    st.write(f"**ASSISTANT:** {feedback[4]}")   # given_answer
                     st.divider()
-                    st.write(f"**FEEDBACK:** {feedback[5]}")    # feedback text
+                    st.write(f"**FEEDBACK:** {feedback[6]}")    # feedback text
                 else:
                     st.write(f"No feedback found for Thread ID: {selected_id}")
         else:
