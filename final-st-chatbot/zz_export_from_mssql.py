@@ -23,13 +23,13 @@ def get_app_names(table_name):
 def get_feedback_records(app_name):
     with ConversationDatabase() as db:
         query = """
-        SELECT thread_id, previous_question, tool_answer, given_answer, Thumbs, Feedback_text
+        SELECT id, date, previous_question, tool_answer, given_answer, Thumbs, Feedback_text
         FROM Feedback
         WHERE app_name = ?
         """
         db.cursor.execute(query, app_name)
         records = db.cursor.fetchall()
-        columns = ['thread_id', 'previous_question', 'tool_answer', 'given_answer', 'Thumbs', 'Feedback_text']
+        columns = ['id', 'date', 'previous_question', 'tool_answer', 'given_answer', 'Thumbs', 'Feedback_text']
     return records, columns
 
 def get_user_names(app_name):
@@ -47,40 +47,50 @@ def get_user_names(app_name):
 def get_conversation_records(app_name, user_name):
     with ConversationDatabase() as db:
         query = """
-        SELECT thread_id, conversation
+        SELECT id, date, conversation
         FROM [PositiveAI].[dbo].[conversations]
         WHERE app_name = ? AND user_name = ?
         """
         db.cursor.execute(query, (app_name, user_name))
         records = db.cursor.fetchall()
-        columns = ['thread_id', 'conversation']
+        columns = ['id', 'date,' 'conversation']
     return records, columns
 
 def filter_out_system_only_conversations(records):
     """Filter out conversations that only contain system prompts."""
     filtered_records = []
     for record in records:
-        conversation_json = record[1]
-        conversation = json.loads(conversation_json)
+        # Ensure you're accessing the correct index for the conversation JSON string
+        conversation_json = record[2]  # Assuming conversation JSON is in the third column (index 2)
 
-        # Check if there are any non-system messages
-        non_system_messages = [msg for msg in conversation if msg['role'] != 'system']
+        # Check if 'conversation_json' is a valid string before trying to parse it
+        if isinstance(conversation_json, str):
+            try:
+                conversation = json.loads(conversation_json)
 
-        if non_system_messages:  # Keep conversations with user/assistant messages
-            filtered_records.append(record)
+                # Check if there are any non-system messages
+                non_system_messages = [msg for msg in conversation if msg.get('role') != 'system']
 
+                if non_system_messages:  # Keep conversations with user/assistant messages
+                    filtered_records.append(record)
+            except json.JSONDecodeError:
+                print("Skipping record with invalid JSON:", record)
+        else:
+            print("Skipping record with invalid conversation data:", record)
+    
     return filtered_records
+
 
 def filter_feedbacks_by_text(records, search_text):
     """Filter feedback records by text found in previous_question, tool_answer, or given_answer."""
     filtered_records = []
     for record in records:
-        previous_question = record[1] or ""
-        tool_answer = record[2] or ""
-        given_answer = record[3] or ""
-        feedback_text = record[5] or ""
+        previous_question = str(record[1] or "")  # Ensure it's a string
+        tool_answer = str(record[2] or "")
+        given_answer = str(record[3] or "")
+        feedback_text = str(record[5] or "")
         
-        # Search in all three columns (case-insensitive)
+        # Search in all columns (case-insensitive)
         if (search_text.lower() in previous_question.lower() or
             search_text.lower() in tool_answer.lower() or
             search_text.lower() in given_answer.lower() or
@@ -89,33 +99,45 @@ def filter_feedbacks_by_text(records, search_text):
     
     return filtered_records
 
+
 def filter_conversations_by_text(records, search_text):
     """Filter conversation records by text found in any message content."""
     filtered_records = []
     for record in records:
-        conversation_json = record[1]
-        conversation = json.loads(conversation_json)
+        # Make sure to correctly access the conversation column, not the date
+        conversation_json = record[2]  # Assuming conversation is at index 2
 
-        # Search in all message contents (case-insensitive)
-        for msg in conversation:
-            if search_text.lower() in msg['content'].lower():
-                filtered_records.append(record)
-                break  # No need to check further once a match is found
+        # Ensure 'conversation_json' is a string before attempting to parse it
+        if isinstance(conversation_json, str):
+            try:
+                conversation = json.loads(conversation_json)
+
+                # Search in all message contents (case-insensitive)
+                for msg in conversation:
+                    if search_text.lower() in msg.get('content', '').lower():
+                        filtered_records.append(record)
+                        break  # No need to check further once a match is found
+            except json.JSONDecodeError:
+                print(f"Skipping record due to invalid JSON: {conversation_json}")
+        else:
+            print(f"Skipping record with invalid conversation data: {record}")
     
     return filtered_records
 
-def extract_feedback_by_thread_id(thread_id, records):
-    # Filter records by the given thread_id
-    return [record for record in records if record[0] == thread_id]
 
-def extract_conversation_by_thread_id(thread_id):
+def extract_feedback_by_thread_id(ids, records):
+    # Filter records by the given thread_id
+    return [record for record in records if record[0] == ids]
+
+def extract_conversation_by_thread_id(ids):
+    ids = int(ids)
     with ConversationDatabase() as db:
         query = """
         SELECT conversation
         FROM [PositiveAI].[dbo].[conversations]
-        WHERE thread_id = ?
+        WHERE id = ?
         """
-        db.cursor.execute(query, (thread_id,))
+        db.cursor.execute(query, (ids,))
         result = db.cursor.fetchone()
     return result[0] if result else None
 
@@ -180,22 +202,26 @@ if selected_app_name:
                 selected_row = selected_rows.iloc[0]
 
                 # Extract values from the selected row
-                selected_thread_id = selected_row['thread_id']
+                selected_id = selected_row['id']
 
                 # Filter feedback by the selected thread_id
-                filtered_feedback = extract_feedback_by_thread_id(selected_thread_id, records)
+                filtered_feedback = extract_feedback_by_thread_id(selected_id, records)
 
                 if filtered_feedback:
                     feedback = filtered_feedback[0]
-                    st.write(f"**USER:** {feedback[1]}")        # previous_question
+                    st.write(f"**USER:** {feedback[2]}")        # previous_question
                     st.divider()
-                    st.write(f"**TOOL:** {feedback[2]}")        # tool_answer
+                    st.write(f"**TOOL:** {feedback[3]}")        # tool_answer
                     st.divider()
-                    st.write(f"**ASSISTANT:** {feedback[3]}")   # given_answer
+                    st.write(f"**ASSISTANT:** {feedback[4]}")   # given_answer
                     st.divider()
-                    st.write(f"**FEEDBACK:** {feedback[5]}")    # feedback text
+                    th = feedback[5]
+                    the = "👍" if th == "Good" else "👎"
+                    st.write(f"**THUMBS UP/DOWN:** {the}")      # thumbs emoji
+                    st.divider()
+                    st.write(f"**FEEDBACK:** {feedback[6]}")    # feedback text
                 else:
-                    st.write(f"No feedback found for Thread ID: {selected_thread_id}")
+                    st.write(f"No feedback found for Thread ID: {selected_id}")
         else:
             st.write("No feedback records found for the selected application name.")
 
@@ -210,6 +236,9 @@ if selected_app_name:
 
             # Fetch conversation records for the selected app name and user name
             records, columns = get_conversation_records(selected_app_name, selected_user_name)
+
+            # Ensure 'columns' matches the data returned by 'records'
+            columns = ['id', 'date', 'conversation']  # Make sure this matches the structure
 
             # Filter out conversations that contain only system prompts
             filtered_records = filter_out_system_only_conversations(records)
@@ -239,16 +268,16 @@ if selected_app_name:
                     selected_row = selected_rows.iloc[0]
 
                     # Extract values from the selected row
-                    selected_thread_id = selected_row['thread_id']
+                    selected_id = selected_row['id']
 
                     # Fetch and display conversation based on thread_id input
-                    conversation_text = extract_conversation_by_thread_id(selected_thread_id)
+                    conversation_text = extract_conversation_by_thread_id(selected_id)
 
                     if conversation_text:
-                        st.header(f"Conversation: {selected_thread_id}")
+                        st.header(f"Conversation: {selected_id}")
                         parse_and_display_conversation(conversation_text)
                     else:
-                        st.write(f"No conversation found for Thread ID: {selected_thread_id}")
+                        st.write(f"No conversation found for Thread ID: {selected_id}")
             else:
                 st.write(f"No conversation records found for the selected user.")
 else:

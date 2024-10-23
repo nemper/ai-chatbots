@@ -1,6 +1,7 @@
 import json
 import pyodbc
 import streamlit as st
+from datetime import datetime
 
 from os import getenv
 
@@ -221,24 +222,26 @@ class ConversationDatabase:
             pyodbc.Error: If there is an error executing the SQL statement.
         """
         conversation_json = json.dumps(conversation)
+        current_date = datetime.now().date()
+
         insert_sql = '''
-        INSERT INTO conversations (app_name, user_name, thread_id, conversation) 
-        VALUES (?, ?, ?, ?)
+        INSERT INTO conversations (app_name, date, user_name, thread_id, conversation) 
+        VALUES (?, ?, ?, ?, ?)
         '''
         try:
-            self.cursor.execute(insert_sql, (app_name, user_name, thread_id, conversation_json))
+            self.cursor.execute(insert_sql, (app_name, current_date, user_name, thread_id, conversation_json))
             self.conn.commit()
         except pyodbc.Error as e:
             print(f"Error adding record: {e}")
             self.conn.rollback()
 
     def update_or_insert_sql_record(
-        self,
-        app_name: str,
-        user_name: str,
-        thread_id: str,
-        new_conversation: List[Dict[str, Any]]
-    ) -> None:
+            self,
+            app_name: str,
+            user_name: str,
+            thread_id: str,
+            new_conversation: List[Dict[str, Any]]
+        ) -> None:
         """
         Updates an existing conversation record or inserts a new one if it does not exist.
 
@@ -429,12 +432,13 @@ class ConversationDatabase:
         Raises:
             Exception: If there is an error executing the SQL statement.
         """
+        current_date = datetime.now().date()
         try:
             insert_query = """
-            INSERT INTO Feedback (thread_id, app_name, previous_question, tool_answer, given_answer, Thumbs, Feedback_text)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Feedback (app_name, date, previous_question, tool_answer, given_answer, Thumbs, Feedback_text, thread_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
-            self.cursor.execute(insert_query, (thread_id, app_name, previous_question, tool_answer, given_answer, thumbs, feedback_text))
+            self.cursor.execute(insert_query, (app_name, current_date, previous_question, tool_answer, given_answer, thumbs, feedback_text, thread_id))
             self.conn.commit()
         except Exception as e:
             print(f"Error inserting feedback into the database: {e}")
