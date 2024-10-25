@@ -1,5 +1,3 @@
-import json
-import pyodbc
 import streamlit as st
 from datetime import datetime
 

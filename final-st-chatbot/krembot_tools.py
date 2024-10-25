@@ -200,21 +200,6 @@ class BookstoreSearcher:
 
 class GraphQueryProcessor:
     def __init__(self):
-        # OpenAI API key
-        self.client = OpenAI()
-
-        # Neo4j connection details
-        self.uri = getenv("NEO4J_URI")
-        self.user = getenv("NEO4J_USER")
-        self.password = getenv("NEO4J_PASS")
-
-        # Pinecone details
-        self.pinecone_api_key = getenv('PINECONE_API_KEY')
-        self.pinecone_environment = getenv('PINECONE_ENVIRONMENT')
-        self.index_name = 'delfi'
-        self.namespace = 'opisi'
-
-        # Neo4j driver
         self.driver = self.connect_to_neo4j()
 
     def close_neo4j_driver(self):
