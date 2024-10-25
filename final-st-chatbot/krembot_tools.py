@@ -10,7 +10,6 @@ from langchain_openai.chat_models import ChatOpenAI
 
 from datetime import datetime, time
 from openai import OpenAI
-import os
 from os import getenv
 from pinecone_text.sparse import BM25Encoder
 from typing import List, Dict, Any, Tuple, Union, Optional
@@ -51,7 +50,7 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
         Tuple[Any, str]: A tuple containing the generated context or search results and the RAG tool used.
     """
     rag_tool = "ClientDirect"
-    app_id = os.getenv("APP_ID")
+    app_id = getenv("APP_ID")
 
     if app_id == "DentyBotR":
         processor = HybridQueryProcessor(namespace="denty-serviser", delfi_special=1)
@@ -92,14 +91,15 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     bookstore_processor = get_processor(BookstoreSearcher)
     actions_processor = get_processor(ActionFetcher, 'https://delfi.rs/api/pc-frontend-api/actions-page')
 
+
     # Update your tool_processors dictionary
     tool_processors = {
         "Hybrid": lambda: common_processor.process_query_results(prompt),
         "Korice": lambda: SelfQueryDelfi(upit=mprompts["rag_self_query"] + prompt, namespace="korice"),
-        "recomendation_based_on_attributes": lambda: graphp(prompt),
+        "recomendation_based_on_attributes": lambda: GraphQueryProcessor.process_question(prompt),
         "recomendation_based_on_description": lambda: pineg(prompt),
         "top_list": lambda: toplist_processor.decide_and_respond(prompt),
-        "Orders": lambda: order_delfi(prompt),
+        "Orders": lambda: delfi_orders(prompt),
         "Promotion": lambda: actions_processor.decide_and_respond(prompt),
         "Knjizare": lambda: bookstore_processor.return_all(),
         "Calendly": lambda: positive_calendly(prompt),
@@ -109,6 +109,22 @@ def rag_tool_answer(prompt: str, x: int) -> Tuple[Any, str]:
     context = tool_processors.get(rag_tool, lambda: "No tool chosen")()
 
     return context, rag_tool
+
+
+def fetch_or_fallback(question):
+    # Initialize TopListFetcher
+    api_url = 'https://delfi.rs/api/pc-frontend-api/toplists'
+    fetcher = TopListFetcher(api_url)
+    
+    # Try to get an answer
+    answer = fetcher.decide_and_respond(question)
+    
+    # Fallback to GraphQueryProcessor if no answer
+    if not answer:
+        graph_processor = GraphQueryProcessor()
+        answer = graph_processor.process_question(question)
+        
+    return answer
 
 
 def positive_calendly(y_no):
@@ -181,37 +197,17 @@ class BookstoreSearcher:
 
         return result_string
 
-    
 
-def graphp(pitanje):
-    """
-    Processes a user's question, generates a Cypher query, executes it on a Neo4j database, 
-    enriches the resulting data with descriptions from Pinecone, and formats the response.
+class GraphQueryProcessor:
+    def __init__(self):
+        self.driver = self.connect_to_neo4j()
 
-    Parameters:
-    pitanje (str): User's question in natural language related to the Neo4j database.
+    def close_neo4j_driver(self):
+        if self.driver:
+            self.driver.close()
 
-    Returns:
-    list: A list of dictionaries representing enriched book data, each containing properties like 
-          'title', 'category', 'author', and a description from Pinecone.
-    
-    The function consists of the following steps:
-    1. Connects to the Neo4j database using the `connect_to_neo4j()` function.
-    2. Defines a nested function `run_cypher_query()` to execute a Cypher query and clean the results.
-    3. Generates a Cypher query from the user's question using the `generate_cypher_query()` function.
-    4. Validates the generated Cypher query using `is_valid_cypher()`.
-    5. Runs the Cypher query on the Neo4j database and retrieves book data.
-    6. Enriches the retrieved book data with additional information fetched from an API.
-    7. Fetches descriptions from Pinecone for the books using their 'oldProductId'.
-    8. Combines book data with descriptions.
-    9. Formats the final data and returns it as a formatted response.
-
-    The function performs error handling to manage invalid Cypher queries or errors during data fetching.
-    """
-    driver = connect_to_neo4j()
-
-    def run_cypher_query(driver, query):
-        with driver.session() as session:
+    def run_cypher_query(self, query):
+        with self.driver.session() as session:
             results = session.run(query)
             cleaned_results = []
             max_characters=100000
@@ -251,12 +247,15 @@ def graphp(pitanje):
 
         print(f"Number of records: {number_of_records}")
         print(f"Total number of characters: {total_characters}")
+        # print(f"Average characters per record: {average_characters_per_record}")
+        # print(f"Longest record length: {max_record_length}")
+        # print(f"Shortest record length: {min_record_length}")
 
         return cleaned_results
-
-    def generate_cypher_query(question):
+    
+    def generate_cypher_query(self, question):
         prompt = f"Translate the following user question into a Cypher query. Use the given structure of the database: {question}"
-        response = client.chat.completions.create(
+        response = self.client.chat.completions.create(
             model="gpt-4o",
             temperature=0.0,
             messages=[
@@ -267,7 +266,7 @@ def graphp(pitanje):
                 "The database has 3 node types: Author, Book, Genre, and 2 relationship types: BELONGS_TO and WROTE."
                 "Only Book nodes have properties: id, oldProductId, category, title, price, quantity, pages, and eBook."
                 "All node and relationship names are capitalized (e.g., Author, Book, Genre, BELONGS_TO, WROTE)."
-                "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci, Knjige za decu). Please ensure that the generated Cypher query uses these exact capitalizations."
+                "Genre names are also capitalized (e.g., Drama, Fantastika, Domaći pisci, Knjige za decu, Religija i mitologija). Please ensure that the generated Cypher query uses these exact capitalizations."
                 "Sometimes you will need to filter the data based on the category. Exsiting categories are: Knjiga, Strana knjiga, Gift, Film, Muzika, Udžbenik, Video igra, Dečija knjiga."
                 "Ensure to include a condition to check that the quantity property of Book nodes is greater than 0 to ensure the books are in stock where this filter is plausable."
                 "When writing the Cypher query, ensure that instead of '=' use CONTAINS, in order to return all items which contains the searched term."
@@ -302,7 +301,7 @@ def graphp(pitanje):
                 
                 "Example user question: 'Da li imate mobi dik na stanju, treba mi 27 komada?' "
                 "Cypher query: MATCH (b:Book) WHERE toLower(b.title) CONTAINS toLower('Mobi Dik') AND b.quantity > 27 RETURN b.title AS title, b.quantity AS quantity, b.oldProductId AS oldProductId, b.category AS category LIMIT 6"
-            
+
                 "Example user question: 'preporuči mi knjige slične Oladi malo od Sare Najt' "
                 "Cypher query: MATCH (b:Book)-[:WROTE]-(a:Author) WHERE toLower(b.title) CONTAINS toLower('Oladi malo') AND toLower(a.name) CONTAINS toLower('Sara Najt') WITH b MATCH (b)-[:BELONGS_TO]->(g:Genre) WITH g, b MATCH (rec:Book)-[:BELONGS_TO]->(g)<-[:BELONGS_TO]-(b) WHERE rec.quantity > 0 AND NOT toLower(rec.title) CONTAINS toLower('Oladi malo') WITH rec, COLLECT(DISTINCT g.name) AS genres MATCH (rec)-[:WROTE]-(recAuthor:Author) RETURN rec.title AS title, rec.oldProductId AS oldProductId, rec.category AS category, recAuthor.name AS author, genres AS genre LIMIT 6"
                 
@@ -329,18 +328,15 @@ def graphp(pitanje):
 
         return cypher_query
 
-
-    def get_descriptions_from_pinecone(ids):
+    def get_descriptions_from_pinecone(self, ids):
+        # print(f"IDs: {ids}")
         # Initialize Pinecone
-        # pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"), host=os.getenv("PINECONE_HOST"))
-        index = connect_to_pinecone(x=0)
+        index = connect_to_pinecone(x = 0)
+
         # Fetch the vectors by IDs
-        try:
-            results = index.fetch(ids=ids, namespace="opisi")
-        except Exception as e:
-            print(f"Error fetching vectors: {e}")
-            return {}
+        results = index.fetch(ids=ids, namespace=self.namespace)
         descriptions = {}
+
         for id in ids:
             if id in results['vectors']:
                 vector_data = results['vectors'][id]
@@ -350,91 +346,79 @@ def graphp(pitanje):
                     descriptions[id] = 'Metadata not found in vector data.'
             else:
                 descriptions[id] = 'Nemamo opis za ovaj artikal.'
-        
         return descriptions
-    
 
-    def combine_data(book_data, descriptions):
-        # print(f"Book Data: {book_data}")
-        # print(f"Descriptions: {descriptions}")
+    def combine_data(self, book_data, descriptions):
         combined_data = []
 
         for book in book_data:        
-            book_id = book.get('oldProductId', None)
-            
-            # Konvertuj book_id u string da bi se mogao porediti sa ključevima u descriptions
-            book_id_str = str(book_id)
-
-            description = descriptions.get(book_id_str, 'No description available')
+            book_id = str(book.get('oldProductId', None))
+            description = descriptions.get(book_id, 'No description available')
             combined_entry = {**book, 'description': description}
             combined_data.append(combined_entry)
-        
-        # print(f"Combined Data: {combined_data}")
+
         return combined_data
 
-    def is_valid_cypher(cypher_query):
-        # Provera validnosti Cypher upita (osnovna provera)
-        if not cypher_query or "MATCH" not in cypher_query.upper():
-            return False
-        return True
-    
-    cypher_query = generate_cypher_query(pitanje)
-    print(f"Generated Cypher Query: {cypher_query}")
-    
-    if is_valid_cypher(cypher_query):
-        try:
-            book_data = run_cypher_query(driver, cypher_query)
+    def is_valid_cypher(self, cypher_query):
+        return "MATCH" in cypher_query.upper()
 
-            # print(f"Book Data: {book_data}")
+    # def has_id_field(data):
+    #     # Provera da li vraćeni podaci sadrže 'id' polje
+    #     return all('id' in item for item in data)
 
+    def formulate_answer_with_llm(self, question, graph_data):
+        input_text = f"Pitanje: '{question}'\nPodaci iz grafa: {graph_data}\nMolim te formuliši odgovor na osnovu ovih podataka."
+        response = self.client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.0,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that formulates answers based on given data. You have been provided with a user question and data returned from a graph database. Please formulate an answer based on these inputs."},
+                {"role": "user", "content": input_text}
+            ]
+        )
+        return response.choices[0].message.content.strip()
+
+    def process_question(self, question):
+        cypher_query = self.generate_cypher_query(question)
+        print(f"Generated Cypher Query: {cypher_query}")
+        if self.is_valid_cypher(cypher_query):
             try:
-                oldProductIds = [item['oldProductId'] for item in book_data]
+                book_data = self.run_cypher_query(cypher_query)
+                # print(f"Book Data: {book_data}")
+                oldProductIds = [str(item['oldProductId']) for item in book_data if 'oldProductId' in item]
                 print(f"Old Product IDs: {oldProductIds}")
-            except KeyError:
-                print("Nema 'oldProductId'.")
-                oldProductIds = []
 
-            # Filtrirana lista koja će sadržati samo relevantne knjige
-            filtered_book_data = []
+                if not oldProductIds:
+                    return "No matching books found."
 
-            if not oldProductIds:
-                filtered_book_data = book_data
-                return filtered_book_data
-
-            else:
-                api_podaci = API_search(oldProductIds)
+                api_podaci = delfi_api_products(oldProductIds)
                 # print(f"API Data: {api_podaci}")
-
-                # Kreiranje mape id za brže pretraživanje
                 products_info_map = {int(product['id']): product for product in api_podaci}
+                filtered_book_data = []
 
                 # Iteracija kroz book_data i dodavanje relevantnih podataka
                 for book in book_data:
                     old_id = book['oldProductId']
                     if old_id in products_info_map:
-                        product = products_info_map[old_id]
-                        # Spojite dva rečnika - podaci iz products_info_map ažuriraju book
                         book.update(products_info_map[old_id])
-                        # Dodavanje knjige u filtriranu listu
                         filtered_book_data.append(book)
 
                     # print(f"Filtered Book Data: {filtered_book_data}")
 
-                print("******Gotov api deo!!!")
+                # oldProductIds_str = [str(id) for id in oldProductIds]
 
-                oldProductIds_str = [str(id) for id in oldProductIds]
+                descriptions_dict = self.get_descriptions_from_pinecone(oldProductIds)
+                combined_data = self.combine_data(filtered_book_data, descriptions_dict)
+                # print(f"Combined Data: {combined_data}")
 
-                descriptionsDict = get_descriptions_from_pinecone(oldProductIds_str)
-                # print("******Gotov Pinecone deo!!!")
-                combined_data = combine_data(filtered_book_data, descriptionsDict)
-                
-                # return
-                print(f"Combined Data: {combined_data}")
                 return combined_data
-        except Exception as e:
-            print(f"Greška pri izvršavanju upita: {e}. Molimo pokušajte ponovo.")
-    else:
-        print("Traženi pojam nije jasan. Molimo pokušajte ponovo.")
+            except Exception as e:
+                return f"Error while processing the query: {e}"
+            finally:
+                self.close_neo4j_driver()
+        else:
+            return "Invalid Cypher query."
+        
 
 def pineg(pitanje):
     """
@@ -651,7 +635,7 @@ def pineg(pitanje):
             continue
         else:
             if counter < 3:
-                api_data = API_search([result['sec_id']])
+                api_data = delfi_api_products([result['sec_id']])
                 # print(f"API Data: {api_data}")
                 if api_data:
                     counter += 1
@@ -665,7 +649,7 @@ def pineg(pitanje):
                         if result_2['sec_id'] in duplicate_filter:
                             continue
                         else:
-                            api_data = API_search([result_2['sec_id']])
+                            api_data = delfi_api_products([result_2['sec_id']])
                             # print(f"API Data 2: {api_data}")
                             if api_data:
                                 counter += 1
@@ -736,31 +720,34 @@ class TopListFetcher:
 
     def get_first_items(self):
         """
-        Pribavlja i prikazuje prve proizvode iz API-ja "toplists".
+    Pribavlja i prikazuje prvih šest proizvoda iz API-ja "toplists".
 
-        Ova funkcija šalje GET zahtev ka API-ju i vraća najviše šest artikala iz sekcija
-        sadržanih u odgovoru. Za svaki artikal prikazuje sledeće informacije:
-        - Naslov
-        - Autor(i)
-        - Žanr(ovi)
-        - eBook
-        - Link ka stranici artikla
+    Ova funkcija šalje GET zahtev ka API-ju i vraća najviše šest artikala iz sekcija
+    sadržanih u odgovoru. Artikli su sortirani po vrednosti `id` od najveće ka najmanjoj.
+    Za svaki artikal prikazuje sledeće informacije:
+    - Naslov
+    - Autor(i)
+    - Žanr(ovi)
+    - eBook
+    - Link ka stranici artikla
+    
+    Napomena: `id` polje se koristi za sortiranje, ali se uklanja iz rezultata pre vraćanja liste.
 
-        Parameters:
-        -----------
-        self : object
-            Referenca na instancu klase (ako je metoda deo klase).
+    Parameters:
+    -----------
+    self : object
+        Referenca na instancu klase (ako je metoda deo klase).
 
-        Returns: 
-        --------
-        list of dict
-            Lista rečnika, gde svaki rečnik sadrži sledeće ključeve:
-            - 'title': Naslov artikla (str)
-            - 'authors': Lista autora (list of str)
-            - 'genres': Lista žanrova (list of str)
-            - 'eBook': Informacija o dostupnosti u eBook formatu (bool)
-            - 'url': Link ka stranici artikla (str)
-        """
+    Returns: 
+    --------
+    list of dict
+        Lista rečnika, gde svaki rečnik sadrži sledeće ključeve:
+        - 'title': Naslov artikla (str)
+        - 'authors': Lista autora (list of str)
+        - 'genres': Lista žanrova (list of str)
+        - 'eBook': Informacija o dostupnosti u eBook formatu (bool)
+        - 'url': Link ka stranici artikla (str)
+    """
         # URL API-ja koji koristite
         api_url = "https://delfi.rs/api/pc-frontend-api/toplists"
 
@@ -796,11 +783,23 @@ class TopListFetcher:
                         'authors': authors,
                         'genres': genres,
                         'eBook': eBook,
-                        'url': url
+                        'url': url,
+                        'id': oldProductId
                     }
 
                     # Dodavanje rečnika u listu
                     items.append(item_dict)
+
+                    # Prikaz naslova i autora
+                    print(f"Naslov: {title}")
+                    for author in authors:
+                        print(f"Autor: {author}")
+                    for genre in genres:
+                        print(f"Žanr: {genre}")
+                    print(f"eBook: {eBook}")
+                    print(f"Link: {url}")
+                    # print(f"Opis: {opis}")
+                    print()
 
                     item_count += 1
                     if item_count >= 6:
@@ -808,6 +807,13 @@ class TopListFetcher:
 
                 if item_count >= 6:
                     break
+
+            # Sortiranje artikala po `id` vrednosti od najvećeg ka manjem
+            items = sorted(items, key=lambda x: int(x['id']), reverse=True)
+
+            # Brisanje ključa 'id' iz svakog rečnika, da smanjimo šum u odgovoru
+            for item in items:
+                del item['id']
 
             return items
         
@@ -892,6 +898,16 @@ class TopListFetcher:
                         # Dodavanje rečnika u listu
                         items.append(item_dict)
 
+                        # # Prikaz naslova i autora
+                        # print(f"Naslov: {title}")
+                        # for author in authors:
+                        #     print(f"Autor: {author}")
+                        # for genre in genres:
+                        #     print(f"Žanr: {genre}")
+                        # print(f"eBook: {eBook}")
+                        # print(f"Link: {url}")
+                        # # print(f"Opis: {opis}")
+                        # print()
             return items
         
         except requests.exceptions.RequestException as e:
@@ -978,6 +994,16 @@ class TopListFetcher:
                         # Dodavanje rečnika u listu
                         items.append(item_dict)
 
+                        # # Prikaz naslova i autora
+                        # print(f"Naslov: {title}")
+                        # for author in authors:
+                        #     print(f"Autor: {author}")
+                        # for genre in genres:
+                        #     print(f"Žanr: {genre}")
+                        # print(f"eBook: {eBook}")
+                        # print(f"Link: {url}")
+                        # # print(f"Opis: {opis}")
+                        # print()
             return items
         
         except requests.exceptions.RequestException as e:
@@ -1072,12 +1098,15 @@ class TopListFetcher:
         """
         Funkcija koja koristi LLM da odluči koja metoda će se koristiti na osnovu pitanja korisnika.
         """
+        # Ovde koristimo 4o-mini ili drugi LLM
+        openai.api_key = os.getenv("OPENAI_API_KEY")  # Preuzimanje API ključa
+        client = OpenAI()
 
         tools = [
         {
             "type": "function",
             "function": {
-                "name": "getFistItems",
+                "name": "getFirstItems",
                 "description": "",
                 "parameters": {
                     "type": "object",
@@ -1162,17 +1191,17 @@ class TopListFetcher:
                             "The user is asking about the top list of products. You have 4 tools on your disposal."
                             "There are 8 categories of products: knjiga, film, muzika, strana knjiga, gift, udžbenik, video igra. If you think the user is asking about category which can't be found in this list, it's probably a genre."
                             "Do not return any other information."
- 
+
                             "Here is an example: "
                             "Example user question: 'koje su najpopularnije knjige.' "
-                            "Tool to use: getFistItems"
- 
+                            "Tool to use: getFirstItems"
+
                             "Example user question: 'daj mi preporuku za domace pisce' "
                             "Tool to use: fetchTopListByGenre"
- 
+
                             "Example user question: 'koje E-knjige su na top listi' "
                             "Tool to use: fetchTopListByGenre"
- 
+
                             "Example user question: 'preporuci mi neke knjige za decu' "
                             "Tool to use: fetchTopListByGenre"
                             )
@@ -1193,7 +1222,7 @@ class TopListFetcher:
 
         print(f"Odluka: {decision}")
 
-        if decision == 'getFistItems':
+        if decision == 'getFirstItems':
             # Korisnik pita za popularne knjige
             return self.get_first_items()
         
@@ -1218,10 +1247,7 @@ class TopListFetcher:
             )
             category_name = category_name_response.choices[0].message.content.strip()
             print(f"naziv kategorije: ", category_name)
-            answer = self.get_items_by_category(category_name)
-            if not answer:
-                answer = graphp(question)
-            return answer
+            return self.get_items_by_category(category_name)
 
         elif decision == 'fetchTopListByGenre':
             # Korisnik pita za knjige po žanru
@@ -1251,6 +1277,9 @@ class TopListFetcher:
                             "Example user question: 'preporuci mi neke knjige za decu' "
                             "Search with: 'knjige za decu'"
 
+                            "Example user question: 'daj mi top domacih pisaca' "
+                            "Search with: 'domaći pisci'"
+
                             "Return only the name of the genre in order to the function can filter the data for that genre."
                         )
                     },
@@ -1259,10 +1288,7 @@ class TopListFetcher:
             )
             genre_name = genre_name_response.choices[0].message.content.strip()
             print(f"naziv žanra: ", genre_name)
-            answer = self.get_items_by_genre(genre_name)
-            if not answer:
-                answer = graphp(question)
-            return answer
+            return self.get_items_by_genre(genre_name)
 
         elif decision == 'fetchTopListByAuthor':
             # Korisnik pita za knjige po autoru
@@ -1277,16 +1303,13 @@ class TopListFetcher:
             )    
             author_name = author_name_response.choices[0].message.content.strip()
             print(f"naziv autora: ", author_name)
-            answer = self.get_items_by_author(author_name)
-            if not answer:
-                answer = graphp(question)
-            return answer
+            return self.get_items_by_author(author_name)
 
         else:
             return {"error": "Nije moguće odlučiti šta korisnik želi."}
 
 
-def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
+def delfi_api_orders(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
     """
     Retrieves and processes information for a list of order IDs.
 
@@ -1381,16 +1404,16 @@ def API_search_2(order_ids: List[str]) -> Union[List[Dict[str, Any]], str]:
         print(f"Error retrieving order information: {e}")
         orders_info = "No orders found for the given IDs."
 
-    final_output = orders_message(orders_info, tc)
+    final_output = delfi_orders_reply(orders_info, tc)
 
-    final_output = orders_message(orders_info, tc)
+    final_output = delfi_orders_reply(orders_info, tc)
     if final_output.strip() == "":
         return orders_info
     else:
         return f"Prosledi naredni tekst korisniku (nemoj dodavati nikakve druge info): {final_output}" 
 
 
-def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> str:
+def delfi_orders_reply(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> str:
     """
     Maps the values of the order details to a human-readable message.
     """
@@ -1463,12 +1486,12 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
 
     reply = ""
 
-    slucaj = delfi_check_cases(orders_info[0])
+    slucaj = delfi_check_which_case(orders_info[0])
 
     if slucaj == 'x24':
         reply = "NEDEFINISAN SLUCAJ PRONADJEN!"
 
-    elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11']:
+    elif slucaj in ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11', 'x25', 'x26', 'x27', 'x28', 'x29']:
         reply = """
         Vaša porudžbina je uspešno kreirana i trenutno se nalazi u fazi obrade. Isporuka će biti realizovana u skladu sa Uslovima korišćenja. 
 
@@ -1526,9 +1549,9 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
             if "," in tc[0]:
                 tc = tc[0].split(",")
                 for i in range(len(tc)):
-                    reply0.append(API_search_aks([tc[i]]))
+                    reply0.append(delfi_api_aks([tc[i]]))
             else:
-                reply0.append(API_search_aks(tc))
+                reply0.append(delfi_api_aks(tc))
         print(4444444444, reply0[0])
         reply = aks_odgovori(reply0[0])
         print(333333333333, reply)
@@ -1548,7 +1571,7 @@ def orders_message(orders_info: Union[List[Dict[str, Any]], str], tc: List) -> s
     return reply
 
 
-def delfi_check_cases(order_info):
+def delfi_check_which_case(order_info):
     # x1
     x1 = {
         'type': 'standard',
@@ -1730,336 +1753,54 @@ def delfi_check_cases(order_info):
         'status': 'returned'
     }
 
-    if (order_info['type'] == x1['type'] and
-            order_info['status'] == x1['status'] and
-            order_info['delivery_service'] == x1['delivery_service'] and
-            order_info['payment_type'] == x1['payment_type'] and
-            order_info['package_status'] == x1['package_status']):
-        return 'x1'
-
-    elif (order_info['type'] == x2['type'] and
-            order_info['status'] == x2['status'] and
-            order_info['delivery_service'] == x2['delivery_service'] and
-            order_info['payment_type'] == x2['payment_type'] and
-            order_info['package_status'] == x2['package_status']):
-        return 'x2'
-
-    elif (order_info['type'] == x3['type'] and
-            order_info['status'] == x3['status'] and
-            order_info['delivery_service'] == x3['delivery_service'] and
-            order_info['payment_type'] == x3['payment_type'] and
-            order_info['package_status'] == x3['package_status']):
-        return 'x3'
-
-    elif (order_info['type'] == x4['type'] and
-            order_info['status'] == x4['status'] and
-            order_info['delivery_service'] == x4['delivery_service'] and
-            order_info['payment_type'] == x4['payment_type'] and
-            order_info['package_status'] == x4['package_status']):
-        return 'x4'
-    elif (order_info['type'] == x5['type'] and
-            order_info['status'] == x5['status'] and
-            order_info['delivery_service'] == x5['delivery_service'] and
-            order_info['payment_type'] == x5['payment_type'] and
-            order_info['package_status'] == x5['package_status']):
-        return 'x5'
-
-    elif (order_info['type'] == x6['type'] and
-            order_info['status'] == x6['status'] and
-            order_info['delivery_service'] == x6['delivery_service'] and
-            order_info['payment_type'] in x6['payment_type'] and
-            order_info['package_status'] == x6['package_status']):
-        return 'x6'
-
-    elif (order_info['type'] == x7['type'] and
-            order_info['status'] == x7['status'] and
-            order_info['delivery_service'] == x7['delivery_service'] and
-            order_info['payment_type'] in x7['payment_type'] and
-            order_info['package_status'] == x7['package_status']):
-        return 'x7'
-
-    elif (order_info['type'] == x8['type'] and
-            order_info['status'] == x8['status'] and
-            order_info['delivery_service'] == x8['delivery_service'] and
-            order_info['payment_type'] in x8['payment_type'] and
-            order_info['package_status'] == x8['package_status']):
-        return 'x8'
-    elif (order_info['type'] == x9['type'] and
-            order_info['status'] == x9['status'] and
-            order_info['delivery_service'] == x9['delivery_service'] and
-            order_info['payment_type'] in x9['payment_type'] and
-            order_info['package_status'] == x9['package_status']):
-        return 'x9'
-
-    elif (order_info['type'] == x10['type'] and
-            order_info['status'] == x10['status'] and
-            order_info['delivery_service'] == x10['delivery_service'] and
-            order_info['payment_type'] in x10['payment_type'] and
-            order_info['package_status'] == x10['package_status']):
-        return 'x10'
-
-    elif (order_info['type'] == x11['type'] and
-            order_info['status'] == x11['status'] and
-            order_info['delivery_service'] == x11['delivery_service'] and
-            order_info['payment_type'] in x11['payment_type'] and
-            order_info['package_status'] in x11['package_status']):
-        return 'x11'
-
-    elif (order_info['type'] in x12['type'] and
-            order_info['status'] == x12['status'] and
-            order_info['delivery_service'] in x12['delivery_service'] and
-            order_info['payment_type'] in x12['payment_type']):
-        return 'x12'
-
-    elif (order_info['type'] in x13['type'] and
-            order_info['status'] == x13['status'] and
-            order_info['delivery_service'] in x13['delivery_service'] and
-            order_info['payment_type'] in x13['payment_type']):
-        return 'x13'
-
-    elif (order_info['type'] == x14['type'] and
-            order_info['status'] == x14['status'] and
-            order_info['payment_type'] in x14['payment_type']):
-        return 'x14'
-
-    elif (order_info['type'] in x15['type'] and
-            order_info['status'] == x15['status'] and
-            order_info['payment_type'] in x15['payment_type']):
-        return 'x15'
-
-    elif (order_info['type'] == x16['type'] and
-            order_info['status'] == x16['status'] and
-            order_info['delivery_service'] == x16['delivery_service'] and
-            order_info['payment_type'] in x16['payment_type'] and
-            order_info['package_status'] == x16['package_status']):
-        return 'x16'
-    
-    elif (order_info['type'] == x17['type'] and
-            order_info['status'] == x17['status'] and
-            order_info['delivery_service'] == x17['delivery_service'] and
-            order_info['payment_type'] == x17['payment_type'] and
-            order_info['package_status'] == x17['package_status']):
-        return 'x17'
-
-    elif (order_info['type'] == x18['type'] and
-            order_info['status'] == x18['status'] and
-            order_info['delivery_service'] == x18['delivery_service'] and
-            order_info['payment_type'] in x18['payment_type'] and
-            order_info['package_status'] == x18['package_status']):
-        return 'x18'
-
-    elif (order_info['type'] == x19['type'] and
-            order_info['status'] == x19['status'] and
-            order_info['delivery_service'] == x19['delivery_service'] and
-            order_info['payment_type'] == x19['payment_type'] and
-            order_info['package_status'] == x19['package_status']):
-        return 'x19'
-
-    elif (order_info['type'] == x20['type'] and
-            order_info['status'] == x20['status'] and
-            order_info['delivery_service'] == x20['delivery_service'] and
-            order_info['payment_type'] == x20['payment_type'] and
-            order_info['package_status'] == x20['package_status']):
-        return 'x20'
-
-    elif (order_info['type'] == x21['type'] and
-            order_info['status'] == x21['status'] and
-            order_info['payment_type'] == x21['payment_type'] and
-            order_info['package_status'] == x21['package_status']):
-        return 'x21'
-
-    elif (order_info['type'] == x22['type'] and
-            order_info['status'] == x22['status']):
-        return 'x22'
-
-    elif (order_info['type'] == x23['type'] and
-            order_info['status'] == x23['status']):
-        return 'x23'
-    else:
-        return 'x24'
-
-
-def delfi_check_cases(order_info):
-    # x1
-    x1 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'WAITING_FOR_EXPORT'
-    }
-    # x2
-    x2 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'WAITING_FOR_MP99'
-    }
-    # x3
-    x3 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'EXPORTED_TO_MP99'
-    }
-    # x4
-    x4 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'EXPORTED'
-    }
-    # x5
-    x5 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'MAIL_SENT'
-    }
-    # x6
-    x6 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'EXPORTED'
-    }
-    # x7
-    x7 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'MAIL_SENT'
-    }
-    # x8
-    x8 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'WAITING_FOR_MP99'
-    }
-    # x9
-    x9 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'EXPORTED_TO_MP99'
-    }
-    # x10
-    x10 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'WAITING_FOR_EXPORT'
-    }
-    # x11
-    x11 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DHL',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'EXPORTED'
-    }
-
-    x11 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DHL',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': ['EXPORTED', 'WAITING_FOR_EXPORT']
-    }
-
-    # x12
-    x12 = {
-        'type': ['standard', 'ebook'],
-        'status': 'readyForOnlinePayment',
-        'delivery_service': ['DEFAULT', 'DHL'],
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x13
-    x13 = {
-        'type': ['standard', 'ebook'],
-        'status': 'waitingForFinalOnlinePaymentStatus',
-        'delivery_service': ['DEFAULT', 'DHL'],
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x14
-    x14 = {
-        'type': 'ebook',
-        'status': 'ebookSuccessfullyAdded',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x15
-    x15 = {
-        'type': ['standard', 'ebook'],
-        'status': 'canceled',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD']
-    }
-    # x16
-    x16 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DHL',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'INVITATION_SENT'
-    }
-    # x17
-    x17 = {
-        'type': 'standard',
-        'status': 'finished',
-        'delivery_service': 'DEFAULT',
-        'payment_type': 'ON_DELIVERY',
-        'package_status': 'INVITATION_SENT'
-    }
-    # x18
-    x18 = {
-        'type': 'standard',
-        'status': 'paymentCompleted',
-        'delivery_service': 'DEFAULT',
-        'payment_type': ['ANY_CREDIT_CARD', 'VISA_PREMIUM_CREDIT_CARD', 'VISA_CREDIT_CARD'],
-        'package_status': 'INVITATION_SENT'
-    }
-    # x19
-    x19 = {
+    x25 = {
         'type': 'standard',
         'status': 'finished',
         'delivery_service': 'DEFAULT',
         'payment_type': 'PAYMENT_SLIP',
-        'package_status': 'INVITATION_SENT'
+        'package_status': 'WAITING_FOR_EXPORT'
     }
-    # x20
-    x20 = {
+
+    x26 = {
         'type': 'standard',
         'status': 'finished',
         'delivery_service': 'DEFAULT',
-        'payment_type': 'ADMINISTRATIVE_BAN',
-        'package_status': 'INVITATION_SENT'
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'WAITING_FOR_MP99'
     }
-    # x21
-    x21 = {
+
+    x27 = {
         'type': 'standard',
         'status': 'finished',
-        'payment_type': 'ADMINISTRATIVE_BAN',
-        'package_status': 'WAITING_FOR_EXPORT'
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'EXPORTED_TO_MP99'
     }
-    # x22
-    x22 = {
+
+    x28 = {
         'type': 'standard',
-        'status': 'manuallyCanceled'
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'EXPORTED'
     }
-    # x23
-    x23 = {
+
+    x29 = {
         'type': 'standard',
-        'status': 'returned'
+        'status': 'finished',
+        'delivery_service': 'DEFAULT',
+        'payment_type': 'PAYMENT_SLIP',
+        'package_status': 'MAIL_SENT'
     }
+
+    x30 = {
+        'type': 'standard',
+        'status': 'finished',
+        'delivery_service': 'DHL',
+        'payment_type': 'ON_DELIVERY',
+        'package_status': 'EXPORTED_TO_MP99'
+    }
+
 
     if (order_info['type'] == x1['type'] and
             order_info['status'] == x1['status'] and
@@ -2206,39 +1947,71 @@ def delfi_check_cases(order_info):
     elif (order_info['type'] == x23['type'] and
             order_info['status'] == x23['status']):
         return 'x23'
+    
+    elif (order_info['type'] == x25['type'] and
+            order_info['status'] == x25['status'] and
+            order_info['delivery_service'] == x25['delivery_service'] and
+            order_info['payment_type'] == x25['payment_type'] and
+            order_info['package_status'] == x25['package_status']):
+        return 'x25'
+    elif (order_info['type'] == x26['type'] and
+            order_info['status'] == x26['status'] and
+            order_info['delivery_service'] == x26['delivery_service'] and
+            order_info['payment_type'] == x26['payment_type'] and
+            order_info['package_status'] == x26['package_status']):
+        return 'x26'
+    elif (order_info['type'] == x27['type'] and
+            order_info['status'] == x27['status'] and
+            order_info['delivery_service'] == x27['delivery_service'] and
+            order_info['payment_type'] == x27['payment_type'] and
+            order_info['package_status'] == x27['package_status']):
+        return 'x27'
+    elif (order_info['type'] == x28['type'] and
+            order_info['status'] == x28['status'] and
+            order_info['delivery_service'] == x28['delivery_service'] and
+            order_info['payment_type'] == x28['payment_type'] and
+            order_info['package_status'] == x28['package_status']):
+        return 'x28'
+    elif (order_info['type'] == x29['type'] and
+            order_info['status'] == x29['status'] and
+            order_info['delivery_service'] == x29['delivery_service'] and
+            order_info['payment_type'] == x29['payment_type'] and
+            order_info['package_status'] == x29['package_status']):
+        return 'x29'
+    elif (order_info['type'] == x30['type'] and
+            order_info['status'] == x30['status'] and
+            order_info['delivery_service'] == x30['delivery_service'] and
+            order_info['payment_type'] == x30['payment_type'] and
+            order_info['package_status'] == x30['package_status']):
+        return 'x30'
     else:
         return 'x24'
 
 
+def delfi_orders(prompt: str) -> str:
+    """
+    Extracts all integer order IDs consisting of five or more digits from the provided text.
 
-def order_delfi(prompt: str) -> str:
-    def extract_orders_from_string(text: str) -> List[int]:
-        """
-        Extracts all integer order IDs consisting of five or more digits from the provided text.
+    Args:
+        text (str): The input string containing potential order IDs.
 
-        Args:
-            text (str): The input string containing potential order IDs.
-
-        Returns:
-            List[int]: A list of extracted order IDs as integers.
-        """
-        # Define a regular expression pattern to match 5 or more digit integers
-        pattern = r'\b\d{5,}\b'
-        
-        # Use re.findall to extract all matching patterns
-        orders = re.findall(pattern, text)
-        
-        # Convert the matched strings to integers
-        return [int(order) for order in orders]
-
-    order_ids = extract_orders_from_string(prompt)
+    Returns:
+        List[int]: A list of extracted order IDs as integers.
+    """
+    # Define a regular expression pattern to match 5 or more digit integers
+    pattern = r'\b\d{5,}\b'
+    # Use re.findall to extract all matching patterns
+    orders = re.findall(pattern, prompt)
+    # Convert the matched strings to integers
+    order_ids = [int(order) for order in orders]
     if len(order_ids) > 0:
-        return API_search_2(order_ids)
+        return delfi_api_orders(order_ids)
     else:
         return "Morate uneti tačan broj porudžbine/a."
 
 
-def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
+def delfi_api_products(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
+
     def get_product_info(token, product_id):
         return requests.get(url="https://www.delfi.rs/api/products", params={"token": token, "product_id": product_id}).content
 
@@ -2341,7 +2114,8 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
                         }
                 else:
                     print("Action node not found, taking regular price")  # Debugging line
-                    # Pristupanje priceList elementu
+                
+                # Pristupanje priceList elementu
                 price_list = product_node.find('priceList')
                 if price_list is not None:
                     collection_price = float(price_list.find('collectionFullPrice').text)
@@ -2455,7 +2229,8 @@ def API_search(matching_sec_ids: List[int]) -> List[Dict[str, Any]]:
     #     output += str(info) + "\n"
     return products_info
 
-def API_search_aks(order_ids: List[str]) -> List[Dict[str, Any]]:
+
+def delfi_api_aks(order_ids: List[str]) -> List[Dict[str, Any]]:
     
     def get_order_status(order_id: int) -> Dict[str, Any]:
         url = f"http://www.akskurir.com/AKSVipService/Pracenje/{order_id}"

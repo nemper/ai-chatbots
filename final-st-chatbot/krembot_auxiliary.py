@@ -126,8 +126,6 @@ def generate_tool_dict(choose_rag: str) -> Dict[str, str]:
 
     return tools_dict
 
-
-
 def connect_to_neo4j() -> Driver:
     """
     Establishes a connection to the Neo4j database using credentials from environment variables.
