@@ -1,0 +1,28 @@
+# --- De-emphasize non-code/data (won't count toward language stats)
+*.csv linguist-vendored
+*.tsv linguist-vendored
+*.jsonl linguist-vendored
+*.ipynb linguist-vendored   # notebooks often marked as generated/noisy
+*.png linguist-vendored
+*.jpg linguist-vendored
+*.jpeg linguist-vendored
+*.webp linguist-vendored
+*.gif linguist-vendored
+*.svg linguist-vendored
+*.pdf linguist-vendored
+
+# Common big vendor-ish dirs to exclude from stats
+vendor/** linguist-vendored
+node_modules/** linguist-vendored
+dist/** linguist-vendored
+build/** linguist-vendored
+**/.vs/** linguist-vendored
+**/.vscode/** linguist-vendored
+
+# --- Make sure code is counted as code
+*.py linguist-detectable=true
+*.pyi linguist-detectable=true
+*.pyx linguist-detectable=true
+
+# If you have mostly YAML configs, they won’t show as a "language" by design.
+# That’s normal; the goal is to let real code dominate the signal.
