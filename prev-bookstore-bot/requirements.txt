@@ -1,0 +1,3 @@
+lark==1.1.9
+myfunc @ git+https://github.com/djordjethai/myfunc.git
+streamlit_mic_recorder==0.0.8
