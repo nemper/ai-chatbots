@@ -1,0 +1,27 @@
+[theme]
+primaryColor="black"
+backgroundColor="#343541"
+secondaryBackgroundColor="#454654"
+textColor="white"
+font="sans serif"
+
+[server]
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false
+
+# Allowed values:
+# * "auto"      : Show the developer options if the app is accessed through
+#                 localhost or through Streamlit Community Cloud as a developer.
+#                 Hide them otherwise.
+# * "developer" : Show the developer options.
+# * "viewer"    : Hide the developer options.
+# * "minimal"   : Show only options set externally (e.g. through
+#                 Streamlit Community Cloud) or through st.set_page_config.
+#                 If there are no options left, hide the menu.
+
+# Default: "minimal"
+
+[client]
+toolbarMode = "viewer"

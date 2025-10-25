@@ -1,0 +1,13 @@
+aiohttp==3.9.5
+myfunc @ git+https://github.com/djordjethai/myfunc.git
+openai
+pandas
+pillow
+pydub
+pyodbc
+PyPDF2
+python-docx
+sounddevice
+soundfile
+streamlit-audiorecorder
+streamlit-mic-recorder
