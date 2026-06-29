@@ -1,8 +1,12 @@
+# Keep this file stable across platforms.
+.gitattributes text eol=lf
+
 # --- De-emphasize non-code/data (won't count toward language stats)
 *.csv linguist-vendored
 *.tsv linguist-vendored
 *.jsonl linguist-vendored
-*.ipynb linguist-vendored   # notebooks often marked as generated/noisy
+# Notebooks are often marked as generated/noisy.
+*.ipynb linguist-vendored
 *.png linguist-vendored
 *.jpg linguist-vendored
 *.jpeg linguist-vendored
@@ -24,5 +28,5 @@ build/** linguist-vendored
 *.pyi linguist-detectable=true
 *.pyx linguist-detectable=true
 
-# If you have mostly YAML configs, they won’t show as a "language" by design.
-# That’s normal; the goal is to let real code dominate the signal.
+# If you have mostly YAML configs, they won't show as a "language" by design.
+# That's normal; the goal is to let real code dominate the signal.
